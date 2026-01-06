@@ -21,7 +21,13 @@ Instead of managing infrastructure and process, you focus on the engagement. Krk
 
 # Your Data is Always Yours
 
-Krkn Server is a fully offline, on-prem solution. The data you collect should be yours and only yours. To facilitate this, we include a key-value database that utilizes BadgerDB and hardware information to encrypt stored information. 
+Krkn is designed first and foremost as a fully offline, on-premises platform. In offensive security, the data you collect is sensitive by nature. It should never have to leave your environment, and it should never belong to anyone but you.
+
+Krkn does not require cloud services, external APIs, or third-party infrastructure. Everything runs inside your network, under your control.
+
+To protect data at rest, Krkn includes a built-in encrypted key-value store backed by BadgerDB. Stored data is encrypted using keys derived from machine-specific hardware information, rotated every 24 hours, making the database useless if it is copied off the system or stolen.
+
+Your data stays local. Your data stays encrypted. Your data stays yours.
 
 # More Information
 
@@ -39,13 +45,13 @@ Krkn Server is a fully offline, on-prem solution. The data you collect should be
 
 # Licensing
 
-In order to maintain the offline solution, Krkn utilizes a signed krkn.license file. Without this file the server will not run. In this file is an expiration date for the Krkn Server. If the expiration date is met or exceeded, the Krkn Server will no longer facilitate activity but it will not delete your data. 
+In order to maintain the offline solution, Krkn utilizes a signed krkn.license file. Without this file the server will not run. In this file is an expiration date for the Krkn Server. If the expiration date is met or exceeded, the Krkn Server will no longer facilitate activity but it will not delete your data.
 
 To fix this, a new license file must be obtained from KrakenTech LLC for the service. Simply place the license file into the same directory as the Krkn Server binary and restart the server.
 
 # Network
 
-The Krkn Server was built to work over VPNs and has a direct integration with Tailscale. The goal was secure communications to routable addresses over tunnels to perform crackign operations in a cli application. 
+The Krkn Server was built to work over VPNs and has a direct integration with Tailscale. The goal was secure communications to routable addresses over tunnels to perform crackign operations in a cli application.
 
 The intention was to present a workflow that did not require client data to leave a secure tunnel or have to be downloaded between multiple hosts and uploaded to a cracking server, leaving room for forgotton client data on employee machines.
 
