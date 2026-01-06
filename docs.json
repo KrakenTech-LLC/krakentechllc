@@ -5,7 +5,7 @@
   "colors": {
     "primary": "#EF8430",
     "light": "#AF3B26",
-    "dark": "#FFFFFF"
+    "dark": "#e97110"
   },
   "favicon": "/favicon.svg",
   "navigation": {
@@ -89,8 +89,8 @@
     ]
   },
   "logo": {
-    "light": "/logo/kt_white.png",
-    "dark": "/logo/kt_white.png"
+    "light": "/KT_Logotype_Color.png",
+    "dark": "/KT_Simple_White - Copy.png"
   },
   "navbar": {
     "links": [
@@ -122,6 +122,11 @@
       "x": "https://x.com/mintlify",
       "github": "https://github.com/mintlify",
       "linkedin": "https://linkedin.com/company/mintlify"
+    }
+  },
+  "background": {
+    "color": {
+      "light": "#e17a1c"
     }
   }
 }
