@@ -2,3 +2,85 @@
 title: "krkns"
 ---
 
+# Krkns
+
+The Krkn Server is the primary controller and ochestrator of the distributed hash cracking network.
+
+![Krkn 28](/images/Krkn-_28.png)
+
+## Config
+
+The `config` subcommand can be used to persist settings across executions.
+
+- **Interface**: The active interface to listen on (Tailscale defaults to port only) (string)
+- **Port**: The port to serve on (int)
+- **Tailscale**: Use the Tailscale Tailnet (bool)
+- **QUIC**: Use HTTP/3 (QUIC) for communications (bool)Insecure: Do not require transport credentials (bool)
+- **Debug**: Verbose output (bool)
+- **Hostname**: The Tailscale Hostname to use (defaults to system Hostname if not set)
+
+![Krkn 26](/images/Krkn-_26.png)
+
+## Get
+
+<Info>
+  
+</Info>
+
+The `get` subcommand can be used to query the current configurations.
+
+![Krkn 68](/images/Krkn-_68.png)
+
+## Set
+
+<Info>
+  
+</Info>
+
+The `set` subcommand can be used to alter a configuration value.
+
+![Krkn 25](/images/Krkn-_25.png)
+
+## Unset
+
+<Info>
+  
+</Info>
+
+The `unset` subcommand can be used to clear a single configuration value.
+
+![Krkn 24](/images/Krkn-_24.png)
+
+## Clear
+
+<Info>
+  
+</Info>
+
+The `clear` subcommand can be used to clear all settings.
+
+## Serve 
+
+The `serve` subcommand can be used to start the Krkn Server. If no flags are set, the cache will be used to retrieve settings.
+
+![Krkn 23](/images/Krkn-_23.png)
+
+![Krkn 22](/images/Krkn-_22.png)
+
+# Tailscale
+
+## TS Net
+
+Because this is using the TSNet it will need to be configured with its own address on tailscale. When you start the server you will be prompted to either supply an environment variable or click a link to approve the new node. An admin must approve this link before it can serve on Tailscale. 
+
+## Hostname
+
+The hostname that will be registered on Tailscale will be either what is set for hostname in the configs + -krkn or the hosts default hostname-krkn. This is to make it easily identifiable. 
+
+## Ready State
+
+When the server is ready and listening on the TSNet you will not see it in ss or ps/netstat commands. You will see a notification indicating the **AuthLoop** state is: `Running; done`
+
+# Dead Instrument Removal
+
+![Krkn 6](/images/Krkn-_6.png)

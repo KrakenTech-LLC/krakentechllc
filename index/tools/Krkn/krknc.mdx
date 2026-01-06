@@ -148,6 +148,10 @@ The `upload` subcommand can be used to upload a file from your host to the Krkn 
 
 ### Download
 
+<Info>
+  Required Privileges: **Admin**
+</Info>
+
 The `download` subcommand can be used to prompt the Krkn Server to download a file from a given url.
 
 ![Krkn 55](/images/Krkn-_55.png)
@@ -157,7 +161,7 @@ The `download` subcommand can be used to prompt the Krkn Server to download a fi
 ### List
 
 <Info>
-  Required Privileges: **Admin**
+  Required Privileges: **Admin, User**
 </Info>
 
 The `list` subcommand can be used to list files of the specified type on the Krkn Server.
@@ -294,7 +298,7 @@ The `download` subcommand can be used to retrieve all cracked hashes from a comp
 
 ## Webhooks
 
-Krkn Clients can create webhooks to manage jobs and updates. For the client to register for Webhooks when using tailscale, a new node will need to be added to the Tailscale network. When the `-t` flag is passed, a TSNet node will be created for listening with the name `<hostname>-krknc`. 
+Krkn Clients can create webhooks to manage jobs and updates. For the client to register for Webhooks when using tailscale, a new node will need to be added to the Tailscale network. When the `-t` flag is passed, a TSNet node will be created for listening with the name `<hostname>-krknc`.
 
 ```
 # With Tailscale (will register as hostname-krknc on your tailnet)
