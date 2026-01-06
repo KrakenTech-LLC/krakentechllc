@@ -3,6 +3,10 @@ title: "krknc"
 description: "The Krkn Client (krknc) is the client used to communicate with the Krkn Service."
 ---
 
+# Krknc
+
+The Krkn Client can be used to interface with the Krkn Server
+
 ![Image](/images/image.png)
 
 ## Configuration
@@ -18,8 +22,108 @@ description: "The Krkn Client (krknc) is the client used to communicate with the
 
 Configs are used to set and persist settings across executions. The username is a required configuration along with the token however the token must be set in your environment variable.
 
+![Krkn 31](/images/Krkn-_31.png)
+
 ### Get
 
-- Required Privileges: **N/A**
+<Info>
+  Required Permissions: **N/A**
+</Info>
 
-The `config get` command can be used to view your current settings.
+The `get` command can be used to view your current settings.
+
+![Krkn 78](/images/Krkn-_78.png)
+
+### Set
+
+<Info>
+  Required Permissions: **N/A**
+</Info>
+
+The `set` command can be used to set a configuration value
+
+![Krkn 34](/images/Krkn-_34.png)
+
+### Unset
+
+<Info>
+  Required Permissions: **N/A**
+</Info>
+
+The `unset` command can be used to remove a value from a single key
+
+![Krkn 33](/images/Krkn-_33.png)
+
+### Clear
+
+<Info>
+  Required Permissions: **N/A**
+</Info>
+
+The `clear` command can be used to clear all entries in the configuration.
+
+## Logs
+
+Logs can be queried to facilitate troubleshooting and debugging both remotely on the Krkn Server and locally.
+
+![Krkn 40](/images/Krkn-_40.png)
+
+### Remote
+
+<Info>
+  Required Privileges: **Admin**
+</Info>
+
+![Krkn 39](/images/Krkn-_39.png)
+
+### Local
+
+<Info>
+  Required Privileges: **Admin**
+</Info>
+
+![Krkn 38](/images/Krkn-_38.png)
+
+## Users
+
+Users are the primary driver behind the Krkn Server. To access the Krkn Server a user needs to have their Username saved to their config and their token saved as an environment variable.
+
+Users fall into three different roles:
+
+- **Admin** - Unfettered access to all gRPC commands
+- **User** - Access to Job Creation, querying and status'
+- **Reader** - Query access only
+
+### List
+
+<Info>
+  Required Privileges: **Admin**
+</Info>
+
+Users can be listed by using the `list` command
+
+![Krkn 59](/images/Krkn-_59.png)
+
+![Krkn 61](/images/Krkn-_61.png)
+
+### Create
+
+<Info>
+  Required Privileges: **Admin**
+</Info>
+
+A new user can be created by an **admin** user using the `user create` command. A token will be sent to their email address.
+
+![Krkn 64](/images/Krkn-_64.png)
+
+![Krkn 63](/images/Krkn-_63.png)
+
+### Delete
+
+<Info>
+  Required Privileges: **Admin**
+</Info>
+
+The `delete` subcommand can be used to delete a user from the Krkn Server.
+
+![Krkn 62](/images/Krkn-_62.png)
