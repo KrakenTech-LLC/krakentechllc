@@ -1,5 +1,6 @@
 ---
 title: "krkns"
+description: "The Krkn Server is the primary controller for the Krkn Application"
 ---
 
 # Krkns
@@ -59,7 +60,7 @@ The `unset` subcommand can be used to clear a single configuration value.
 
 The `clear` subcommand can be used to clear all settings.
 
-## Serve 
+## Serve
 
 The `serve` subcommand can be used to start the Krkn Server. If no flags are set, the cache will be used to retrieve settings.
 
@@ -71,11 +72,11 @@ The `serve` subcommand can be used to start the Krkn Server. If no flags are set
 
 ## TS Net
 
-Because this is using the TSNet it will need to be configured with its own address on tailscale. When you start the server you will be prompted to either supply an environment variable or click a link to approve the new node. An admin must approve this link before it can serve on Tailscale. 
+Because this is using the TSNet it will need to be configured with its own address on tailscale. When you start the server you will be prompted to either supply an environment variable or click a link to approve the new node. An admin must approve this link before it can serve on Tailscale.
 
 ## Hostname
 
-The hostname that will be registered on Tailscale will be either what is set for hostname in the configs + -krkn or the hosts default hostname-krkn. This is to make it easily identifiable. 
+The hostname that will be registered on Tailscale will be either what is set for hostname in the configs + -krkn or the hosts default hostname-krkn. This is to make it easily identifiable.
 
 ## Ready State
 
