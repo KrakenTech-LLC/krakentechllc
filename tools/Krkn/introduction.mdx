@@ -3,6 +3,28 @@ title: "introduction"
 description: "Welcome to the Krkn Wiki Page"
 ---
 
+# The Tale of Krkn
+
+Krkn was born out of years of frustration doing hash cracking the “normal” way in real offensive security engagements.
+
+At KrakenTech, we’ve lived the reality of shared cracking boxes, waiting in line for access, copying hashes around with `scp`, downloading them off attack infrastructure, and manually relocating them onto whatever GPU rig happened to be free. We’ve all babysat `hashcat` processes, repeatedly checking status, waiting for a job to finish so we could tell the next person, “It’s free now.”
+
+We’ve also suffered through the operational friction: awkward web interfaces, clunky authentication, trying to interact with browser-based tooling from headless servers, or resorting to `curl` and ad-hoc scripts just to move files and results around.
+
+This workflow doesn’t scale. It wastes time, breaks focus, and turns what should be an automated, background process into a constant manual coordination problem.
+
+We’ve been there. So we decided to redesign what hash cracking should look like.
+
+Krkn is the result: a distributed, fault-tolerant hash cracking platform designed for real offensive security teams. It removes the need to manually shuttle files, wait for machines, or babysit jobs. Work can be batched intelligently based on flags and job characteristics, dispatched across multiple cracking nodes, and results are fed back automatically to the people who need them—when they’re ready.
+
+Instead of managing infrastructure and process, you focus on the engagement. Krkn handles the rest.
+
+# Your Data is Always Yours
+
+Krkn Server is a fully offline, on-prem solution. The data you collect should be yours and only yours. To facilitate this, we include a key-value database that utilizes BadgerDB and hardware information to encrypt stored information. 
+
+# More Information
+
 <Columns cols={3}>
   <Card title="Server (krkns)" icon="server" href="/tools/Krkn/krkns">
     
@@ -14,6 +36,20 @@ description: "Welcome to the Krkn Wiki Page"
     
   </Card>
 </Columns>
+
+# Licensing
+
+In order to maintain the offline solution, Krkn utilizes a signed krkn.license file. Without this file the server will not run. In this file is an expiration date for the Krkn Server. If the expiration date is met or exceeded, the Krkn Server will no longer facilitate activity but it will not delete your data. 
+
+To fix this, a new license file must be obtained from KrakenTech LLC for the service. Simply place the license file into the same directory as the Krkn Server binary and restart the server.
+
+# Network
+
+The Krkn Server was built to work over VPNs and has a direct integration with Tailscale. The goal was secure communications to routable addresses over tunnels to perform crackign operations in a cli application. 
+
+The intention was to present a workflow that did not require client data to leave a secure tunnel or have to be downloaded between multiple hosts and uploaded to a cracking server, leaving room for forgotton client data on employee machines.
+
+![Blank Diagram](</Blank diagram.png>)
 
 # First Time Setup
 
