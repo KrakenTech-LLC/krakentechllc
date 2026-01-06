@@ -1,6 +1,6 @@
 ---
 title: "Tentacle"
-description: "Tentacle is a distributed hashcat worker that integrates with the Kraken Orchestra system. It acts as an "Instrument" in Orchestra terminology - a worker node that registers with a Conductor (scheduler), pulls work when ready, executes hashcat attacks, and reports results back.  "
+description: "Tentacle is a distributed Hashcat worker that integrates with the Kraken Orchestra system. It acts as an "Instrument" in Orchestra terminology - a worker node that registers with a Conductor (scheduler), pulls work when ready, executes Hashcat attacks, and reports results back.  "
 ---
 
 # Overview
@@ -139,38 +139,36 @@ cd temp/Tentacle/docker && chmod +x ./build.sh && ./build.sh
 
 When a Tentacle worker starts:
 
-1. **Connect to Conductor**: Establishes gRPC connection to Kraken server (port 65535) 
-2. **Register**: Sends worker ID, capacity, and labels to Orchestra Conductor 
-3. **Receive Config**: Gets heartbeat interval (default 3 seconds)  
-4. **Start Loops**: Begins heartbeat and work-pulling loops  
+1. **Connect to Conductor**: Establishes gRPC connection to Kraken server (port 65535)
+2. **Register**: Sends worker ID, capacity, and labels to Orchestra Conductor
+3. **Receive Config**: Gets heartbeat interval (default 3 seconds)
+4. **Start Loops**: Begins heartbeat and work-pulling loops
 
 ## Work Acquisition
 
 The worker will continuously poll for work:
 
-1. **Pull Work**: Calls `PullWork` RPC when capacity available  
-2. **Acquire Lease**: Receives work item with 30-minute lease  
-3. **Download Files**: Streams hashlist, wordlist, rules, masks from conductor  
-4. **Execute Hashcat**: Runs attack with downloaded files  
-5. **Report Results**: Streams cracked hashes back to conductor  
-6. **Release Lease**: Marks work complete and frees capacity  
-
-     
+1. **Pull Work**: Calls `PullWork` RPC when capacity available
+2. **Acquire Lease**: Receives work item with 30-minute lease
+3. **Download Files**: Streams hashlist, wordlist, rules, masks from conductor
+4. **Execute Hashcat**: Runs attack with downloaded files
+5. **Report Results**: Streams cracked hashes back to conductor
+6. **Release Lease**: Marks work complete and frees capacity
 
 ## File Management
 
-Files are downloaded on-demand and cached in `/tmp/tentacle`: 
+Files are downloaded on-demand and cached in `/tmp/tentacle`:
 
-- Hashlists, wordlists, rules, and masks are streamed in chunks  
-- Files are reused across jobs when possible  
-- Temporary files cleaned up after job completion  
+- Hashlists, wordlists, rules, and masks are streamed in chunks
+- Files are reused across jobs when possible
+- Temporary files cleaned up after job completion
 
 ## Heartbeat and Lease Management
 
-- **Heartbeat**: Sent every 3 seconds to maintain connection  
-- **Lease Duration**: 30 minutes per work item  
-- **Auto-Extension**: Lease extended if job still running  
-- **Failure Recovery**: If worker crashes, lease expires and work is reclaimed  
+- **Heartbeat**: Sent every 3 seconds to maintain connection
+- **Lease Duration**: 30 minutes per work item
+- **Auto-Extension**: Lease extended if job still running
+- **Failure Recovery**: If worker crashes, lease expires and work is reclaimed
 
 ## Monitoring
 
@@ -211,10 +209,10 @@ This opens an interactive shell in the container.
 
 ## The worker is not connecting:
 
-- Verify `CONDUCTOR_ADDR` in `.env`  
-- Check network: `ping your-server-hostname`  
-- Ensure Kraken server is running  
-- Check firewall allows port 65535  
+- Verify `CONDUCTOR_ADDR` in `.env`
+- Check network: `ping your-server-hostname`
+- Ensure Kraken server is running
+- Check firewall allows port 65535
 
 ## GPU not Detected:
 
