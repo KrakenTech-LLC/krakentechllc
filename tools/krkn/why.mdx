@@ -1,0 +1,262 @@
+---
+title: "Why Not Hashtopolis"
+description: "This document explains the architectural and philosophical differences between Krkn and Hashtopolis"
+---
+
+# TL;DR Summary
+
+> **Krkn** is a modern, distributed, self-contained, streaming-first cracking orchestration system designed for cloud, containers, and segmented networks.
+
+> **Hashtopolis** is a traditional centralized cracking management platform designed around shared storage and classic server-agent models.
+
+Both are excellent tools — they simply optimize for **very different deployment philosophies**.
+
+# Part 1 — High-Level Explanation 
+
+## What is the core difference?
+
+**Krkn** is a **modern, cloud-native distributed cracking platform** designed around:
+
+- Self-contained jobs
+- Pull-based workers
+- High-performance networking
+- Minimal infrastructure assumptions
+
+**Hashtopolis** is a **traditional server-based cracking management system** designed around:
+
+- Central file storage
+- Agents that download tasks and files
+- A classic web application architecture
+
+## How work is sent to workers
+
+### Krkn
+
+- Workers (**Tentacles**) connect to a controller (**Conductor**).
+- When ready, they **ask for work**.
+- They receive **everything needed to execute the job in one package**:
+  - Hashes
+  - Wordlists
+  - Rules
+  - Masks
+- No shared filesystem is required.
+
+### Hashtopolis
+
+- The server tells agents what to do.
+- Agents then **download files separately** from a central file store.
+- The job references files by ID or path.
+
+## Why this matters
+
+### Krkn advantages
+
+- Works extremely well in:
+  - Containers
+  - Cloud environments
+  - VPN / NAT / segmented networks
+- No shared storage required
+- Simpler deployment model for distributed workers
+- Better performance over unreliable networks
+- Workers are autonomous and self-scheduling
+
+### Hashtopolis advantages
+
+- Mature and battle-tested
+- Full-featured web UI
+- Centralized file storage saves bandwidth
+- Easier for non-developers to customize agents
+- Strong multi-user and permission model
+
+## Networking model
+
+- **Krkn** is capable of using **QUIC** (modern UDP-based protocol) and other modern protocols:
+  - Faster startup
+  - Better multiplexing
+  - Better performance on high-latency or restricted networks
+- **Hashtopolis** uses traditional **HTTP(S) over TCP**
+
+## In short
+
+> **Krkn** is optimized for modern, distributed, containerized, cloud-like environments.\
+> **Hashtopolis** is optimized for classic server + agents + shared storage environments.
+
+# Part 2 — Technical Deep Dive 
+
+## 1. Architecture & Technology Stack
+
+### Krkn
+
+- Go-based microservices
+- gRPC + Protocol Buffers
+- QUIC/HTTP2 transport 
+- SQLite using `sqlc` for type-safe queries (user database)
+- Custom Key-Value Database for hash storage and quick retrieval
+- Strongly typed, compile-time validated APIs
+
+### Hashtopolis
+
+- PHP monolith
+- MySQL
+- REST/HTTP with JSON
+- Python agents
+
+## 2. Work Distribution Model
+
+### Krkn
+
+- Custom system: **Orchestra**
+- Pull-based model:
+  - Workers ("Instruments") register with the **Conductor**
+  - Workers open streaming gRPC connections
+  - Workers request work when ready
+- Natural load balancing
+
+### Hashtopolis
+
+- Push/poll model
+- Server assigns tasks
+- Agents poll HTTP endpoints for work
+
+## 3. Communication Protocol
+
+### Krkn
+
+- gRPC + Protocol Buffers
+- QUIC/HTTP2 transport
+- Streaming RPCs
+- Supports large, chunked payloads:
+  - Wordlists
+  - Rules
+  - Hashlists
+
+### Hashtopolis
+
+- REST API over HTTP(S)
+- JSON messages
+- Files transferred via separate download endpoints
+- Agents reference files by ID/path
+
+## 4. Job Distribution Philosophy
+
+### Krkn
+
+- **Batching system**
+- Jobs are grouped into batches
+- Each batch contains:
+  - Hashes
+  - Wordlists
+  - Rules
+  - Masks
+- Entire attack payload is **self-contained**
+
+### Hashtopolis
+
+- Task-based model
+- Jobs reference centrally stored files
+- Agents must fetch required files separately
+
+## 5. Worker Architecture
+
+### Krkn
+
+- Go-based workers called **Tentacles**
+- Execute hashcat directly using shared object files
+- Embedded file handling
+
+### Hashtopolis
+
+- Python-based agents
+- More flexible for ad-hoc customization
+
+## 6. Data Embedding Strategy
+
+### Krkn
+
+- File contents embedded directly into job payloads:
+  - Hashes
+  - Wordlists
+  - Rules
+  - Masks
+- Delivered as byte arrays over gRPC streams
+
+### Hashtopolis
+
+- Files stored centrally
+- Agents download files separately
+
+## 7. Network Transport
+
+### Krkn
+
+- QUIC (UDP-based)/HTTP2
+- Multiplexed streams
+- Better performance on:
+  - High latency
+  - NAT
+  - VPN
+  - Firewalled environments
+
+### Hashtopolis
+
+- TCP-based HTTP(S)
+
+## 8. Database Design
+
+### Krkn
+
+- SQLite
+- Custom `KrknDB` package
+- SQLC-generated type-safe queries
+
+### Hashtopolis
+
+- MySQL
+- Traditional ORM / query approach
+
+## 9. Scalability Model
+
+### Krkn
+
+- Streaming chunked transfer
+- Pull-based scheduling
+- Workers request work when idle
+- Natural horizontal scaling
+
+### Hashtopolis
+
+- Central file repository
+- Separate download phase
+- More I/O coordination required
+
+## 10. Observability
+
+### Krkn
+
+- Structured logging via Zap
+- Orchestra heartbeat and metrics system
+- Built-in distributed worker visibility
+
+### Hashtopolis
+
+- Traditional PHP logging and status views
+
+# Key Advantages of Krkn
+
+- Type safety (Protocol Buffers, SQLC)
+- Higher performance (QUIC + gRPC)
+- Self-contained jobs (no shared filesystem)
+- Modern concurrency (Go goroutines)
+- Pull-based load balancing
+- Cloud/container friendly
+- Better for segmented and restricted networks
+
+# Key Advantages of Hashtopolis
+
+- Mature, battle-tested ecosystem
+- Full web UI
+- Centralized file storage reduces payload size
+- Python agents easier to customize
+- Strong multi-user and permission model
+
+# 

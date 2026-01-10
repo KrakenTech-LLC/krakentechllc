@@ -48,6 +48,7 @@
             "tab": "Krkn",
             "pages": [
               "tools/Krkn/introduction",
+              "tools/krkn/why",
               "tools/Krkn/krkns",
               "tools/Krkn/tentacle",
               "tools/Krkn/krknc"
