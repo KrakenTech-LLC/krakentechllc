@@ -26,172 +26,157 @@ So:
 
 This is the root cause of most confusion.
 
-## The #1 Silent Killer (Device Posture + tsnet)
+<AccordionGroup>
+  <Accordion title="The #1 Silent Killer (Device Posture + tsnet)">
+    **Why this breaks things**
 
-### Why this breaks things
+    **Posture checks like:**
+      - `node:tsReleaseTrack == 'stable'`
+      - `node:tsAutoUpdate`
+    
+    **FAIL on tsnet nodes**, because:
+      - tsnet nodes do not auto-update
+      - tsnet nodes do not have a release channel
+      - tsnet nodes often lack many “managed” attributes
+    
+    If you have:
+    
+    ```json
+    "defaultSrcPosture": ["posture:human"]
+    ```
+    
+    Then **tsnet nodes are silently removed from the tailnet graph** for non-admin nodes.
+    
+    **Symptom**
+    - Admin can see the tsnet node
+    - Other nodes cannot see it at all
+    - Node exists in admin console
+    - Tag is correct
+    - Grants look correct
+    - But it is **invisible**
+    
+    **Correct Pattern**
+    - Do NOT use defaultSrcPosture globally
+    - Only apply posture on rules that involve human devices
+    - Service nodes (tsnet, infra) must be posture-free
+    
+    Example:
+    
+    ```json
+    "postures": {
+      "posture:human": [
+        "node:tsReleaseTrack == 'stable'",
+        "node:tsAutoUpdate"
+      ]
+    }
+    ```
+    
+    Then only use:
+    
+    ```json
+    "srcPosture": ["posture:human"]
+    ```
+    
+    On human rules.
+    
+    Never on service mesh rules.
+  </Accordion>
+  <Accordion title="Peer Suppresion">
+    Tailscale does not show peers that **can never be reached** according to policy.
+    
+    If the solver decides:
+    
+    > “Node A can never talk to Node B under any rule”
+    
+    Then Node B is **not sent at all** in `tailscale status`.
+    
+    **This causes:**
+      - Node does not appear
+      - No ping
+      - No connection attempt
+      - Looks like it “does not exist”
+    
+    **Root causes:**
+      - Missing grants
+      - Bad posture
+      - Tag mismatch
+      - Group mismatch
+      - ACL/grant shadowing
+  </Accordion>
+  <Accordion title="Tags: Rules and Traps">
+   **Important Facts**
+    - Tags are per-node, not per-host
+    - Tags must exist in `tagOwners`
+    - Tag must be approved or auto-approved
+    - Tags do NOT override posture
+    - Tags do NOT override user ownership rules
 
-Posture checks like:
+  **Common Failures**
+    - Node is tagged in UI but policy does not list the tag in `tagOwners`
+    - Node has multiple tags and only some rules match
+    - tsnet node was created under `tagged-devices` user and rules are user-scoped
+  </Accordion>
+  <Accordion title="Grants vs ACLs">
+    
+    If you still have an `"acls"` section:
+      - It is evaluated
+      - It can block things even if grants allow them
+      - It can cause peer suppression
 
-- `node:tsReleaseTrack == 'stable'`
-- `node:tsAutoUpdate`
+    **Strong recommendation:**
+      - Use grants only
+      - Remove ACLs entirely unless you fully understand both systems
+  </Accordion>
+  <Accordion title="Groups">
+    Groups only affect:
+      - User-based rules
+      - They do not apply to tagged service nodes
+      - tsnet nodes almost always belong to `tagged-devices`
+  
+    Common mistake:
+      - Writing rules like:
+    
+    ```json
+    "src": ["group:admins"]
+    ```
+    
+    And expecting service nodes to match.
+    
+    They never will.
+  </Accordion>
+  <Accordion title="Debug Checklist">
+    On the broken node:
 
-**FAIL on tsnet nodes**, because:
+    ```bash
+    tailscale status
+    tailscale status --json | jq '.Self'
+    tailscale status --json | jq '.Peer[].DNSName'
+    ```
+    
+    **Check:**
+    
+    - Does the node exist in admin?
+    - Does it have the tag?
+    - Does the rule path exist?
+    - Does posture apply?
+    - Does any rule match at all?
+  </Accordion>
+  <Accordion title="Nuclear Debug Rule">
+    Temporarily add:
+    
+    ```json
+    {
+      "src": ["*"],
+      "dst": ["*"],
+      "ip": ["*"]
+    }
+    ```
+    
+    If the node appears immediately:
+    
+    > Your policy graph was unsatisfiable.
 
-- tsnet nodes do not auto-update
-- tsnet nodes do not have a release channel
-- tsnet nodes often lack many “managed” attributes
-
-If you have:
-
-```json
-"defaultSrcPosture": ["posture:human"]
-```
-
-Then **tsnet nodes are silently removed from the tailnet graph** for non-admin nodes.
-
-### Symptom
-
-- Admin can see the tsnet node
-- Other nodes cannot see it at all
-- Node exists in admin console
-- Tag is correct
-- Grants look correct
-- But it is **invisible**
-
-### Correct Pattern
-
-- Do NOT use defaultSrcPosture globally
-- Only apply posture on rules that involve human devices
-- Service nodes (tsnet, infra) must be posture-free
-
-Example:
-
-```json
-"postures": {
-  "posture:human": [
-    "node:tsReleaseTrack == 'stable'",
-    "node:tsAutoUpdate"
-  ]
-}
-```
-
-Then only use:
-
-```json
-"srcPosture": ["posture:human"]
-```
-
-On human rules.
-
-Never on service mesh rules.
-
-## Peer Suppression
-
-Tailscale does not show peers that **can never be reached** according to policy.
-
-If the solver decides:
-
-> “Node A can never talk to Node B under any rule”
-
-Then Node B is **not sent at all** in `tailscale status`.
-
-This causes:
-
-- Node does not appear
-- No ping
-- No connection attempt
-- Looks like it “does not exist”
-
-Root causes:
-
-- Missing grants
-- Bad posture
-- Tag mismatch
-- Group mismatch
-- ACL/grant shadowing
-
-## Tags: Rules and Traps
-
-### Important Facts
-
-- Tags are per-node, not per-host
-- Tags must exist in `tagOwners`
-- Tag must be approved or auto-approved
-- Tags do NOT override posture
-- Tags do NOT override user ownership rules
-
-### Common Failures
-
-- Node is tagged in UI but policy does not list the tag in `tagOwners`
-- Node has multiple tags and only some rules match
-- tsnet node was created under `tagged-devices` user and rules are user-scoped
-
-## Grants vs ACLs
-
-If you still have an `"acls"` section:
-
-- It is evaluated
-- It can block things even if grants allow them
-- It can cause peer suppression
-
-**Strong recommendation:**
-
-- Use grants only
-- Remove ACLs entirely unless you fully understand both systems
-
-## Groups
-
-Groups only affect:
-
-- User-based rules
-- They do not apply to tagged service nodes
-- tsnet nodes almost always belong to `tagged-devices`
-
-Common mistake:
-
-- Writing rules like:
-
-```json
-"src": ["group:admins"]
-```
-
-And expecting service nodes to match.
-
-They never will.
-
-## Debug Checklist
-
-On the broken node:
-
-```bash
-tailscale status
-tailscale status --json | jq '.Self'
-tailscale status --json | jq '.Peer[].DNSName'
-```
-
-Check:
-
-- Does the node exist in admin?
-- Does it have the tag?
-- Does the rule path exist?
-- Does posture apply?
-- Does any rule match at all?
-
-## Nuclear Debug Rule
-
-Temporarily add:
-
-```json
-{
-  "src": ["*"],
-  "dst": ["*"],
-  "ip": ["*"]
-}
-```
-
-If the node appears immediately:
-
-> Your policy graph was unsatisfiable.
+  </Accordion>
 
 ## Correct Architecture for Krkn
 
