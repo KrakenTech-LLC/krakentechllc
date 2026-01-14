@@ -401,7 +401,7 @@ The `jobs`  subcommand encompasses the distributed KCat hash cracking system inc
 ### Examples
 
 - Dictionary attack with rules
-  -  `krknc job create hashes.txt -T 1000 -A 0 -W rockyou -R best64`
+  - `krknc job create hashes.txt -T 1000 -A 0 -W rockyou -R best64`
 - Mask attack with increment
   - `krknc job create hashes.txt -T 1000 -A 3 -M "?a?a?a?a?a?a" --increment --increment-min 4 --increment-max 8`
 - Hybrid attack
@@ -528,9 +528,14 @@ On first use, and periodically, the host will need to be authenticated. A URL wi
 
 # Auto-Completion
 
-Autocompletion scripts can be added to your profile to allow tab completion and other features of the Krkn Client application.
+| Sub-Command | Description                                       |
+| ----------- | ------------------------------------------------- |
+| bash        | Generate the autocompletion script for bash       |
+| fish        | Generate the autocompletion script for fish       |
+| powershell  | Generate the autocompletion script for powershell |
+| zsh         | Generate the autcompletion script for zsh         |
 
-![Krkn 36](/images/Krkn-_36.png)
+Autocompletion scripts can be added to your profile to allow tab completion and other features of the Krkn Client application.
 
 ### Bash Sample
 
