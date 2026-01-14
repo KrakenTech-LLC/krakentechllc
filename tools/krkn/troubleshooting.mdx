@@ -231,3 +231,242 @@ Always ask:
 If yes, the node will disappear.
 
 ---
+
+# Krkn Client (krknc) Tailscale Troubleshooting Guide
+
+This guide covers **client-side** Tailscale issues for `krknc`, especially when the client embeds Tailscale via **tsnet** to expose a local webhook listener.
+
+If you enabled Tailscale support in the client and something appears “stuck”, “invisible”, or “not connecting”, this document explains why and how to fix it.
+
+## 1. Mental Model: krknc + tsnet
+
+When `krknc` starts with Tailscale enabled:
+
+- It creates a **tsnet** node (an embedded Tailscale node)
+- This is a **separate machine identity** in your tailnet
+- It has:
+  - Its own IP
+  - Its own hostname
+  - Its own tags (if any)
+  - Its own posture evaluation
+  - Its own auth state
+
+It is **NOT** using the system tailscaled, even if one is running.
+
+So:
+
+- Your workstation’s Tailscale login ≠ krknc’s Tailscale login
+
+They are two different nodes.
+
+## 2. First-Run Authentication (The #1 Confusion Point)
+
+On first startup with Tailscale enabled, krknc **must authenticate** its embedded tsnet node.
+
+There are two ways to do this:
+
+### Option A — Interactive Login (Default)
+
+- krknc will start
+- It will block waiting for authentication
+- You must visit the printed login URL (only visible in debug logs)
+- After successful login, the node is registered
+- From then on:
+  - The auth state is persisted
+  - You do NOT need to login again on future starts
+
+> ⚠️ If debug logging is NOT enabled, you may not see the login URL and it will look like the client is “hung”.
+
+### Option B — Auth Key (Non-interactive / Headless)
+
+You can pre-auth the client using an auth key:
+
+```bash
+export TS_AUTHKEY=tskey-xxxxxxxxxxxxxxxx
+export TS_FORCE_LOGIN=1
+```
+
+Then start krknc.
+
+What this does:
+
+- `TS_AUTHKEY` provides a pre-auth key
+- `TS_FORCE_LOGIN=1` forces tsnet to use it even if cached state exists
+- The node will:
+  - Register automatically
+  - Appear in the admin console
+  - Be ready without any browser login
+
+> ✅ This is ideal for headless machines, CI, or scripted deployments.
+
+> ⚠️ This is ONLY required for the **initial registration**. After that, the node identity is persisted and the env vars are no longer needed.
+
+## 3. Important: You Only Need to Auth ONCE
+
+Once krknc has successfully authenticated:
+
+- The node identity is stored on disk
+- Future runs will:
+  - Reuse the same node
+  - Reuse the same IP
+  - Reuse the same registration
+- You do NOT need:
+  - TS_AUTHKEY
+  - TS_FORCE_LOGIN
+  - Or interactive login again
+
+Unless:
+
+- You delete the state directory
+- You run with a different hostname
+- You force a re-login
+- You run in ephemeral mode (if supported)
+
+## 4. Where the Auth “Hang” Happens
+
+Symptoms:
+
+- krknc starts
+- Nothing seems to happen
+- No errors
+- No progress
+- No network connectivity
+
+Cause:
+
+> tsnet is waiting for authentication, but the login URL is only shown in debug logs.
+
+Fix:
+
+- Start krknc with debug logging enabled
+- Look for a line containing a login URL
+- Open it in your browser
+- Approve the node
+
+## 5. Verifying the Client Node Exists
+
+After successful auth, check in the Tailscale admin console:
+
+- Machines list
+- You should see something like:
+  - `krknc-<hostname>`
+  - Or similar
+
+Or locally:
+
+```bash
+tailscale status
+```
+
+(On machines that are allowed to see it by policy.)
+
+## 6. Tags and Visibility
+
+Even if the client node is authenticated:
+
+- It may be **invisible** to other nodes if:
+  - It does not have the correct tag (e.g., `tag:krkn`)
+  - Or policy does not allow any path to it
+
+Remember:
+
+> If Tailscale policy says “this node can never talk to that node”, the peer is **suppressed** and does not appear at all.
+
+This is not a networking issue — it is a **policy graph issue**.
+
+## 7. Posture and Client Nodes
+
+If your tailnet uses posture rules:
+
+- tsnet nodes often **FAIL posture**
+- Because they:
+  - Do not auto-update
+  - Do not have a release channel
+  - Do not look like “managed” clients
+
+If posture is applied globally or to krkn rules:
+
+> The client node may be silently excluded from the network graph.
+
+Fix:
+
+- Do not apply posture to service nodes
+- Only apply posture to human devices
+- See the main Krkn Tailscale Troubleshooting Guide
+
+## 8. Common Failure Modes
+
+### A) “Client never connects”
+
+- It is waiting for interactive auth
+- Debug logs disabled
+- You never opened the login URL
+
+Fix:
+
+- Enable debug
+- Or use TS_AUTHKEY + TS_FORCE_LOGIN=1
+
+### B) “Client authenticated but server can’t see it”
+
+- Tag missing
+- Policy path does not exist
+- Posture blocking it
+- Peer is being suppressed
+
+Fix:
+
+- Check admin console
+- Check tags
+- Check grants
+- Check posture rules
+
+### C) “I reinstalled and now it wants login again”
+
+- State directory was deleted
+- New identity is being created
+- This is expected
+
+## 9. Forcing a Re-Registration
+
+If you want to force krknc to register as a new node:
+
+```bash
+export TS_FORCE_LOGIN=1
+export TS_AUTHKEY=tskey-...
+```
+
+Or delete the client’s tsnet state directory.
+
+## 10. Debug Checklist
+
+On the client machine:
+
+- Is debug logging enabled?
+- Do you see a login URL?
+- Does the node appear in admin?
+- Does it have the correct tag?
+- Does policy allow it to talk to anything?
+
+On another machine:
+
+```bash
+tailscale status
+```
+
+Does the client appear at all?
+
+If not:
+
+> The control plane has suppressed it due to policy.
+
+## 11. Key Takeaways
+
+- krknc uses its own embedded Tailscale node
+- It must authenticate once
+- Auth can be interactive or via TS_AUTHKEY
+- TS_FORCE_LOGIN=1 forces fresh registration
+- After first auth, env vars are no longer needed
+- If a node is invisible, it is being hidden by policy, not broken networking
+
+---
