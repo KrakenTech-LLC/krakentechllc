@@ -51,7 +51,8 @@
               "tools/krkn/why",
               "tools/Krkn/krkns",
               "tools/Krkn/tentacle",
-              "tools/Krkn/krknc"
+              "tools/Krkn/krknc",
+              "tools/krkn/troubleshooting"
             ]
           }
         ]
