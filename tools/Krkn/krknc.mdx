@@ -514,14 +514,6 @@ The `jobs`  subcommand encompasses the distributed KCat hash cracking system inc
 
 Krkn Clients can create webhooks to manage jobs and updates. For the client to register for Webhooks when using tailscale, a new node will need to be added to the Tailscale network. When the `-t` flag is passed, a TSNet node will be created for listening with the name `<hostname>-krknc`.
 
-```
-# With Tailscale (will register as hostname-krknc on your tailnet)
-./krknc listen -t
-
-# Without Tailscale (regular TCP)
-./krknc listen -p 9090
-```
-
 ![Krkn Webhook Rt](/krkn_webhook_rt.gif)
 
 ### Webhook Types
