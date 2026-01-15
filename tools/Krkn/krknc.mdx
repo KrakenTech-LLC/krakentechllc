@@ -484,25 +484,95 @@ Krkn Clients can create webhooks to manage jobs and updates. For the client to r
 
 Webhooks can be configured to alert in one of three ways.
 
-### Toasts
+- Real-time
+  - All cracked passwords will be sent back to your host
+- Completion
+  - When the job is completed, a notification will be sent back to your host
+- All
+  - Both real-time and completion updates will be sent back to your host
 
-Webhooks can be configured to use OS Specific Toast messages, which appear on a grpahical desktop interface for user alerts. Toasts can also be queried using the toast subcommand if they are missed.
+### Listen
+
+| -N, --notifications | enable OS notifications                    |
+| ------------------- | ------------------------------------------ |
+| -p, --port          | port to listen on (default 9090)           |
+| -S, --save-toasts   | save toast messages to file (default true) |
+| --system            | run in system service mode                 |
+
+The `listen` subcommand can be used to register and listen in realtime for job updates.
+
+### Service
+
+| Sub-Command | Description                                    |
+| ----------- | ---------------------------------------------- |
+| install     | Install the webhook listener service           |
+| uninstall   | Uninstall the webhook listener service         |
+| status      | Get the status of the webhook listener service |
+
+The `service` subcommand can be used to register/deregister a webhook service for listening on the host system.
+
+<AccordionGroup>
+  <Accordion title="Install">
+    | Flag                | Description                            |
+    | :------------------ | :------------------------------------- |
+    | -N, --notifications | Enable OS notifications (default true) |
+    | -p, --port          | Port to listen on (default 9090)       |
+
+    The `install` subcommand can be used to install the webhook service on the host system.
+  </Accordion>
+  <Accordion title="Uninstall">
+    The `uninstall` subcommand can be used to uninstall the webhook service on the host system.
+  </Accordion>
+  <Accordion title="Status">
+    The `status` subcommand can be used to query the webhook service on the host system.
+  </Accordion>
+</AccordionGroup>
+
+## Toasts
+
+| Sub-Command | Description                     |
+| ----------- | ------------------------------- |
+| list        | Show toast messages             |
+| read        | Mark all toast messages as read |
+| clear       | Remove all toast messages       |
+
+Webhooks can be configured to use OS Specific Toast messages, which appear on a graphical desktop interface for user alerts. Toasts can also be queried using the toast subcommand if they are missed.
+
+<Note>
+  > To utilize the toasts messages, they must be enabled in the config
+  >
+  > `krknc config set toasts true`
+</Note>
+
+### List
+
+The `list` subcommand can be used to display all toast messages received via webhooks.
+
+| Flag        | Description                     |
+| ----------- | ------------------------------- |
+| -u --unread | Only list unread toast messages |
+
+![Toast List](/toast_list.png)
+
+### Read
+
+The `read` subcommand can be used to mark all toast messages as read.
+
+![Toast Read](/toast_read.png)
+
+### Clear
+
+| Flag      | Description                    |
+| --------- | ------------------------------ |
+| -r --read | Only clear read toast messages |
+
+The `clear` subcommand can be used to clear all toast messages from the cache.
+
+![Toast Clear](/toast_clear.png)
 
 ### Append File
 
 Webhooks can be configred to append results to a file. This is ideal for when you submit a job and want the results to be added without having to check in on the job regularly.
-
-### Realtime
-
-Webhooks can also be configured in realtime mode. This will block your session and update you on the status of the job as it goes through the process.
-
-### Listen
-
-The listen subcommand can be used to register and listen in realtime for job updates.
-
-## Service
-
-The service subcommand can be used to create and start a webhook listener service.
 
 ## Server
 
