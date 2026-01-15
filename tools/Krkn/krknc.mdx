@@ -362,12 +362,12 @@ The `hashes` subcommand can be used to query or upload hashes to the Krkn Server
 | upload       | Upload cracked hashes from file or stdin |
 
 ### Sub-Commands
+
 <AccordionGroup>
   <Accordion title="Query">
     <Info>
       Required Privileges: **Admin, User, Reader**
     </Info>
-    
     | Flags | Description                              |
     | ----- | ---------------------------------------- |
     | -T    | The hashcat mode of the provided hashes  |
@@ -375,9 +375,9 @@ The `hashes` subcommand can be used to query or upload hashes to the Krkn Server
     | -F    | Provide a file of hashes                 |
     | -O    | Output file for results                  |
     | -D    | Dispaly results to stdout                |
-    
+
     The `query` subcommand can be used to query the Krkn Server for previously cracked hashes
-    
+
     ![Krkn 71](/images/Krkn-_71.png)
   </Accordion>
   <Accordion title="Recount">
@@ -390,12 +390,11 @@ The `hashes` subcommand can be used to query or upload hashes to the Krkn Server
     <Info>
       Required Privileges: **Admin**
     </Info>
-    
     | Args | Description                                    |
     | ---- | ---------------------------------------------- |
     | 1    | Hashcat mode                                   |
     | 2    | The local file to upload containing the hashes |
-    
+
     ![Krkn 72](/images/Krkn-_72.png)
   </Accordion>
 </AccordionGroup>
@@ -417,16 +416,15 @@ The `jobs`  subcommand encompasses the distributed KCat hash cracking system inc
     <Info>
       Required Privileges: **User, Admin**
     </Info>
-    
     ### Args
-    
+
     | Args | Description                       |
     | ---- | --------------------------------- |
     | 1    | The local hashes file for the job |
     |      |                                   |
-    
+
     ### Flags
-    
+
     | Flag             | Description                                                           |
     | ---------------- | --------------------------------------------------------------------- |
     | -T --hashtype    | The hashcat mode to use for the job                                   |
@@ -441,17 +439,17 @@ The `jobs`  subcommand encompasses the distributed KCat hash cracking system inc
     | --increment-max  | Start mask incrementing at this length                                |
     | --append         | Mask to append to each candidate                                      |
     | --prepend        | Mask to prepend to each candidate                                     |
-    
+
     ### Attack Modes
-    
+
     -   0 - Straight/Dictionary: Uses wordlist (-w required)
     -   1 - Combination: Combines words from wordlist (-w required)
     -   3 - Brute-force/Mask: Uses mask patterns (-m required)
     -   6 - Hybrid Wordlist+Mask: Appends mask to wordlist words (-w and -m required)
     -   7 - Hybrid Mask+Wordlist: Prepends mask to wordlist words (-w and -m required)
-    
+
     ### Examples
-    
+
     - Dictionary attack with rules
       - `krknc job create hashes.txt -T 1000 -A 0 -W rockyou -R best64`
     - Mask attack with increment
@@ -460,64 +458,57 @@ The `jobs`  subcommand encompasses the distributed KCat hash cracking system inc
       - `krknc job create hashes.txt -T 1000 -A 6 -W rockyou -M "?d?d?d"`
     - Full suite attack (runs multiple attack strategies)
       - `krknc job create hashes.txt -T 1000 --full-suite`
-    
-    The `create` subcommand can be used to create a new job and place it into the queue on the Krkn Server.
-    
-    ![Krkn 16](/images/Krkn-_16.png)
 
+    The `create` subcommand can be used to create a new job and place it into the queue on the Krkn Server.
+
+    ![Krkn 16](/images/Krkn-_16.png)
   </Accordion>
   <Accordion title="Delete">
     <Info>
       Required Privileges: **Job Owner, Admin**
     </Info>
-    
     | Args | Description                 |
     | ---- | --------------------------- |
     | 1    | The id of the job to delete |
-    
+
     The `delete` subcommand can be used to delete an enqueued job.
-    
+
     ![Krkn 20](/images/Krkn-_20.png)
   </Accordion>
   <Accordion title="Download">
     <Info>
       Required Privileges: **Job Owner, Admin**
     </Info>
-    
     | Args | Description                   |
     | ---- | ----------------------------- |
     | 1    | The ID of the job to download |
     | 2    | The name of the output file   |
-    
+
     The `download` subcommand can be used to retrieve all cracked hashes from a completed job.
-    
+
     ![Krkn 18](/images/Krkn-_18.png)
   </Accordion>
   <Accordion title="Get">
     <Info>
       Required Privileges: **Job Owner, Admin**
     </Info>
-    
     | Args | Description                   |
     | ---- | ----------------------------- |
     | 1    | The id of the job to retrieve |
-    
-    The `get` subcommand can be used to get the status and configuration of a specific job by its `id` .
-    
-    ![Job Get](/job_get.png)
 
+    The `get` subcommand can be used to get the status and configuration of a specific job by its `id` .
+
+    ![Job Get](/job_get.png)
   </Accordion>
   <Accordion title="List">
     <Info>
       Required Privileges: **Job Owner, Admin**
     </Info>
-    
     The `list` subcommand. can be used to list jobs and their status'.
-    
+
     ![Job List](/job_list.png)
   </Accordion>
 </AccordionGroup>
-
 
 ## Webhooks
 
@@ -551,6 +542,8 @@ Krkn Clients can create webhooks to manage jobs and updates. For the client to r
   </Accordion>
 </AccordionGroup>
 
+### Sub-Commands
+
 <AccordionGroup>
   <Accordion title="Listen">
     | -N, --notifications | enable OS notifications                    |
@@ -558,7 +551,7 @@ Krkn Clients can create webhooks to manage jobs and updates. For the client to r
     | -p, --port          | port to listen on (default 9090)           |
     | -S, --save-toasts   | save toast messages to file (default true) |
     | --system            | run in system service mode                 |
-    
+
     The `listen` subcommand can be used to register and listen in realtime for job updates.
   </Accordion>
   <Accordion title="Service">
@@ -567,16 +560,16 @@ Krkn Clients can create webhooks to manage jobs and updates. For the client to r
     | install     | Install the webhook listener service           |
     | uninstall   | Uninstall the webhook listener service         |
     | status      | Get the status of the webhook listener service |
-    
+
     The `service` subcommand can be used to register/deregister a webhook service for listening on the host system.
-    
+
     <AccordionGroup>
       <Accordion title="Install">
         | Flag                | Description                            |
         | :------------------ | :------------------------------------- |
         | -N, --notifications | Enable OS notifications (default true) |
         | -p, --port          | Port to listen on (default 9090)       |
-    
+
         The `install` subcommand can be used to install the webhook service on the host system.
       </Accordion>
       <Accordion title="Uninstall">
@@ -608,28 +601,30 @@ Webhooks can be configured to use OS Specific Toast messages, which appear on a 
 <AccordionGroup>
   <Accordion title="List">
     The `list` subcommand can be used to display all toast messages received via webhooks.
-    
+
     | Flag        | Description                     |
     | ----------- | ------------------------------- |
     | -u --unread | Only list unread toast messages |
-    
+
     ![Toast List](/toast_list.png)
   </Accordion>
   <Accordion title="Read">
     The `read` subcommand can be used to mark all toast messages as read.
-    
+
     ![Toast Read](/toast_read.png)
   </Accordion>
   <Accordion title="Clear">
     | Flag      | Description                    |
     | --------- | ------------------------------ |
     | -r --read | Only clear read toast messages |
-    
+
     The `clear` subcommand can be used to clear all toast messages from the cache.
-    
+
     ![Toast Clear](/toast_clear.png)
   </Accordion>
 </AccordionGroup>
+
+![Toast Notification](/toast_notification.png)
 
 ## Server
 
@@ -640,9 +635,9 @@ The `server` subcommand can be used to query active workers for the conductor
     The `workers` subcommand can be used to query the Krkn Server for worker information
 
     <AccordionGroup>
-      <Accordion title="List">        
+      <Accordion title="List">
         The `list` subcommand can be used to query tentacle workers and their status.
-        
+
         ![Krkn 7](/images/Krkn-_7.png)
       </Accordion>
     </AccordionGroup>
