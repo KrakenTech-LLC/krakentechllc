@@ -44,15 +44,15 @@ Tentacle supports all standard Hashcat Attack Modes:
 
 ## Hardware Requirements
 
-- **GPU**: NVIDIA GPU with CUDA support (tested with CUDA 13.0)
+- **GPU**: NVIDIA GPU with CUDA support (tested with all major versions of CUDA 12-13)
 - **RAM**: Minimum 8GB (16GB+ recommended for large wordlists)
-- **Storage**: 50GB+ for hashcat, wordlists, and temporary files
-- **Network**: Stable connection to Kraken server
+- **Storage**: 500GB+ for hash database, wordlists, rules and temporary files. (TiB+ for large databases)
+- **Network**: Stable connection to Krkn server
 
 ## Software Requirements
 
 - **OS**: Linux (Ubuntu 24.04 recommended)
-- **NVIDIA Driver**: Version 575+ (for CUDA 13.0)
+- **NVIDIA Driver**: Version 5xx
 - **Docker**: Latest version with NVIDIA Container Toolkit
 - **GPU Support**: NVIDIA Container Runtime configured
 
@@ -62,9 +62,8 @@ Tentacle is distributed as a prebuilt, GPU-enabled container. You do not need to
 
 ### Requirements
 
-- Your [hub.krkn.tech](http://hub.krkn.tech) username
-- Your [hub.krkn.tech](http://hub.krkn.tech) password
-- Your Krkns server address
+- Your [hub.krkn.tech](http://hub.krkn.tech) token
+- Your Krkns server address (ending in :8443)
 - (optional) Your Worker ID (name of this Tentacle worker. Defaults to hostname)
 
 ### Quick Install
