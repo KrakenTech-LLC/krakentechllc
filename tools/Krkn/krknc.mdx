@@ -828,9 +828,23 @@ The `server` subcommand can be used to query active workers for the conductor
           | ----- | --------------------------------------------------------- |
           | token | The token received in the email sent from the set command |
 
-          The `confirm `subcommand can be used to confirm the new email sender.
+          The `confirm`subcommand can be used to confirm the new email sender.
 
           ![Image](/images/image-14.png)
+        </Accordion>
+        <Accordion title="Delete">
+          | Args       | Description                   |
+          | ---------- | ----------------------------- |
+          | identifier | The ID or Email of the sender |
+
+          The `delete` subcommand deletes an email sender by id
+
+          ![Image](/images/image-20.png)
+
+          <Note>
+            You cannot delete an active sender, you must first activate an inactive one
+          </Note>
+          ![Image](/images/image-19.png)
         </Accordion>
       </AccordionGroup>
   </Accordion>
