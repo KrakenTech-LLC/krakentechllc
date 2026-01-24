@@ -674,18 +674,17 @@ The `server` subcommand can be used to query active workers for the conductor
   <Accordion title="Workers">
     The `workers` subcommand can be used to query the Krkn Server for worker information
 
-      <AccordionGroup>
-        <Accordion title="List">
-          | Flag     | Description      |
-          | -------- | ---------------- |
-          | -a --all | Show all columns |
+    <AccordionGroup>
+      <Accordion title="List">
+        | Flag     | Description      |
+        | -------- | ---------------- |
+        | -a --all | Show all columns |
 
-          The `list` subcommand can be used to query tentacle workers and their status.
+        The `list` subcommand can be used to query tentacle workers and their status.
 
-          ![Krkn 7](/images/Krkn-_7.png)
-        </Accordion>
-      </AccordionGroup>
-
+        ![Krkn 7](/images/Krkn-_7.png)
+      </Accordion>
+    </AccordionGroup>
   </Accordion>
   <Accordion title="Sender">
     The `sender` subcommand can be used to query the Krkn Server to manage the email sender.
@@ -698,126 +697,119 @@ The `server` subcommand can be used to query active workers for the conductor
       <AccordionGroup>
         <Accordion title="Get">
           The `get` subcommand can be used to query the active email sender.
-          
         </Accordion>
         <Accordion title="Test">
-          | Args     | Description      |
-          | -------- | ---------------- |
-          | email    | The recipient of the test email |
+          | Args  | Description                     |
+          | ----- | ------------------------------- |
+          | email | The recipient of the test email |
 
           The `test` subcommand can be used to query the active email sender.
-          
         </Accordion>
         <Accordion title="Set">
-        The `set` subcommand can be used to set a new email sender.
+          The `set` subcommand can be used to set a new email sender.
 
           <AccordionGroup>
             <Accordion title="Microsoft Outlook / Office 365">
-            #### Args
-            | Args     | Description      |
-            | -------- | ---------------- |
-            | email    | The recipient of the test email |
+              #### Args
 
-            #### Flags        
+              | Args  | Description                     |
+              | ----- | ------------------------------- |
+              | email | The recipient of the test email |
 
-            | Flags     | Description      |
-            | --------  | ---------------- |
-            | -p --password.    | App password for the email account |
-            | -r --recipient    | The recipient of the test email    |
+              #### Flags
 
+              | Flags          | Description                        |
+              | -------------- | ---------------------------------- |
+              | -p --password. | App password for the email account |
+              | -r --recipient | The recipient of the test email    |
 
-            The `outlook` subcommand can be used to create a new Outlook email sender.
+              The `outlook` subcommand can be used to create a new Outlook email sender.
 
-            To obtain an app password, you can use the following [link](https://mysignins.microsoft.com/security-info).
-
+              To obtain an app password, you can use the following [link](https://mysignins.microsoft.com/security-info).
             </Accordion>
             <Accordion title="Gmail/Google Workspace">
-            #### Args
-            | Args     | Description      |
-            | -------- | ---------------- |
-            | email    | The recipient of the test email |
+              #### Args
 
-            #### Flags        
+              | Args  | Description                     |
+              | ----- | ------------------------------- |
+              | email | The recipient of the test email |
 
-            | Flags     | Description      |
-            | --------  | ---------------- |
-            | -p --password     | App password for the email account |
-            | -r --recipient    | The recipient of the test email    |
+              #### Flags
 
+              | Flags          | Description                        |
+              | -------------- | ---------------------------------- |
+              | -p --password  | App password for the email account |
+              | -r --recipient | The recipient of the test email    |
 
-            The `gmail` subcommand can be used to create a new Outlook email sender.
+              The `gmail` subcommand can be used to create a new Outlook email sender.
 
-            To obtain an app password, you can use the following [link](https://myaccount.google.com/apppasswords).
-
+              To obtain an app password, you can use the following [link](https://myaccount.google.com/apppasswords).
             </Accordion>
             <Accordion title="Mailgun">
-            #### Args
-            | Args     | Description      |
-            | -------- | ---------------- |
-            | from-email    | The email to send *from* |
+              #### Args
 
-            #### Flags        
+              | Args       | Description              |
+              | ---------- | ------------------------ |
+              | from-email | The email to send _from_ |
 
-            | Flags     | Description      |
-            | --------  | ---------------- |
-            | -r --recipient    | The recipient of the test email     |
-            | --base-url        | Mailgun base URL (for EU customers) |
-            | --domain          | The Mailgun domain                  |
-            | --api-private     | The Mailgun private API Key         |
+              #### Flags
 
-            The `mailgun` subcommand can be used to create a new Mailgun email sender.
-            
+              | Flags          | Description                         |
+              | -------------- | ----------------------------------- |
+              | -r --recipient | The recipient of the test email     |
+              | --base-url     | Mailgun base URL (for EU customers) |
+              | --domain       | The Mailgun domain                  |
+              | --api-private  | The Mailgun private API Key         |
+
+              The `mailgun` subcommand can be used to create a new Mailgun email sender.
             </Accordion>
             <Accordion title="Sendgrid">
-                      #### Args
-            | Args     | Description      |
-            | -------- | ---------------- |
-            | from-email    | The email to send *from* |
+              #### Args
 
-            #### Flags        
+              | Args       | Description              |
+              | ---------- | ------------------------ |
+              | from-email | The email to send _from_ |
 
-            | Flags     | Description      |
-            | --------  | ---------------- |
-            | -r --recipient    | The recipient of the test email     |
-            | --api-key         | The Sendgrid API Key                |
+              #### Flags
 
-            The `mailgun` subcommand can be used to create a new Mailgun email sender.
+              | Flags          | Description                     |
+              | -------------- | ------------------------------- |
+              | -r --recipient | The recipient of the test email |
+              | --api-key      | The Sendgrid API Key            |
+
+              The `mailgun` subcommand can be used to create a new Mailgun email sender.
             </Accordion>
             <Accordion title="Standard SMTP">
-                      #### Args
-            | Args     | Description      |
-            | -------- | ---------------- |
-            | from-email    | The email to send *from* |
+              #### Args
 
-            #### Flags        
+              | Args       | Description              |
+              | ---------- | ------------------------ |
+              | from-email | The email to send _from_ |
 
-            | Flags     | Description      |
-            | --------  | ---------------- |
-            | -r --recipient    | The recipient of the test email     |
-            | --bounce          | Bounce email address                |
-            | --hostname        | The SMTP Server hostname            |
-            | --password        | The SMTP Server password            |
-            | --port            | The SMTP Server port                |
-            | --tls             | Use TLS                             |
+              #### Flags
 
-            The `smtp` subcommand can be used to create a new standard SMTP email sender.
+              | Flags          | Description                     |
+              | -------------- | ------------------------------- |
+              | -r --recipient | The recipient of the test email |
+              | --bounce       | Bounce email address            |
+              | --hostname     | The SMTP Server hostname        |
+              | --password     | The SMTP Server password        |
+              | --port         | The SMTP Server port            |
+              | --tls          | Use TLS                         |
+
+              The `smtp` subcommand can be used to create a new standard SMTP email sender.
             </Accordion>
           </AccordionGroup>
-
         </Accordion>
         <Accordion title="Confirm">
-          | Args     | Description      |
-          | -------- | ---------------- |
-          | token    | The token received in the email sent frmo the set command |
+          | Args  | Description                                               |
+          | ----- | --------------------------------------------------------- |
+          | token | The token received in the email sent from the set command |
 
-          The `get` subcommand can be used to query the active email sender.
-          
-        </Accordion> 
-
+          The `confirm `subcommand can be used to confirm the new email sender.
+        </Accordion>
       </AccordionGroup>
-
   </Accordion>
-  
 </AccordionGroup>
 
 # Tailscale
