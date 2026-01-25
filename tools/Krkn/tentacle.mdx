@@ -121,8 +121,14 @@ Tentacle is distributed as a prebuilt, GPU-enabled container. You do not need to
     - Registry credentials (required)
       - Used to authenticate to `hub.krkn.tech` and pull the Tentacle image.
     - Orchestrator Address (required)
+
+      <Note>
+        The port :65535 will be appended if not supplied
+
+        The hostname should be the primary hostname, not the -krkn one. 
+      </Note>
       - Tailscale
-        - `ts_hostname:65535` # Note this is _not_ the \``` krkn` ``host
+        - `ts_hostname` # Note this is _not_ the \``` krkn` ``host
       - Else
         - `192.168.56.2:65535` # Default port is 65535
     - Worker ID (optional)
@@ -230,10 +236,11 @@ This opens an interactive shell in the container.
   <Accordion title="Error: The worker is not connecting">
     This may be due to an firewall rules or the wrong port (65535). Try the following:
 
-    1. Verify `CONDUCTOR_ADDR` in `.env`
+    1. Verify `CONDUCTOR_ADDR` is correct (not the -krkn host)
     2. Check network: `ping your-server-hostname`
     3. Ensure Kraken server is running
     4. Check firewall allows port 65535
+    5.  Ensure your Tailscale host and its -krkn server are accessible by your worker
   </Accordion>
   <Accordion title="Error: GPU not Detected">
     The Cuda Drivers may be out of date or an u pdate may have broken the installation.
