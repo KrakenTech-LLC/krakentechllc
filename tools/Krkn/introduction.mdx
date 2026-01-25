@@ -49,13 +49,13 @@ Your data stays local. Your data stays encrypted. Your data stays yours.
 
 # Licensing
 
-To support Krkn as a fully offline, on-prem solution, licensing is handled through a signed `krkn.license` file. This file is required for the Krkn server to start and operate.
+To support Krkn as a fully offline, on-prem solution, licensing is handled through a signed `license.json` file. This file is required for the Krkn server to start and operate.
 
 The license file contains an expiration date for the Krkn server. If the license expires, the server will stop accepting and processing new work. **No data is deleted, modified, or removed**. Your hashes, results, and metadata remain fully intact and accessible on disk.
 
 This is a deliberate design choice: licensing should never put your data at risk.
 
-To restore service, obtain a new license file from KrakenTech LLC, place it in the same directory as the Krkn server binary, and restart the server. Once the new license is loaded, normal operation resumes immediately.
+To restore service, obtain a new license file from KrakenTech LLC, place it in the \`~/.config/krkn\` directory as the Krkn server binary, and restart the server. Once the new license is loaded, normal operation resumes immediately.
 
 Krkn never needs to “phone home,” never requires internet access, and never depends on external services to validate licensing.
 
