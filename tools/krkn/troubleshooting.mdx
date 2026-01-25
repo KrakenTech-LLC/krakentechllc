@@ -277,6 +277,12 @@ If you enabled Tailscale support in the client and something appears “stuck”
       - Does policy allow it to talk to krkns?
       - Is posture blocking it?
   </Accordion>
+  <Accordion title="Tentacle cannot reach krkns">
+    - The krkns primary host (not the tsnet node)
+      - Is not tagged
+      - Is policy suppressed
+      - Or has no policy path from the tentacle machine
+  </Accordion>
 </AccordionGroup>
 
 ## Key Takeaways
