@@ -141,6 +141,8 @@ Tentacle is distributed as a prebuilt, GPU-enabled container. You do not need to
 
     - Stop and remove the existing `tentacle` container
     - Replace it with the new one
+
+    ![Image](/images/image-21.png)
   </Step>
 </Steps>
 
@@ -218,15 +220,10 @@ This opens an interactive shell in the container.
 
 # Configuration Reference
 
-| Variable       | Description       | Default       | Required |
-| -------------- | ----------------- | ------------- | -------- |
-| CONDUCTOR_ADDR | Conductor Address | --            | Yes      |
-| WORKER_ID      | Unique worker ID  | hostname      | No       |
-| CAPACITY       | Concurrent jobs   | 1             | No       |
-| TEMP_DIR       | Temp directory    | /tmp/tentacle | No       |
-| HASHCAT_PATH   | Hashcat path      | /opt/hashcat  | No       |
-| GPU_MODEL      | GPU label         | --            | No       |
-| REGION         | Region label      | --            | No       |
+| Variable       | Description          | Default  | Required |
+| -------------- | -------------------- | -------- | -------- |
+| CONDUCTOR_ADDR | Address of the krkns | --       | Yes      |
+| WORKER_ID      | Unique worker ID     | hostname | No       |
 
 # Troubleshooting
 
