@@ -47,9 +47,9 @@
           {
             "tab": "Krkn",
             "pages": [
-              "tools/krkn/first-time-setup",
               "tools/Krkn/introduction",
               "tools/krkn/why",
+              "tools/krkn/first-time-setup",
               "tools/Krkn/krkns",
               "tools/Krkn/tentacle",
               "tools/Krkn/krknc",
