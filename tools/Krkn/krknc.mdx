@@ -23,6 +23,7 @@ The Krkn Client can be used to interface with the Krkn Server
 | ---------- | ----------------------------------------------------------- |
 | completion | Generates the autocompletion script for the specified shell |
 | config     | Manage the cache configuration                              |
+| dump       | Parse, and Analyze Dump Files                               |
 | files      | Manage Rules, Wordlists and Mask FIles                      |
 | hashes     | Manage or query cracked hashes                              |
 | job        | Manage jobs                                                 |
@@ -129,6 +130,87 @@ Configs are used to set and persist settings across executions. The username is 
       Required Permissions: **N/A**
     </Note>
     The `clear` command can be used to clear all entries in the configuration.
+  </Accordion>
+</AccordionGroup>
+
+## Dump
+
+Dump can be used to facilitate the parsing and analyzing of dump files. This includes:
+
+- Parsing hash information from NTDS.dit and the SYSTEM hive
+- Parsing hash information from an LSASS Minidump
+- Parsing hash information from a previous SecretsDump (Supports History and Status)
+
+| Sub-Command | Description                                                                   |
+| ----------- | ----------------------------------------------------------------------------- |
+| analyze     | Perform an analysis of a companies password policy and current hash landscape |
+| parse       | Parse hash information from given input(s)                                    |
+
+<AccordionGroup>
+  <Accordion title="Analyze">
+    <Note>
+      Required Privileges: **N/A**
+    </Note>
+    | Flag              | Description                                  | Default                      |
+    | ----------------- | -------------------------------------------- | ---------------------------- |
+    | --dedupe          | Deduplicate credentiasl across all sources   | True                         |
+    | -f --format       | Output Format (xlsx, csv, json, yaml, xml)   | Auto-Detect from output file |
+    | -g --groups       | Group membership file                        | Nil                          |
+    | --include-history | Include password history entries in analysis | False                        |
+    | --kerberoast      | Kerberoast hash file                         | Nil                          |
+    | -l --lsass        | LSASS Parsed output file                     | Nil                          |
+    | --ntds            | NTDS parsed output file                      | Nil                          |
+    | -o --output       | Output file path (required)                  | Nil                          |
+    | -p --policy       | Password Policy File                         | Nil                          |
+    | --potfile         | Potfile in hash:password format              | Nil                          |
+    | --secretsdump     | Secrets dump output file(s)                  | Nil                          |
+    | --strict          | Fail on parse errors instead of skipping     | False                        |
+    | --timeout         | Analysis timeout duration                    | 30m0s                        |
+    | --workers         | Number of parallel workers for parsing       | 4                            |
+
+    ![Image](/images/image-27.png)
+  </Accordion>
+  <Accordion title="Parse">
+    <Note>
+      Required Privileges: **N/A**
+    </Note>
+    A
+
+    | Args     | Description                               |
+    | -------- | ----------------------------------------- |
+    | impacket | Parse an Impacket SecretsDump file        |
+    | minidump | Parse a minidump file                     |
+    | ntds     | Parse an NTDS.dit file with a SYSTEM file |
+
+    <AccordionGroup>
+      <Accordion title="impacket">
+        | Flags            | Description               |
+        | ---------------- | ------------------------- |
+        | -p --file-prefix | Prefix for output file(s) |
+
+        The `impacket` subcommand can be used to parse a _SecretsDump_ file
+
+        ![Image](/images/image-28.png)
+      </Accordion>
+      <Accordion title="minidump">
+        | Flags            | Description               |
+        | ---------------- | ------------------------- |
+        | -p --file-prefix | Prefix for output file(s) |
+
+        The `minidump` subcommand can be used to parse hashes from an **lsass** minidump file.
+
+        ![Image](/images/image-29.png)
+      </Accordion>
+      <Accordion title="NTDS">
+        | Flags            | Description               |
+        | ---------------- | ------------------------- |
+        | -p --file-prefix | Prefix for output file(s) |
+
+        The `ntds` subcommand can be used to parse hashes from an **NTDS.dit**  file and its corresponding **SYSTEM** file.
+
+        ![Image](/images/image-32.png)
+      </Accordion>
+    </AccordionGroup>
   </Accordion>
 </AccordionGroup>
 
