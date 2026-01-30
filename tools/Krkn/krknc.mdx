@@ -101,33 +101,33 @@ Configs are used to set and persist settings across executions. The username is 
 
 <AccordionGroup>
   <Accordion title="Get">
-    <Info>
+    <Note>
       Required Permissions: **N/A**
-    </Info>
+    </Note>
     The `get` command can be used to view your current settings.
 
     ![Config Get C](/config_get_c.png)
   </Accordion>
   <Accordion title="Set">
-    <Info>
+    <Note>
       Required Permissions: **N/A**
-    </Info>
+    </Note>
     The `set` command can be used to set a configuration value
 
     ![Krkn 34](/images/Krkn-_34.png)
   </Accordion>
   <Accordion title="Unset">
-    <Info>
+    <Note>
       Required Permissions: **N/A**
-    </Info>
+    </Note>
     The `unset` command can be used to remove a value from a single key
 
     ![Krkn 33](/images/Krkn-_33.png)
   </Accordion>
   <Accordion title="Clear">
-    <Info>
+    <Note>
       Required Permissions: **N/A**
-    </Info>
+    </Note>
     The `clear` command can be used to clear all entries in the configuration.
   </Accordion>
 </AccordionGroup>
@@ -143,9 +143,9 @@ Logs can be queried to facilitate troubleshooting and debugging both remotely on
 
 <AccordionGroup>
   <Accordion title="Remote">
-    <Info>
+    <Note>
       Required Privileges: **Admin**
-    </Info>
+    </Note>
     | Flag             | Description                                                               | Type   |
     | ---------------- | ------------------------------------------------------------------------- | ------ |
     | -E --end         | End date for logs (defaults to 'now')                                     | string |
@@ -156,9 +156,9 @@ Logs can be queried to facilitate troubleshooting and debugging both remotely on
     | -Q               | Query using a keyword value                                               | string |
   </Accordion>
   <Accordion title="Local">
-    <Info>
+    <Note>
       Required Privileges: **N/A**
-    </Info>
+    </Note>
     | Flag             | Description                                                               | Type   |
     | ---------------- | ------------------------------------------------------------------------- | ------ |
     | -E --end         | End date for logs (defaults to 'now')                                     | string |
@@ -192,9 +192,9 @@ Users fall into three different roles:
 
 <AccordionGroup>
   <Accordion title="List">
-    <Info>
+    <Note>
       Required Privileges: **Admin**
-    </Info>
+    </Note>
     Users can be listed by using the `list` command
 
     ![User List](/user_list.png)
@@ -202,9 +202,9 @@ Users fall into three different roles:
     ![User List 2](/user_list_2.png)
   </Accordion>
   <Accordion title="Create">
-    <Info>
+    <Note>
       Required Privileges: **Admin**
-    </Info>
+    </Note>
     | Args | Description   |
     | ---- | ------------- |
     | 1    | username      |
@@ -217,9 +217,9 @@ Users fall into three different roles:
     ![Validate Token](/validate_token.png)
   </Accordion>
   <Accordion title="Delete">
-    <Info>
+    <Note>
       Required Privileges: **Admin**
-    </Info>
+    </Note>
     | Args | Description |
     | ---- | ----------- |
     | 1    | username    |
@@ -229,18 +229,18 @@ Users fall into three different roles:
     ![User Delete](/user_delete.png)
   </Accordion>
   <Accordion title="Set-Role">
-    <Info>
+    <Note>
       Required Privileges: **Admin**
-    </Info>
+    </Note>
     | Args | Description                |
     | ---- | -------------------------- |
     | 1    | Username                   |
     | 2    | Role (admin, user, reader) |
   </Accordion>
   <Accordion title="Reset-Token">
-    <Info>
+    <Note>
       Required Privileges: **Admin**
-    </Info>
+    </Note>
     | Args | Decription |
     | ---- | ---------- |
     | 1    | Username   |
@@ -311,9 +311,9 @@ The files subcommand can be used to upload, download, delete, head, tail and per
 
 <AccordionGroup>
   <Accordion title="Upload">
-    <Info>
+    <Note>
       Required Privileges: **Admin**
-    </Info>
+    </Note>
     | Args | Description                                 |
     | ---- | ------------------------------------------- |
     | 1    | the local file to upload to the Krkn Server |
@@ -323,9 +323,9 @@ The files subcommand can be used to upload, download, delete, head, tail and per
     ![Krkn 44](/images/Krkn-_44.png)
   </Accordion>
   <Accordion title="Download">
-    <Info>
+    <Note>
       Required Privileges: **Admin**
-    </Info>
+    </Note>
     | Args | Description                                                                              |
     | ---- | ---------------------------------------------------------------------------------------- |
     | 1    | The url of the downloadable file. For github, ensure you are using the github _raw_ file |
@@ -336,17 +336,17 @@ The files subcommand can be used to upload, download, delete, head, tail and per
     ![Krkn 53](/images/Krkn-_53.png)
   </Accordion>
   <Accordion title="List">
-    <Info>
+    <Note>
       Required Privileges: **Admin, User**
-    </Info>
+    </Note>
     The `list` subcommand can be used to list files of the specified type on the Krkn Server.
 
     ![Krkn 52](/images/Krkn-_52.png)
   </Accordion>
   <Accordion title="Head">
-    <Info>
+    <Note>
       Required Privileges: **Admin**
-    </Info>
+    </Note>
     | Args | Description                       |
     | ---- | --------------------------------- |
     | 1    | The name of the file to read from |
@@ -357,9 +357,9 @@ The files subcommand can be used to upload, download, delete, head, tail and per
     ![Krkn 49](/images/Krkn-_49.png)
   </Accordion>
   <Accordion title="Tail">
-    <Info>
+    <Note>
       Required Privileges: **Admin**
-    </Info>
+    </Note>
     | Args | Description                       |
     | ---- | --------------------------------- |
     | 1    | The name of the file to read from |
@@ -370,9 +370,9 @@ The files subcommand can be used to upload, download, delete, head, tail and per
     ![Krkn 49](/images/Krkn-_47.png)
   </Accordion>
   <Accordion title="Sum">
-    <Info>
+    <Note>
       Required Privileges: **Admin**
-    </Info>
+    </Note>
     | Args | Description                      |
     | ---- | -------------------------------- |
     | 1    | The name of the file to checksum |
@@ -382,9 +382,9 @@ The files subcommand can be used to upload, download, delete, head, tail and per
     ![Krkn 8](/images/Krkn-_8.png)
   </Accordion>
   <Accordion title="Delete">
-    <Info>
+    <Note>
       Required Privileges: **Admin**
-    </Info>
+    </Note>
     | Args | Description                    |
     | ---- | ------------------------------ |
     | 1    | The name of the file to delete |
@@ -411,9 +411,9 @@ The `hashes` subcommand can be used to query or upload hashes to the Krkn Server
 
 <AccordionGroup>
   <Accordion title="Query">
-    <Info>
+    <Note>
       Required Privileges: **Admin, User, Reader**
-    </Info>
+    </Note>
     | Flags | Description                              |
     | ----- | ---------------------------------------- |
     | -T    | The hashcat mode of the provided hashes  |
@@ -427,29 +427,49 @@ The `hashes` subcommand can be used to query or upload hashes to the Krkn Server
     ![Krkn 71](/images/Krkn-_71.png)
   </Accordion>
   <Accordion title="Recount">
-    The `recount` subcommand can be used to order the Krkn Server to perform a hash recount
+    <Note>
+      Required Privileges: **_Admin_**
+    </Note>
+    The `recount` subcommand can be used to order the Krkn Server to perform a hash recount. This will force the Krkn Database to perform a recount of all cracked hashes and adjust its counters.
+
+    ![Image](/images/image-25.png)
   </Accordion>
   <Accordion title="Stats">
-    The `stats` subcommand can be used to query the hash stats from the Krkn Server
+    <Note>
+      Required Privileges: \*\*Admin\*\*
+    </Note>
+    | Args | Description                         |
+    | ---- | ----------------------------------- |
+    | mode | The hashcat mode to query stats for |
+
+    The `stats` subcommand can be used to query the hash stats from the Krkn Server. The hashcat mode is optional. If not supplied the entire hash count will be returned.
+
+    ![Image](/images/image-23.png)
+
+    ![Image](/images/image-24.png)
   </Accordion>
   <Accordion title="Upload">
-    <Info>
+    <Note>
       Required Privileges: **Admin**
-    </Info>
+    </Note>
     | Args | Description                                    |
     | ---- | ---------------------------------------------- |
     | 1    | Hashcat mode                                   |
     | 2    | The local file to upload containing the hashes |
 
+    The `upload` subcommand can be used to upload previously cracked hashes to the Krkn Server. These hashes are then added to the database.
+
     ![Krkn 72](/images/Krkn-_72.png)
   </Accordion>
   <Accordion title="Identify">
+    <Note>
+      Required Privileges: **N/A**
+    </Note>
     | Args | Description          |
     | ---- | -------------------- |
     | hash | The hash to identify |
 
     ![Image](/images/image-22.png)
-
   </Accordion>
 </AccordionGroup>
 
@@ -467,9 +487,9 @@ The `jobs`  subcommand encompasses the distributed KCat hash cracking system inc
 
 <AccordionGroup>
   <Accordion title="Create">
-    <Info>
+    <Note>
       Required Privileges: **User, Admin**
-    </Info>
+    </Note>
     ### Args
 
     | Args | Description                       |
@@ -519,9 +539,9 @@ The `jobs`  subcommand encompasses the distributed KCat hash cracking system inc
     ![Krkn 16](/images/Krkn-_16.png)
   </Accordion>
   <Accordion title="Delete">
-    <Info>
+    <Note>
       Required Privileges: **Job Owner, Admin**
-    </Info>
+    </Note>
     | Args | Description                 |
     | ---- | --------------------------- |
     | 1    | The id of the job to delete |
@@ -531,9 +551,9 @@ The `jobs`  subcommand encompasses the distributed KCat hash cracking system inc
     ![Krkn 20](/images/Krkn-_20.png)
   </Accordion>
   <Accordion title="Download">
-    <Info>
+    <Note>
       Required Privileges: **Job Owner, Admin**
-    </Info>
+    </Note>
     | Args | Description                   |
     | ---- | ----------------------------- |
     | 1    | The ID of the job to download |
@@ -544,9 +564,9 @@ The `jobs`  subcommand encompasses the distributed KCat hash cracking system inc
     ![Krkn 18](/images/Krkn-_18.png)
   </Accordion>
   <Accordion title="Get">
-    <Info>
+    <Note>
       Required Privileges: **Job Owner, Admin**
-    </Info>
+    </Note>
     | Args | Description                   |
     | ---- | ----------------------------- |
     | 1    | The id of the job to retrieve |
@@ -556,9 +576,9 @@ The `jobs`  subcommand encompasses the distributed KCat hash cracking system inc
     ![Job Get](/job_get.png)
   </Accordion>
   <Accordion title="List">
-    <Info>
+    <Note>
       Required Privileges: **Job Owner, Admin**
-    </Info>
+    </Note>
     The `list` subcommand. can be used to list jobs and their status'.
 
     ![Job List](/job_list.png)
@@ -573,9 +593,9 @@ Krkn Clients can create webhooks to manage jobs and updates. For the client to r
 
 ### Webhook Types
 
-<Note>
-  > Webhooks can be configured to alert in one of three ways.
-</Note>
+<Tip>
+  Webhooks can be configured to alert in one of three ways
+</Tip>
 
 <AccordionGroup>
   <Accordion title="Real-Time">
@@ -639,11 +659,11 @@ Krkn Clients can create webhooks to manage jobs and updates. For the client to r
 
 Webhooks can be configured to use OS Specific Toast messages, which appear on a graphical desktop interface for user alerts. Toasts can also be queried using the toast subcommand if they are missed.
 
-<Note>
+<Tip>
   > To utilize the toasts messages, they must be enabled in the config
   >
   > `krknc config set toasts true`
-</Note>
+</Tip>
 
 <AccordionGroup>
   <Accordion title="List">
