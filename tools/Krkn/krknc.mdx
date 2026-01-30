@@ -399,12 +399,13 @@ The files subcommand can be used to upload, download, delete, head, tail and per
 
 The `hashes` subcommand can be used to query or upload hashes to the Krkn Server.
 
-| Sub-Commands | Description                              |
-| ------------ | ---------------------------------------- |
-| query        | Query the provided hashes                |
-| recount      | Perform a recount of all hash statistics |
-| stats        | Show hash statistics                     |
-| upload       | Upload cracked hashes from file or stdin |
+| Sub-Commands | Description                                           |
+| ------------ | ----------------------------------------------------- |
+| query        | Query the provided hashes                             |
+| recount      | Perform a recount of all hash statistics              |
+| stats        | Show hash statistics                                  |
+| upload       | Upload cracked hashes from file or stdin              |
+| id           | Attempt to identify the hashcat mode for a given hash |
 
 ### Sub-Commands
 
@@ -441,6 +442,14 @@ The `hashes` subcommand can be used to query or upload hashes to the Krkn Server
     | 2    | The local file to upload containing the hashes |
 
     ![Krkn 72](/images/Krkn-_72.png)
+  </Accordion>
+  <Accordion title="Identify">
+    | Args | Description          |
+    | ---- | -------------------- |
+    | hash | The hash to identify |
+
+    ![Image](/images/image-22.png)
+
   </Accordion>
 </AccordionGroup>
 
