@@ -23,10 +23,10 @@ The Krkn Client can be used to interface with the Krkn Server
 | ---------- | ----------------------------------------------------------- |
 | completion | Generates the autocompletion script for the specified shell |
 | config     | Manage the cache configuration                              |
-| dump       | Parse, and Analyze Dump Files                               |
+| dumps      | Parse, and Analyze Dump Files                               |
 | files      | Manage Rules, Wordlists and Mask FIles                      |
 | hashes     | Manage or query cracked hashes                              |
-| job        | Manage jobs                                                 |
+| jobs       | Manage jobs                                                 |
 | listen     | Start webhook listener                                      |
 | logs       | View local or server (remote) logs                          |
 | server     | Manage the Krkn Server                                      |
@@ -133,7 +133,7 @@ Configs are used to set and persist settings across executions. The username is 
   </Accordion>
 </AccordionGroup>
 
-## Dump
+## Dumps
 
 Dump can be used to facilitate the parsing and analyzing of dump files. This includes:
 
@@ -583,6 +583,7 @@ The `hashes` subcommand can be used to query or upload hashes to the Krkn Server
 | download    | Download job results |
 | get         | Get a jobs details   |
 | list        | List all jobs        |
+| cancel      | Cancel a running job |
 
 The `jobs`  subcommand encompasses the distributed KCat hash cracking system incorporated into the Krkn Service.
 
