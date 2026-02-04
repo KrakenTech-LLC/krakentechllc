@@ -23,6 +23,9 @@ The `config` subcommand can be used to persist settings across executions.
 
 - **Interface**: The active interface to listen on (Tailscale defaults to port only) (string)
 - **Port**: The port to serve on (int)
+- **Max Runtime**: The maximum duration a job is allowed to run for in hours (int)
+- **Optimized Kernels**: Utilize optimized kernels across attacks (bool)
+- **Workload Profile**: The amount of resources allocated to a job [1-4 inclusive] (int)
 - **Tailscale**: Use the Tailscale Tailnet (bool)
 - **QUIC**: Use HTTP/3 (QUIC) for communications (bool)
 - **Insecure**: Do not require transport credentials (bool)
