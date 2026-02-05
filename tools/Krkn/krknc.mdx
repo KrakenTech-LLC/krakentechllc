@@ -32,8 +32,8 @@ The Krkn Client can be used to interface with the Krkn Server
 | server     | Manage the Krkn Server                                      |
 | service    | Manage the webhook listener service                         |
 | toast      | Manage toast notifications                                  |
-| user       | Manage users                                                |
-| webhook    | Manage webhooks                                             |
+| users      | Manage users                                                |
+| webhooks   | Manage webhooks                                             |
 
 ## First Time Setup
 
@@ -86,7 +86,7 @@ Set the Server, Tailscale (optional), hostname (tailscale hostname if on tailsca
 - **quic**: Use QUIC protocol (true/false)
 - **insecure**: Skip TLS verification (true/false)
 - **debug**: Enable debug mode (true/false)
-- **webhook**-port: Webhook listener port (number)
+- **webhook-port**: Webhook listener port (number)
 - **hostname**: Tailscale hostname (string)
 
 Configs are used to set and persist settings across executions. The username is a required configuration along with the token however the token must be set in your environment variable.
@@ -758,7 +758,7 @@ Krkn Clients can create webhooks to manage jobs and updates. For the client to r
   </Accordion>
 </AccordionGroup>
 
-## Toasts
+## Toast
 
 | Sub-Command | Description                     |
 | ----------- | ------------------------------- |
