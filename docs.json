@@ -57,7 +57,10 @@
             ]
           },
           {
-            "tab": "r4t"
+            "tab": "R4t",
+            "pages": [
+              "tools/r4t/introduction"
+            ]
           }
         ]
       },
