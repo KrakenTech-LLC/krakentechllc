@@ -9,6 +9,10 @@ R4t is a comprehensive **Active Directory (AD) exploitation and reconnaissance f
 
 R4t is not a command-and-control (C2) framework. It is an operator-side tool — you run it from your attacking machine or a foothold box to interact with a target AD forest.
 
+<Frame>
+  ![Rat](/tools/r4t/rat.png)
+</Frame>
+
 ---
 
 ## What R4t Does
@@ -16,7 +20,7 @@ R4t is not a command-and-control (C2) framework. It is an operator-side tool —
 R4t covers the full lifecycle of an AD engagement:
 
 | Phase | Capabilities |
-|-------|-------------|
+| --- | --- |
 | **Reconnaissance** | Users, groups, computers, OUs, GPOs, trusts, domain controllers, DNS, ADIDNS |
 | **Vulnerability Assessment** | ADCS ESC1–ESC16, DCSync, LAPS exposure, Kerberoasting, AS-REP Roasting, shadow credentials, pre-Windows 2000 accounts, coercible hosts |
 | **Exploitation** | Certificate requests, Kerberos ticket manipulation, NT hash extraction, GPP password dumping, authentication coercion |
@@ -30,7 +34,7 @@ R4t covers the full lifecycle of an AD engagement:
 R4t is organized into top-level commands. Each command groups related operations:
 
 | Command | Description |
-|---------|-------------|
+| --- | --- |
 | [`targets`](./targets) | Manage target hosts |
 | [`creds`](./credentials) | Manage stored credentials |
 | [`set`](./settings) | Configure persistent settings |
@@ -75,7 +79,7 @@ All commands inherit these persistent flags from the root command:
 ### Authentication
 
 | Flag | Description |
-|------|-------------|
+| --- | --- |
 | `-u`, `--username` | Username for authentication |
 | `-p`, `--password` | Password |
 | `--hash` | NT hash (`LM:NT` or just `NT`) |
@@ -90,7 +94,7 @@ All commands inherit these persistent flags from the root command:
 ### Connection
 
 | Flag | Description |
-|------|-------------|
+| --- | --- |
 | `-d`, `--domain` | Active Directory domain name |
 | `--ns`, `--nameserver` | DNS nameserver for resolution |
 | `--ldap-server` | LDAP server address (overrides auto-discovery) |
@@ -104,7 +108,7 @@ All commands inherit these persistent flags from the root command:
 ### Database
 
 | Flag | Description |
-|------|-------------|
+| --- | --- |
 | `--migrate-db` | Force database migration on startup |
 | `--purge-db` | Drop and re-migrate all database tables (prompts for confirmation) |
 
@@ -112,10 +116,10 @@ All commands inherit these persistent flags from the root command:
 
 ## Key Concepts
 
-- **[Targets](./targets)** — Hosts you are operating against. R4t stores them in a database and lets you set a default.
-- **[Credentials](./credentials)** — Authentication material (passwords, hashes, certificates, ccache files). Stored securely and selected by ID or set as default.
-- **[Settings](./settings)** — Persistent configuration like domain, nameserver, proxy, and output options.
-- **[Database](./database)** — A dual-store system (Badger KV + SQLite) that persists all findings, scan results, and configuration.
+- [**Targets**](./targets) — Hosts you are operating against. R4t stores them in a database and lets you set a default.
+- [**Credentials**](./credentials) — Authentication material (passwords, hashes, certificates, ccache files). Stored securely and selected by ID or set as default.
+- [**Settings**](./settings) — Persistent configuration like domain, nameserver, proxy, and output options.
+- [**Database**](./database) — A dual-store system (Badger KV \+ SQLite) that persists all findings, scan results, and configuration.
 
 ---
 
