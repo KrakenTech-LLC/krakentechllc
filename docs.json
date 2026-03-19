@@ -59,7 +59,13 @@
           {
             "tab": "R4t",
             "pages": [
-              "tools/r4t/introduction"
+              "tools/r4t/introduction",
+              "tools/r4t/architecture",
+              "tools/r4t/credentials",
+              "tools/r4t/database",
+              "tools/r4t/getting-started",
+              "tools/r4t/settings",
+              "tools/r4t/targets"
             ]
           }
         ]
