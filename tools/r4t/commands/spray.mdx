@@ -1,0 +1,226 @@
+# spray
+
+The `spray` command performs password spraying across multiple protocols. It takes a credential (username and password or hash) and tests it against a list of target servers, supporting lockout awareness and configurable threading.
+
+---
+
+## Usage
+
+```
+r4t spray <protocol> [targets...] [flags]
+```
+
+---
+
+## Persistent Flags
+
+These flags apply to all `spray` subcommands:
+
+| Flag | Short | Description |
+|------|-------|-------------|
+| `--db-users` | — | Spray using users without credentials from the database |
+| `--dcs` | — | Load domain controllers from the database as targets |
+| `--stop-on-success` | `-S` | Stop when a successful authentication is found |
+| `--stop-on-lockout` | `-L` | Stop when an account lockout is detected |
+| `--user-as-pass` | `-U` | Use the username as the password for each account |
+| `--threads` | `-T` | Number of concurrent spray threads (default: 10) |
+
+---
+
+## Subcommands
+
+### `spray kerberos`
+
+Spray credentials via the Kerberos protocol (AS-REQ). This is the most evasion-friendly method as it does not touch LDAP or SMB directly.
+
+```
+r4t spray kerberos <method> [servers...] [flags]
+```
+
+#### `spray kerberos pwd`
+
+Kerberos password spraying — sends AS-REQs and checks for valid authentication responses.
+
+```bash
+# Spray against the stored target
+r4t spray kerberos pwd
+
+# Spray against specific servers
+r4t spray kerberos pwd dc01.corp.example.com dc02.corp.example.com
+
+# Spray all DCs from the database
+r4t spray kerberos pwd --dcs
+
+# Use safe mode (stop on first lockout)
+r4t spray kerberos pwd --stop-on-lockout
+
+# Force RC4 encryption (downgrade)
+r4t spray kerberos pwd --downgrade
+```
+
+| Flag | Description |
+|------|-------------|
+| `--safe` | Safe mode — abort spray if any user lockout is detected |
+| `--downgrade` | Force downgraded encryption (arcfour-hmac-md5 / RC4) |
+
+---
+
+#### `spray kerberos enum`
+
+Kerberos user enumeration — determines whether usernames exist by analyzing AS-REQ error responses without attempting to authenticate. This does **not** cause lockouts.
+
+```bash
+# Enumerate users from a wordlist against DC
+r4t spray kerberos enum dc01.corp.example.com
+
+# Use usernames from database (users without credentials)
+r4t spray kerberos enum --db-users dc01.corp.example.com
+```
+
+| Flag | Description |
+|------|-------------|
+| `--safe` | Safe mode |
+| `--downgrade` | Force RC4 encryption |
+
+---
+
+### `spray smb`
+
+Password spraying via SMB authentication (port 445).
+
+```bash
+# Spray against specific targets
+r4t spray smb 10.10.10.20 10.10.10.21
+
+# Spray with local authentication (don't append domain)
+r4t spray smb --local 10.10.10.20
+
+# Spray all stored targets using threads
+r4t spray smb --threads 20 --stop-on-success
+```
+
+| Flag | Description |
+|------|-------------|
+| `--local` | Use local authentication — do not append domain prefix |
+
+---
+
+### `spray ldap`
+
+Password spraying via LDAP bind.
+
+```bash
+r4t spray ldap dc01.corp.example.com
+
+# Spray all DCs
+r4t spray ldap --dcs
+```
+
+---
+
+### `spray ssh`
+
+Password spraying via SSH.
+
+```bash
+r4t spray ssh 10.10.10.50 10.10.10.51
+
+# Stop on first success
+r4t spray ssh --stop-on-success 10.10.10.50
+```
+
+---
+
+### `spray ftp` *(planned)*
+
+FTP password spraying. Not yet implemented.
+
+---
+
+### `spray mssql` *(planned)*
+
+MSSQL password spraying. Not yet implemented.
+
+---
+
+### `spray winrm` *(planned)*
+
+WinRM password spraying. Not yet implemented.
+
+---
+
+### `spray tftp` *(planned)*
+
+TFTP spraying. Not yet implemented.
+
+---
+
+## Target Specification
+
+Targets can be specified in multiple ways:
+
+```bash
+# Inline hostname or IP
+r4t spray smb 10.10.10.10
+
+# Multiple targets
+r4t spray smb 10.10.10.10 10.10.10.20 10.10.10.21
+
+# Load DCs from database
+r4t spray kerberos pwd --dcs
+
+# Uses stored target (default) if no targets specified
+r4t spray ldap
+```
+
+---
+
+## Spray Results Storage
+
+All spray operations are recorded in the `sprays` table in SQLite:
+
+| Column | Description |
+|--------|-------------|
+| Target | Server that was sprayed |
+| Protocol | Protocol used |
+| Username | Account sprayed |
+| Status | Success / Failure / Locked |
+| Timestamp | When the attempt was made |
+
+Successful credentials are automatically added to the `credentials` table.
+
+---
+
+## Lockout Safety
+
+R4t provides multiple layers of lockout protection:
+
+| Feature | Flag | Behavior |
+|---------|------|---------|
+| Stop on lockout | `--stop-on-lockout` / `-L` | Halt all spraying when any lockout is detected |
+| Safe mode (Kerberos) | `--safe` | Abort Kerberos spray if lockout detected |
+| Stop on success | `--stop-on-success` / `-S` | Stop after first valid authentication |
+| Jitter | `--jitter` (global) | Add random delay between attempts |
+
+**Recommended for production engagements**: Always use `--stop-on-lockout` and check the domain password policy via `r4t ldap get users` before spraying.
+
+---
+
+## Common Spray Workflows
+
+```bash
+# 1. Check password policy first
+r4t ldap get users  # check lockout threshold
+
+# 2. Enumerate valid usernames (no lockout risk)
+r4t spray kerberos enum --dcs
+
+# 3. Spray a single password carefully
+r4t spray kerberos pwd --dcs --stop-on-lockout -p 'Winter2024!'
+
+# 4. Spray SMB on workstations
+r4t spray smb --threads 5 --stop-on-lockout 10.10.10.20 10.10.10.21
+
+# 5. Use username as password (common misconfiguration)
+r4t spray kerberos pwd --dcs --user-as-pass --stop-on-lockout
+```

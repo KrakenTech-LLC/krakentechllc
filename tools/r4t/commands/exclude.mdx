@@ -1,0 +1,55 @@
+# exclude
+
+Manage Windows Defender path exclusions. Adds specified paths to the Windows Defender exclusion list to prevent detection and deletion of R4t artifacts and payloads.
+
+> **Platform**: Windows only. This command modifies the Windows Registry at `HKLM\SOFTWARE\Microsoft\Windows Defender\Exclusions\Paths`.
+
+---
+
+## Usage
+
+```
+r4t exclude <subcommand> [flags]
+```
+
+---
+
+## Subcommands
+
+### `exclude path`
+
+Add one or more paths to the Windows Defender exclusion list.
+
+```bash
+# Exclude a single directory
+r4t exclude path --paths "C:\Users\operator\r4t"
+
+# Exclude multiple paths
+r4t exclude path --paths "C:\Users\operator\r4t" --paths "C:\Temp\artifacts"
+```
+
+| Flag | Short | Description |
+|------|-------|-------------|
+| `--paths` | `-p` | Path(s) to exclude (repeatable) |
+
+After the exclusion is set, R4t automatically verifies the exclusion was applied and also adds the configured payloads/artifacts directory to the exclusion list.
+
+---
+
+## How It Works
+
+R4t writes directly to the Windows Registry key:
+
+```
+HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Defender\Exclusions\Paths
+```
+
+Each excluded path is added as a `REG_DWORD` value with value `0`.
+
+> **Requires elevated privileges.** Run R4t as Administrator or with the `SeLoadDriverPrivilege` right to modify Defender settings.
+
+---
+
+## Automatic Exclusion
+
+When running on Windows, R4t can automatically exclude its artifacts directory on startup. The `exclude` command provides the manual interface for adding additional paths as needed.

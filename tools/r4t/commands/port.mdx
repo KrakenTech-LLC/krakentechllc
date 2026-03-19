@@ -1,0 +1,53 @@
+# port
+
+Port scanning and banner grabbing.
+
+---
+
+## Usage
+
+```
+r4t port <subcommand> <target> <port> [flags]
+```
+
+---
+
+## Subcommands
+
+### `port scan`
+
+Check whether a specific port is open on a target host.
+
+```bash
+# Check if port 445 is open (TCP)
+r4t port scan 10.10.10.10 445
+
+# Check a UDP port
+r4t port scan 10.10.10.10 161 --udp
+```
+
+| Flag | Short | Description |
+|------|-------|-------------|
+| `--udp` | `-U` | Use UDP instead of TCP |
+
+Returns open/closed/filtered status.
+
+---
+
+### `port banner`
+
+Connect to a port and retrieve its service banner.
+
+```bash
+# Grab the banner from port 22
+r4t port banner 10.10.10.10 22
+
+# Grab banner via UDP
+r4t port banner 10.10.10.10 161 --udp
+```
+
+| Flag | Short | Description |
+|------|-------|-------------|
+| `--udp` | `-U` | Use UDP instead of TCP |
+
+Connects to the target port, reads the initial server response, and displays it. Useful for quick service fingerprinting without a full port scanner.

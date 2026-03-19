@@ -1,0 +1,67 @@
+# dns
+
+DNS enumeration and lookup operations against Active Directory environments.
+
+---
+
+## Usage
+
+```
+r4t dns <subcommand> [flags]
+```
+
+---
+
+## Subcommands
+
+### `dns dc`
+
+Enumerate domain controllers via DNS SRV records.
+
+```bash
+r4t dns dc
+
+# Write results to file
+r4t dns dc --output /tmp/dcs.txt
+```
+
+Queries `_ldap._tcp.dc._msdcs.<domain>` SRV records using the configured nameserver, resolves hostnames, and stores results in the `domain_controllers` table.
+
+| Flag | Short | Description |
+|------|-------|-------------|
+| `--output` | `-o` | Output file for enumerated DCs |
+
+---
+
+### `dns axfr`
+
+Attempt a DNS zone transfer (AXFR) against the configured nameserver.
+
+```bash
+r4t dns axfr
+r4t dns axfr -d corp.example.com --nameserver 10.10.10.1
+```
+
+A successful zone transfer dumps all DNS records in the zone. Uses the domain (`-d`) and nameserver (`--ns`) from global flags or stored settings.
+
+---
+
+### `dns fwd`
+
+Forward DNS lookup — resolve a hostname to an IP address.
+
+```bash
+r4t dns fwd dc01.corp.example.com
+```
+
+Uses the configured nameserver (`--ns` or stored setting). Falls back to the stored target if no argument is given.
+
+---
+
+### `dns rev`
+
+Reverse DNS lookup — resolve an IP address to a hostname.
+
+```bash
+r4t dns rev 10.10.10.10
+```
