@@ -1,0 +1,60 @@
+# arp
+
+ARP (Address Resolution Protocol) scanning for host discovery on local network segments.
+
+---
+
+## Usage
+
+```
+r4t arp <subcommand> [flags]
+```
+
+---
+
+## Subcommands
+
+### `arp scan`
+
+Perform an ARP scan to discover live hosts on the local network.
+
+```bash
+# Scan using the configured interface
+r4t arp scan
+
+# Specify an interface
+r4t arp scan --interface eth0
+
+# Print results to stdout
+r4t arp scan --stdout
+
+# Write results to file
+r4t arp scan --output /tmp/arp-hosts.txt
+
+# Retry multiple times for unreliable networks
+r4t arp scan --retries 3
+```
+
+| Flag | Short | Description |
+|------|-------|-------------|
+| `--retries` | `-r` | Number of times to retry ARP scan |
+| `--output` | `-o` | Output file for results |
+| `--interface` | `-i` | Network interface to use (overrides `r4t set --interface`) |
+| `--stdout` | `-s` | Print results to stdout |
+
+ARP scanning sends raw ARP requests on the local segment and listens for replies. It only works on the directly connected network — it cannot cross routers. It is faster and more reliable than ICMP ping for host discovery on LANs.
+
+---
+
+## Output
+
+Results include: IP address, MAC address, and vendor (OUI lookup). Discovered hosts can be added as targets:
+
+```bash
+# Scan and review results
+r4t arp scan --stdout
+
+# Add discovered hosts as targets
+r4t targets add 10.10.10.10
+r4t targets add 10.10.10.20
+```

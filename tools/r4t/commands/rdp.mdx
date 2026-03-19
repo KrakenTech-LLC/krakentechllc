@@ -1,0 +1,17 @@
+# rdp
+
+Remote Desktop Protocol (RDP) operations.
+
+---
+
+## Usage
+
+```
+r4t rdp [flags]
+```
+
+> **Status**: Base command registered. Subcommands are not yet implemented.
+
+RDP support is planned for authentication testing and session operations. When implemented, it will use the global authentication flags (`--username`, `--password`, `--hash`) against targets on port 3389.
+
+Authentication uses the configured or stored credential. Pass-the-Hash via RDP requires Restricted Admin mode to be enabled on the target.

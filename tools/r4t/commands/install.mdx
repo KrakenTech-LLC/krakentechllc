@@ -1,0 +1,42 @@
+# install
+
+Install the R4t binary to your PATH and configure shell aliases.
+
+---
+
+## Usage
+
+```
+r4t install [flags]
+```
+
+---
+
+## What It Does
+
+`r4t install` performs two actions:
+
+1. **Moves the binary to a PATH directory**
+   - Linux / macOS: `~/.local/bin/`
+   - Windows: `%USERPROFILE%\bin\`
+
+2. **Creates shell aliases** so you can invoke R4t as both `r4t` and `rat`
+   - Bash: appends to `~/.bashrc`
+   - Zsh: appends to `~/.zshrc`
+   - Fish: creates a function file in `~/.config/fish/functions/`
+   - PowerShell (Windows): appends to the PowerShell profile
+
+---
+
+## Example
+
+```bash
+# After downloading the binary, run install to set it up
+./r4t-linux-amd64 install
+
+# Now you can use either alias
+r4t ldap get users
+rat ldap get users
+```
+
+After running install, open a new shell (or source your shell config) for the aliases to take effect.

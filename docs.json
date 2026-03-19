@@ -55,6 +55,54 @@
               "tools/Krkn/krknc",
               "tools/krkn/troubleshooting"
             ]
+          },
+          {
+            "tab": "R4t",
+            "pages": [
+              "introduction",
+              "architecture",
+              "credentials",
+              "database",
+              "getting-started",
+              "settings",
+              "targets",
+              {
+                "group": "commands",
+                "pages": [
+                  "tools/r4t/commands/adcs",
+                  "tools/r4t/commands/adidns",
+                  "tools/r4t/commands/adws",
+                  "tools/r4t/commands/arp",
+                  "tools/r4t/commands/bloodhound",
+                  "tools/r4t/commands/coerce",
+                  "tools/r4t/commands/dbquery",
+                  "tools/r4t/commands/dns",
+                  "tools/r4t/commands/exclude",
+                  "tools/r4t/commands/ftp",
+                  "tools/r4t/commands/install",
+                  "tools/r4t/commands/kerberos",
+                  "tools/r4t/commands/ldap",
+                  "tools/r4t/commands/logs",
+                  "tools/r4t/commands/mssql",
+                  "tools/r4t/commands/nfs",
+                  "tools/r4t/commands/parse",
+                  "tools/r4t/commands/poison",
+                  "tools/r4t/commands/port",
+                  "tools/r4t/commands/proxy",
+                  "tools/r4t/commands/rdp",
+                  "tools/r4t/commands/rpc",
+                  "tools/r4t/commands/sccm",
+                  "tools/r4t/commands/smb",
+                  "tools/r4t/commands/spray",
+                  "tools/r4t/commands/ssh",
+                  "tools/r4t/commands/tftp",
+                  "tools/r4t/commands/tickets",
+                  "tools/r4t/commands/visualizer",
+                  "tools/r4t/commands/winrm",
+                  "tools/r4t/commands/wmi"
+                ]
+              }
+            ]
           }
         ]
       },

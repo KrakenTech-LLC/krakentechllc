@@ -1,0 +1,222 @@
+# Database
+
+R4t uses a **dual-storage system**: a Badger KV store for fast configuration and session state, and a SQLite relational database for persistent findings, credentials, and enumeration results.
+
+---
+
+## Storage Locations
+
+| Store | Default Path |
+|-------|-------------|
+| SQLite | `~/.local/share/r4t/db/r4t.sqlite` |
+| Badger | `~/.local/share/r4t/db/` (directory) |
+
+> **Local DB mode**: Run `r4t set --local-db true` to create `r4t.sqlite` in the current working directory instead. Useful for per-engagement database isolation.
+
+---
+
+## Badger KV Store
+
+Badger is an embedded key-value store used for fast access to global configuration and the current session state.
+
+### Characteristics
+
+- Encrypted with AES-256 using a hardware-derived ID as the key
+- ZSTD compression enabled
+- Daily encryption key rotation
+- Keeps only 1 version of each key (no history)
+- 10 GB index cache, 512 MB memtable size
+
+### Keys Stored in Badger
+
+| Key Constant | Purpose |
+|-------------|---------|
+| `cfg:domain` | Default AD domain |
+| `cfg:nameserver` | DNS nameserver |
+| `cfg:debug` | Debug mode flag |
+| `cfg:interface` | Network interface for operations |
+| `cfg:tee` | Enable output tee to file |
+| `cfg:color_scheme` | Terminal color scheme name |
+| `cfg:local_db` | Whether SQLite is in local or global path |
+| `cfg:credentials` | Active credential (JSON-serialized) |
+| `cfg:target` | Active target (JSON-serialized) |
+| `cfg:proxy` | SOCKS5 proxy configuration |
+| `cfg:first_run` | First-run initialization flag |
+
+These values are read at startup and populated into the global `App` struct. Changes made via `r4t set` are immediately persisted to Badger.
+
+---
+
+## SQLite Database
+
+SQLite is the primary long-term store for all findings, targets, credentials, and enumeration data. It is accessed via **GORM** with a pure-Go SQLite driver.
+
+### Schema Management
+
+- **AutoMigrate** runs on every startup — safe and additive only (never drops columns or tables)
+- Composite unique indexes are created with `IF NOT EXISTS` to avoid duplicate enforcement errors
+- `--migrate-db` forces an explicit migration pass
+- `--purge-db` drops all tables and remigrates from scratch (requires interactive confirmation — **destructive**)
+
+### Tables
+
+The schema contains 60+ tables organized by functional area.
+
+---
+
+#### Domain & Forest
+
+| Table | Description |
+|-------|-------------|
+| `domains` | AD domain records (name, SID, FQDN, functional level) |
+| `pass_policies` | Domain and fine-grained password policies |
+| `domain_controllers` | Enumerated domain controllers |
+| `trusts` | Inter-domain and inter-forest trust relationships |
+
+---
+
+#### AD Objects
+
+| Table | Description |
+|-------|-------------|
+| `users` | User accounts |
+| `computers` | Computer accounts |
+| `groups` | Security and distribution groups |
+| `service_accounts` | Service account tracking |
+| `ou_s` | Organizational Units |
+| `delegations` | Kerberos delegation configurations |
+
+---
+
+#### Credentials & Sessions
+
+| Table | Description |
+|-------|-------------|
+| `credentials` | Stored authentication credentials (multi-type) |
+| `users` | Linked user records |
+| `tgts` | Kerberos Ticket Granting Tickets |
+| `tgss` | Kerberos Ticket Granting Service tickets |
+| `logons` | Logon event records |
+| `asrep_hashes` | AS-REP roastable hashes |
+| `kerberoast_hashes` | Kerberoastable service account hashes |
+
+---
+
+#### Vulnerabilities
+
+| Table | Description |
+|-------|-------------|
+| `pre2ks` | Pre-Windows 2000 compatible access accounts |
+| `nopacs` | Accounts with no PAC (NOPAC vulnerability) |
+| `zero_logons` | ZeroLogon-vulnerable domain controllers |
+| `shadow_credentials` | Shadow credential injection results |
+| `dc_syncs` | Accounts with DCSync-capable permissions |
+| `print_nightmares` | PrintNightmare-vulnerable hosts |
+| `smb_ghosts` | SMBGhost-vulnerable hosts |
+| `eternal_blues` | EternalBlue-vulnerable hosts |
+| `coercables` | Hosts vulnerable to authentication coercion |
+
+---
+
+#### ADCS (Active Directory Certificate Services)
+
+| Table | Description |
+|-------|-------------|
+| `certificate_authorities` | Enumerated CAs |
+| `certificate_templates` | Certificate templates with all attributes |
+| `adcs_vulnerabilities` | Detected ESC vulnerabilities (ESC1–ESC16) |
+
+---
+
+#### Group Policy
+
+| Table | Description |
+|-------|-------------|
+| `gpos` | Group Policy Objects |
+| `gp_link_entries` | GPO links to containers |
+| `dacl_modifications` | DACL modifications performed |
+
+---
+
+#### Networking & Protocols
+
+| Table | Description |
+|-------|-------------|
+| `dns_records` | ADIDNS records |
+| `smb_servers` | SMB service metadata per host |
+| `smb_shares` | Enumerated SMB shares |
+| `rpc_permissions` | RPC endpoint access rights |
+| `rpc_sessions` | RPC session tracking |
+
+---
+
+#### Operations
+
+| Table | Description |
+|-------|-------------|
+| `targets` | Stored target hosts |
+| `sprays` | Password spray operation records |
+
+---
+
+#### Payload System (future)
+
+| Table | Description |
+|-------|-------------|
+| `templates` | Payload templates |
+| `payloads` | Generated payloads |
+| `builds` | Build records |
+| `artifacts` | Build artifacts |
+| `transformations` | Payload transformations |
+| `capabilities` | Capability definitions |
+
+---
+
+### Credential Model (Full Schema)
+
+The `credentials` table stores all supported authentication types in a single unified model:
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | uint | Primary key |
+| `user_id` | uint | FK to `users` table |
+| `name` | string | Username or UPN |
+| `hostname` | string | Machine account hostname (e.g., `DC$`) |
+| `password` | string | Cleartext password |
+| `hash` | string | NT hash |
+| `pfx_file` | string | Path to stored PFX file |
+| `pfx_password` | string | PFX passphrase |
+| `cert_file` | string | Path to PEM certificate |
+| `key_file` | string | Path to PEM private key |
+| `ccache_file` | string | Path to Kerberos ccache |
+| `aes_key` | string | AES-128 or AES-256 key |
+| `domain` | string | Associated domain |
+| `tgt_id` | uint | FK to `tgts` |
+| `source` | string | How the credential was obtained |
+| `notes` | string | Operator notes |
+
+---
+
+### Target Model (Full Schema)
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | uint | Primary key |
+| `ip` | string | IPv4 address |
+| `dns_hostname` | string | DNS hostname |
+| `notes` | string | Operator notes |
+
+---
+
+## Direct Database Queries
+
+The `dbquery` command lets you run raw SQL against the SQLite database:
+
+```bash
+r4t dbquery "SELECT id, name, password, hash FROM credentials"
+r4t dbquery "SELECT ip, dns_hostname FROM targets"
+r4t dbquery "SELECT * FROM adcs_vulnerabilities WHERE esc_type = 'ESC1'"
+r4t dbquery "SELECT name, member_of FROM users WHERE enabled = 1 ORDER BY name"
+```
+
+> Results are printed as a table to stdout.

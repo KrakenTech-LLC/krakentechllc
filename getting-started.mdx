@@ -1,0 +1,201 @@
+# Getting Started
+
+## Building R4t
+
+R4t uses a `Makefile` for cross-platform compilation with build-time version stamping.
+
+### Requirements
+
+- Go 1.21+
+- `make`
+
+### Build Commands
+
+```bash
+# Build for your current platform
+make build
+
+# Build for specific platforms
+make linux-amd64
+make linux-arm64
+make darwin-amd64
+make darwin-arm64
+make windows-amd64
+make windows-arm64
+
+# Build all platforms at once
+make all
+```
+
+Binaries are output to `./bin/` and named `r4t-<os>-<arch>` (e.g., `r4t-linux-amd64`).
+
+Build flags strip debug symbols and enable size optimization (`-s -w`) for smaller binaries. Version information is injected at build time from the latest git tag.
+
+---
+
+## First Run
+
+On first launch R4t performs automatic initialization:
+
+1. **Directory creation** — Creates `~/.local/share/r4t/` with subdirectories for the database, logs, and file storage.
+2. **Domain detection** — Attempts to auto-detect the current AD domain from the system's DNS configuration.
+3. **Nameserver discovery** — Identifies a suitable nameserver for LDAP and DNS queries.
+4. **Database initialization** — Creates and migrates the SQLite schema and initializes the Badger KV store.
+
+```bash
+# First run — will prompt for domain/nameserver if auto-detection fails
+r4t
+
+# Skip auto-detection and set manually
+r4t set --domain corp.example.com
+r4t set --ns 10.10.10.1
+```
+
+---
+
+## Directory Structure
+
+R4t stores all persistent data in `~/.local/share/r4t/`:
+
+```
+~/.local/share/r4t/
+├── db/
+│   ├── r4t.sqlite          # SQLite database (findings, creds, targets)
+│   └── badger/             # Badger KV store (settings, session state)
+├── logs/
+│   └── r4t.log             # Structured log file (rotated)
+└── files/
+    └── pfx/                # PFX certificate files for stored credentials
+```
+
+> **Local DB Mode**: If you set `r4t set --local-db true`, the SQLite file is created in the current working directory instead of `~/.local/share/r4t/db/`. Useful for per-engagement isolation.
+
+---
+
+## Basic Workflow
+
+A typical R4t engagement workflow:
+
+### 1. Configure the environment
+
+```bash
+# Set your target domain and nameserver
+r4t set --domain corp.example.com
+r4t set --ns 10.10.10.1
+```
+
+### 2. Add a target
+
+```bash
+# Add a domain controller as your primary target
+r4t targets add 10.10.10.10
+r4t targets add dc01.corp.example.com
+
+# List targets and set a default
+r4t targets list
+r4t targets set 1
+```
+
+### 3. Store credentials
+
+```bash
+# Add a credential (password)
+r4t creds add --username jsmith --password 'P@ssword1' --domain corp.example.com
+
+# Add a hash
+r4t creds add --username jsmith --hash aad3b435b51404eeaad3b435b51404ee:e10adc3949ba59abbe56e057f20f883e
+
+# List and set default
+r4t creds list
+r4t creds set 1
+```
+
+### 4. Start enumerating
+
+```bash
+# LDAP recon (uses stored target + credential)
+r4t ldap recon
+
+# Find ADCS vulnerabilities
+r4t adcs find
+
+# Collect BloodHound data
+r4t bloodhound collect dc01.corp.example.com
+```
+
+---
+
+## Authentication
+
+R4t supports multiple authentication methods. You can supply them inline or via stored credentials.
+
+### Inline Authentication
+
+```bash
+# Password
+r4t ldap get users -u jsmith -p 'P@ssword1' -d corp.example.com
+
+# NT hash
+r4t ldap get users -u jsmith --hash aad3b435b51404eeaad3b435b51404ee:e10adc3949ba59abbe56e057f20f883e -d corp.example.com
+
+# Kerberos ccache
+r4t ldap get users --ccache /tmp/krb5cc_1000
+
+# PFX certificate
+r4t adcs nt --pfx /tmp/user.pfx --pfx-password ''
+
+# AES key
+r4t krb tgt --aes <aes-key> -u jsmith -d corp.example.com
+
+# Anonymous
+r4t ldap query --anonymous --filter "(objectClass=*)"
+```
+
+### Stored Credentials
+
+```bash
+# Use credential by ID
+r4t ldap get users --credential-id 3
+
+# Use the currently active (default) credential
+r4t ldap get users
+```
+
+See [Credentials](./credentials) for full credential management documentation.
+
+---
+
+## LDAP Server Selection
+
+By default R4t resolves the LDAP server from the configured domain using DNS. You can override this:
+
+```bash
+# Override the LDAP server
+r4t ldap get users --ldap-server 10.10.10.10
+
+# Use LDAPS (TLS on port 636)
+r4t ldap get users --ldaps
+
+# Use StartTLS
+r4t ldap get users --start-tls
+
+# Skip TLS verification
+r4t ldap get users --ldaps --insecure
+```
+
+---
+
+## Database Management
+
+```bash
+# Force schema migration (safe, additive only)
+r4t --migrate-db
+
+# Purge all data and re-migrate (destructive — prompts for confirmation)
+r4t --purge-db
+
+# Query the database directly
+r4t dbquery "SELECT * FROM users LIMIT 10"
+```
+
+See [Database](./database) for the full schema and storage details.

@@ -1,0 +1,27 @@
+# mssql
+
+Microsoft SQL Server operations.
+
+---
+
+## Usage
+
+```
+r4t mssql [flags]
+```
+
+> **Status**: Base command registered. Subcommands are not yet implemented.
+
+MSSQL support is planned for authentication testing, instance enumeration via AD SPN lookups, query execution, and `xp_cmdshell` exploitation. When implemented, it will use the global authentication flags against targets on port 1433.
+
+MSSQL instance discovery via SPN lookup is available now through:
+
+```bash
+r4t ldap get spn
+# or
+r4t adws get users --attrs servicePrincipalName
+```
+
+Filter for SPNs containing `MSSQLSvc/` to identify SQL servers.
+
+Password spraying against MSSQL is planned via [`spray mssql`](./spray).

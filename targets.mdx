@@ -1,0 +1,138 @@
+# Targets
+
+R4t maintains a list of target hosts in its SQLite database. A single target can be set as the default ("active target") so you don't have to specify `--ldap-server` or a target hostname on every command.
+
+---
+
+## The `targets` Command
+
+```
+r4t targets <subcommand> [flags]
+```
+
+---
+
+## Subcommands
+
+### `targets add`
+
+Add a target to the database.
+
+```bash
+# Add by IP address
+r4t targets add 10.10.10.10
+
+# Add by hostname
+r4t targets add dc01.corp.example.com
+
+# Both can be stored on the same record
+r4t targets add 10.10.10.10 dc01.corp.example.com
+```
+
+Targets are stored in the `targets` table in SQLite with an auto-incremented ID, IP address, DNS hostname, and optional notes.
+
+---
+
+### `targets list`
+
+List all stored targets.
+
+```bash
+r4t targets list
+```
+
+Output includes: ID, IP, DNS Hostname, Notes, and whether the target is the currently active default.
+
+---
+
+### `targets set`
+
+Set a target as the default (active) target. The active target is stored in the Badger KV store (`cfg:target`) and used automatically by commands that need a target server.
+
+```bash
+r4t targets set 1
+```
+
+Takes the numeric ID from `targets list`.
+
+---
+
+### `targets remove`
+
+Remove a target from the database.
+
+```bash
+r4t targets remove 1
+```
+
+---
+
+## How Targets Are Used
+
+When a command needs to connect to a server (LDAP, SMB, RPC, etc.), it resolves the target in this order:
+
+1. **`--ldap-server` / explicit server flag** — inline override takes highest priority
+2. **`--target-id` flag** — use a specific stored target by ID
+3. **Active target** — the target set via `targets set` (retrieved from Badger)
+4. **Domain-based DNS resolution** — if no target is stored, resolve the domain's DC via DNS SRV records
+
+This means once you run `r4t targets set 1`, you can run subsequent commands without specifying a server:
+
+```bash
+# Set target once
+r4t targets add 10.10.10.10
+r4t targets set 1
+
+# Now all commands use 10.10.10.10 automatically
+r4t ldap get users
+r4t adcs find
+r4t bloodhound collect
+```
+
+---
+
+## Target Data Model
+
+```go
+type Target struct {
+    ID          uint      // Auto-incremented primary key
+    IP          string    // IPv4 address
+    DNSHostname string    // DNS hostname (e.g., dc01.corp.example.com)
+    Notes       string    // Operator notes
+    CreatedAt   time.Time
+    UpdatedAt   time.Time
+    DeletedAt   *time.Time // Soft delete
+}
+```
+
+Targets support soft deletion — removing a target marks it as deleted without erasing the database row.
+
+---
+
+## Using a Specific Target Inline
+
+You can bypass the stored default and use a specific target by ID or by flag:
+
+```bash
+# Use target ID 3 for this command
+r4t ldap get users --target-id 3
+
+# Specify server directly
+r4t ldap get users --ldap-server 10.10.10.20
+```
+
+---
+
+## Per-Engagement Isolation
+
+If you use [local DB mode](./settings#local-database), each engagement directory maintains its own target list. This prevents target lists from different engagements from mixing:
+
+```bash
+cd ~/engagements/client-a
+r4t set --local-db true
+r4t targets add 192.168.1.10
+
+cd ~/engagements/client-b
+r4t set --local-db true
+r4t targets add 10.0.0.5
+```

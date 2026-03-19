@@ -1,0 +1,129 @@
+---
+title: "introduction"
+description: "Introducing R4t"
+---
+
+# R4t — Active Directory Red Team Framework
+
+R4t is a comprehensive **Active Directory (AD) exploitation and reconnaissance framework** written in Go. It is designed to run from within an already-accessed environment, giving red team operators a single, integrated tool for enumerating, assessing, and exploiting AD environments.
+
+R4t is not a command-and-control (C2) framework. It is an operator-side tool — you run it from your attacking machine or a foothold box to interact with a target AD forest.
+
+---
+
+## What R4t Does
+
+R4t covers the full lifecycle of an AD engagement:
+
+| Phase | Capabilities |
+|-------|-------------|
+| **Reconnaissance** | Users, groups, computers, OUs, GPOs, trusts, domain controllers, DNS, ADIDNS |
+| **Vulnerability Assessment** | ADCS ESC1–ESC16, DCSync, LAPS exposure, Kerberoasting, AS-REP Roasting, shadow credentials, pre-Windows 2000 accounts, coercible hosts |
+| **Exploitation** | Certificate requests, Kerberos ticket manipulation, NT hash extraction, GPP password dumping, authentication coercion |
+| **Persistence & Movement** | Credential spraying, DACL modification, shadow credential injection, LAPS enumeration |
+| **Reporting** | BloodHound collection, structured database of findings, tabular output, file output |
+
+---
+
+## Command Overview
+
+R4t is organized into top-level commands. Each command groups related operations:
+
+| Command | Description |
+|---------|-------------|
+| [`targets`](./targets) | Manage target hosts |
+| [`creds`](./credentials) | Manage stored credentials |
+| [`set`](./settings) | Configure persistent settings |
+| [`ldap`](./commands/ldap) | LDAP enumeration, modification, and vulnerability scanning |
+| [`adcs`](./commands/adcs) | AD Certificate Services analysis and exploitation |
+| [`smb`](./commands/smb) | SMB signing checks and GPP extraction |
+| [`spray`](./commands/spray) | Password spraying across multiple protocols |
+| [`coerce`](./commands/coerce) | Authentication coercion attacks |
+| [`krb`](./commands/kerberos) | Kerberos ticket operations |
+| [`bloodhound`](./commands/bloodhound) | BloodHound data collection |
+| [`dns`](./commands/dns) | DNS enumeration and zone transfers |
+| [`adidns`](./commands/adidns) | ADIDNS record manipulation |
+| [`adws`](./commands/adws) | Active Directory Web Services |
+| [`rdp`](./commands/rdp) | RDP operations |
+| [`ssh`](./commands/ssh) | SSH operations |
+| [`winrm`](./commands/winrm) | WinRM operations |
+| [`wmi`](./commands/wmi) | WMI queries |
+| [`mssql`](./commands/mssql) | MSSQL enumeration and exploitation |
+| [`rpc`](./commands/rpc) | RPC operations |
+| [`nfs`](./commands/nfs) | NFS enumeration |
+| [`ftp`](./commands/ftp) | FTP operations |
+| [`tickets`](./commands/tickets) | Kerberos ticket management |
+| [`parse`](./commands/parse) | Parse certificate and key files |
+| [`port`](./commands/port) | Port scanning and banner grabbing |
+| [`arp`](./commands/arp) | ARP host discovery |
+| [`poison`](./commands/poison) | Network poisoning |
+| [`proxy`](./commands/proxy) | SOCKS5 proxy configuration |
+| [`sccm`](./commands/sccm) | SCCM enumeration |
+| [`visualize`](./commands/visualizer) | BloodHound graph visualization |
+| [`install`](./commands/install) | Install binary and shell aliases |
+| [`logs`](./commands/logs) | Log management |
+| [`query`](./commands/dbquery) | Database query and export |
+| [`tftp`](./commands/tftp) | TFTP operations |
+| [`exclude`](./commands/exclude) | Windows Defender exclusions |
+
+---
+
+## Global Flags
+
+All commands inherit these persistent flags from the root command:
+
+### Authentication
+
+| Flag | Description |
+|------|-------------|
+| `-u`, `--username` | Username for authentication |
+| `-p`, `--password` | Password |
+| `--hash` | NT hash (`LM:NT` or just `NT`) |
+| `--aes` | AES key for Kerberos |
+| `--ccache` | Path to Kerberos ccache file |
+| `--pfx` | PFX certificate file path |
+| `--cert` | PEM certificate file path |
+| `--key` | PEM private key file path |
+| `--anonymous` | Use anonymous/unauthenticated access |
+| `--credential-id` | Use a stored credential by ID |
+
+### Connection
+
+| Flag | Description |
+|------|-------------|
+| `-d`, `--domain` | Active Directory domain name |
+| `--ns`, `--nameserver` | DNS nameserver for resolution |
+| `--ldap-server` | LDAP server address (overrides auto-discovery) |
+| `--ldaps` | Use LDAPS (implicit TLS, port 636) |
+| `--start-tls` | Use StartTLS upgrade on LDAP connection |
+| `--insecure` | Skip TLS certificate verification |
+| `--timeout` | Connection timeout in seconds |
+| `--jitter` | Jitter delay between requests in seconds |
+| `--target-id` | Use a stored target by ID |
+
+### Database
+
+| Flag | Description |
+|------|-------------|
+| `--migrate-db` | Force database migration on startup |
+| `--purge-db` | Drop and re-migrate all database tables (prompts for confirmation) |
+
+---
+
+## Key Concepts
+
+- **[Targets](./targets)** — Hosts you are operating against. R4t stores them in a database and lets you set a default.
+- **[Credentials](./credentials)** — Authentication material (passwords, hashes, certificates, ccache files). Stored securely and selected by ID or set as default.
+- **[Settings](./settings)** — Persistent configuration like domain, nameserver, proxy, and output options.
+- **[Database](./database)** — A dual-store system (Badger KV + SQLite) that persists all findings, scan results, and configuration.
+
+---
+
+## Further Reading
+
+- [Getting Started](./getting-started)
+- [Architecture](./architecture)
+- [Database](./database)
+- [Settings](./settings)
+- [Targets](./targets)
+- [Credentials](./credentials)

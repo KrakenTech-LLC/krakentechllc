@@ -1,0 +1,209 @@
+# Architecture
+
+R4t is a layered Go application. Each layer has a clear responsibility and only depends on layers below it.
+
+---
+
+## Layer Overview
+
+```
+┌─────────────────────────────────────────────┐
+│               User (CLI)                    │
+└───────────────────┬─────────────────────────┘
+                    │
+┌───────────────────▼─────────────────────────┐
+│           Command Layer                     │
+│   cmd/root.go  +  internal/cli/*            │
+│   (Cobra commands, flag parsing)            │
+└───────────────────┬─────────────────────────┘
+                    │
+┌───────────────────▼─────────────────────────┐
+│           Application Core                  │
+│          internal/app/                      │
+│   (global state, auth options, context)     │
+└──────┬────────────────────────┬─────────────┘
+       │                        │
+┌──────▼──────┐       ┌─────────▼──────────────┐
+│   Module    │       │    Protocol Layer       │
+│   Layer     │       │  internal/protocols/    │
+│ internal/   │       │  (Kerberos, NTLM,       │
+│ modules/    │       │   PKINIT, ADWS, ARP)    │
+└──────┬──────┘       └─────────┬───────────────┘
+       │                        │
+┌──────▼────────────────────────▼───────────────┐
+│               Library Layer                   │
+│             internal/lib/                     │
+│  (DN parsing, PKI, DCE/RPC, AD utilities,     │
+│   encoding, Windows registry)                 │
+└──────────────────────┬────────────────────────┘
+                       │
+┌──────────────────────▼────────────────────────┐
+│            Storage Layer                      │
+│   internal/db/    +   internal/vault/         │
+│   (Badger KV store + SQLite via GORM)         │
+└───────────────────────────────────────────────┘
+```
+
+---
+
+## Component Breakdown
+
+### Command Layer (`cmd/` + `internal/cli/`)
+
+The entry point is `rat.go`, which delegates immediately to `cmd.Execute()`. The root command (`cmd/root.go`) registers all 32+ top-level subcommands and declares persistent flags that propagate to every command.
+
+Each top-level command has a corresponding implementation in `internal/cli/<name>/`. The CLI layer is responsible for:
+
+- Parsing flags and arguments
+- Validating inputs
+- Resolving targets and credentials (stored or inline)
+- Calling into the module layer
+- Formatting and printing results
+
+`cmd/helpers.go` contains shared initialization logic including:
+- Authentication resolution (inline flags → stored credential → anonymous)
+- LDAP connection setup
+- Domain and nameserver resolution
+- Database initialization and migration
+
+### Application Core (`internal/app/`)
+
+`internal/app/app.go` holds the global `App` struct that is threaded through all module calls. It carries:
+
+- `Domain` — the active AD domain
+- `Nameserver` — DNS nameserver
+- `Timeout` / `Jitter` — connection timing
+- `Proxy` — SOCKS5 proxy settings
+- Auth options per protocol: LDAP, Kerberos, NTLM, PKINIT, SMB, RDP, SSH, WinRM, TFTP
+- Output file handle (for `--tee` mode)
+- Context and cancellation
+
+### Module Layer (`internal/modules/`)
+
+23+ specialized modules implement the actual exploitation and enumeration logic. Each module receives an `App` struct and handles its own protocol connections.
+
+| Module | Key Operations |
+|--------|---------------|
+| `ldap` | LDAP bind, search, modify, create, delete |
+| `adcs` | CA enumeration, ESC detection, certificate requests |
+| `adws` | ADWS protocol for AD queries |
+| `adidns` | ADIDNS record enumeration and modification |
+| `kerberos` | AS-REQ, TGS-REQ, PKINIT, S4U2Self/S4U2Proxy |
+| `smb` | SMB dial, share enumeration, signing checks |
+| `rpc` | DCE/RPC null sessions and named pipe access |
+| `spray` | Multi-protocol credential spraying |
+| `coerce` | MS-EFSRPC, MS-DFSNM, MS-RPRN, MS-EVEN6, MS-FSRVP coercion |
+| `bloodhound` | BloodHound collection via LDAP + SMB + RPC |
+| `parse` | Log and data file parsing |
+| `tickets` | Kerberos ccache and kirbi manipulation |
+| `ssh` | SSH authentication and command execution |
+| `rdp` | RDP authentication testing |
+| `winrm` | WinRM authentication and command execution |
+| `mssql` | MSSQL authentication and enumeration |
+| `nfs` | NFS share enumeration |
+| `ftp` | FTP authentication and enumeration |
+| `servers` | Host/service discovery |
+| `ports` | Port scanning |
+| `wmi` | WMI query execution |
+
+### Protocol Layer (`internal/protocols/`)
+
+Low-level protocol implementations that modules build on:
+
+- **Kerberos** — AS-REQ/AS-REP, TGS-REQ/TGS-REP via `gokrb5`
+- **NTLM** — NTLM authentication flows
+- **PKINIT** — Public key Kerberos authentication
+- **ADWS** — Active Directory Web Services (SOAP over .NET)
+- **ARP** — ARP table manipulation
+- **NBFS/NBFX** — NetBIOS framing
+
+### Library Layer (`internal/lib/`)
+
+Utility code shared across modules:
+
+- `ad/` — DN parsing, object identifier resolution, SID/RID utilities
+- `pki/` — Certificate generation, PFX parsing, key operations
+- `dce/` — DCE/RPC stub and NDR utilities
+- `registry/` — Windows registry access
+- `encoding/` — Base64, hex, and AD-specific encoding
+- `ext/` — Extended AD function wrappers
+
+### Storage Layer (`internal/db/` + `internal/vault/`)
+
+R4t uses a dual-storage architecture. See [Database](./database) for full details.
+
+- `internal/db/badger.go` — Badger KV store (encrypted, compressed, fast)
+- `internal/db/sql.go` — SQLite via GORM (relational, persistent)
+- `internal/db/queries.go` — Shared query helpers
+- `internal/vault/structs.go` — All 60+ GORM model definitions
+- `internal/vault/tableNames.go` — Table name constants
+
+### Supporting Systems (`internal/system/`)
+
+| Package | Purpose |
+|---------|---------|
+| `dirs/` | Filesystem path management (`~/.local/share/r4t/`) |
+| `stdout/` | Colorized output, table rendering, tree rendering |
+| `logger/` | Structured logging with `zap` + log rotation via `lumberjack` |
+| `edr/` | Windows Defender exclusion management |
+| `errors/` | Shared error types |
+
+---
+
+## Key Dependencies
+
+| Package | Purpose |
+|---------|---------|
+| `github.com/spf13/cobra` | CLI framework |
+| `gorm.io/gorm` | ORM for SQLite |
+| `github.com/glebarez/sqlite` | Pure Go SQLite driver |
+| `github.com/dgraph-io/badger/v3` | Embedded KV store |
+| `golang.org/x/crypto` | Cryptography primitives |
+| `go.uber.org/zap` | Structured logging |
+| `github.com/charmbracelet/bubbletea` | TUI components (interactive mode) |
+| `github.com/fatih/color` | Terminal color output |
+| `github.com/KrakenTech-LLC/gokrb5` | Kerberos implementation |
+| `github.com/KrakenTech-LLC/el-dap` | LDAP with obfuscation support |
+| `github.com/KrakenTech-LLC/goerce` | Coercion protocol implementations |
+
+---
+
+## Concurrency Model
+
+R4t uses Go goroutines for parallelism in operations that benefit from it:
+
+- **Spraying** — configurable thread count (`--threads`) with synchronized result collection
+- **Coercion** — configurable concurrent coercion attempts
+- **BloodHound collection** — configurable worker pool (`--workers`)
+- **Port scanning** — concurrent scanning
+
+All concurrent operations share a cancellable `context.Context` from the `App` struct, allowing clean shutdown on interrupt.
+
+---
+
+## Data Flow: A Typical LDAP Query
+
+```
+r4t ldap get users -u jsmith -p 'P@ssw0rd' -d corp.example.com
+         │
+         ▼
+cmd/root.go  →  internal/cli/ldap/ldap.go
+         │
+         ▼  (resolve auth + target)
+cmd/helpers.go  →  internal/app/app.go (populate App struct)
+         │
+         ▼
+internal/modules/ldap/  (construct LDAP filter, execute search)
+         │
+         ▼
+github.com/KrakenTech-LLC/el-dap  (LDAP bind + search)
+         │
+         ▼
+internal/modules/ldap/  (parse results into vault structs)
+         │
+         ▼
+internal/db/sql.go  (upsert results into SQLite)
+         │
+         ▼
+internal/system/stdout/  (render table to terminal)
+```

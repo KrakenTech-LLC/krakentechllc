@@ -1,0 +1,160 @@
+# Settings
+
+R4t maintains persistent configuration in the Badger KV store. Use the `set` command to view and modify these settings.
+
+---
+
+## The `set` Command
+
+```
+r4t set [flags]
+```
+
+Settings are mutually exclusive — set one value per invocation.
+
+### Flags
+
+| Flag | Type | Description |
+|------|------|-------------|
+| `--domain` | string | Default AD domain for all operations |
+| `--ns` | string | Default DNS nameserver |
+| `--interface` | string | Default network interface (e.g., `eth0`, `tun0`) |
+| `--local-db` | bool | Use per-directory SQLite DB instead of global (`true`/`false`) |
+| `--debug` | bool | Enable debug-level output (`true`/`false`) |
+| `--tee` | bool | Tee all output to a file (`true`/`false`) |
+| `--color-scheme` | string | Terminal color scheme name |
+| `--status` | — | Print current settings to stdout |
+
+---
+
+## Individual Settings
+
+### Domain
+
+The default domain is used when `-d`/`--domain` is not specified on the command line.
+
+```bash
+r4t set --domain corp.example.com
+```
+
+Stored as `cfg:domain` in Badger. Automatically detected from system DNS on first run but can be overridden at any time.
+
+---
+
+### Nameserver
+
+The nameserver is used for DNS-based discovery (LDAP server resolution, DC lookup, SRV records).
+
+```bash
+r4t set --ns 10.10.10.1
+```
+
+Stored as `cfg:nameserver`. Auto-detected on first run from system DNS or from DC discovery.
+
+---
+
+### Network Interface
+
+Sets the default network interface for operations that require binding to a specific interface (e.g., coercion listeners, poisoning).
+
+```bash
+r4t set --interface tun0
+```
+
+Stored as `cfg:interface`.
+
+---
+
+### Local Database
+
+By default R4t stores `r4t.sqlite` in `~/.local/share/r4t/db/`. Enabling local DB mode places the SQLite file in the current working directory — useful for keeping engagement data isolated.
+
+```bash
+# Enable local DB (creates r4t.sqlite in current directory)
+r4t set --local-db true
+
+# Disable local DB (use global path)
+r4t set --local-db false
+```
+
+Stored as `cfg:local_db`.
+
+> **Note**: Switching modes does not migrate data. You will start with a fresh database in the new location.
+
+---
+
+### Debug Mode
+
+Enables verbose debug-level logging to both the console and the log file.
+
+```bash
+r4t set --debug true
+r4t set --debug false
+```
+
+Stored as `cfg:debug`.
+
+---
+
+### Output Tee
+
+When enabled, all terminal output is also written to a timestamped file in `~/.local/share/r4t/`.
+
+```bash
+r4t set --tee true
+r4t set --tee false
+```
+
+Stored as `cfg:tee`.
+
+---
+
+### Color Scheme
+
+R4t supports multiple color schemes for terminal output.
+
+```bash
+# Set a color scheme
+r4t set --color-scheme cyberpunk
+
+# List all available schemes
+r4t set color list
+
+# Preview a scheme with sample tables and severity levels
+r4t set color show cyberpunk
+```
+
+Available schemes include: `default`, `dark`, `light`, `cyberpunk`, and others.
+
+Stored as `cfg:color_scheme`.
+
+---
+
+## Viewing Current Settings
+
+```bash
+r4t set --status
+```
+
+Prints all current persistent settings including domain, nameserver, interface, local-db mode, debug mode, tee mode, and color scheme.
+
+---
+
+## Proxy Settings
+
+SOCKS5 proxy configuration is stored separately in Badger (`cfg:proxy`) and is set via the `proxy` command rather than `set`:
+
+```bash
+r4t proxy set --host 127.0.0.1 --port 1080
+r4t proxy clear
+```
+
+When a proxy is configured, all protocol connections (LDAP, Kerberos, SMB, etc.) route through it. DNS resolution can optionally be forwarded through the proxy as well.
+
+---
+
+## Settings Persistence
+
+All settings are stored in the Badger KV store at `~/.local/share/r4t/db/` and persist across invocations. The store is encrypted with AES-256 using a hardware-derived key, so the settings file is not readable without R4t.
+
+Settings are loaded at startup before any command runs, so configured defaults apply automatically to every operation without re-specifying flags.

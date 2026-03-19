@@ -1,0 +1,151 @@
+# smb
+
+The `smb` command provides SMB-focused operations including signing requirement scanning and Group Policy Preference (GPP) credential extraction.
+
+---
+
+## Usage
+
+```
+r4t smb <subcommand> [flags]
+```
+
+---
+
+## Subcommands
+
+### `smb scan`
+
+Scan hosts for SMB signing requirements. Hosts without SMB signing enforced are susceptible to SMB relay attacks.
+
+```bash
+# Scan a single target (uses stored target if none specified)
+r4t smb scan
+
+# Scan with increased threads
+r4t smb scan --threads 20
+
+# Generate a list of hosts that do not require signing (for relay tools)
+r4t smb scan --no-signing
+```
+
+#### Flags
+
+| Flag | Short | Description |
+|------|-------|-------------|
+| `--no-signing` | `-N` | Output only hosts that do not require SMB signing |
+| `--threads` | `-t` | Number of concurrent scanning threads (default: 10) |
+
+#### What It Does
+
+- Connects to each target on port 445
+- Performs an SMB negotiate to read the signing flags from the server response
+- Reports whether signing is: **Required**, **Enabled (not required)**, or **Disabled**
+- Stores results in the `smb_servers` table
+
+#### Output
+
+Results are printed as a table and stored in the database. Use `--no-signing` to get a clean list suitable for piping into relay tools like `ntlmrelayx.py`.
+
+#### Example Output
+
+```
+┌──────────────┬───────────────────────────┬──────────────────┐
+│ IP           │ Hostname                  │ Signing          │
+├──────────────┼───────────────────────────┼──────────────────┤
+│ 10.10.10.10  │ dc01.corp.example.com     │ Required         │
+│ 10.10.10.20  │ ws01.corp.example.com     │ Not Required     │
+│ 10.10.10.21  │ ws02.corp.example.com     │ Not Required     │
+└──────────────┴───────────────────────────┴──────────────────┘
+```
+
+---
+
+### `smb gpp`
+
+Extract credentials stored in Group Policy Preference (GPP) XML files from SYSVOL.
+
+GPP files frequently contain AES-256 encrypted passwords — but Microsoft published the static decryption key in 2012, making any passwords stored this way trivially recoverable.
+
+```
+r4t smb gpp <subcommand>
+```
+
+#### `smb gpp password`
+
+Extract GPP passwords from the SYSVOL share.
+
+```bash
+r4t smb gpp password
+```
+
+Reads `Groups.xml`, `Services.xml`, `ScheduledTasks.xml`, `DataSources.xml`, and `Printers.xml` from `\\<domain>\SYSVOL\<domain>\Policies\` and decrypts any `cpassword` attributes found.
+
+Extracted credentials are printed and stored in the `credentials` table.
+
+---
+
+#### `smb gpp autologin`
+
+Extract autologin credentials from GPP registry settings.
+
+```bash
+r4t smb gpp autologin
+```
+
+Reads `Registry.xml` GPP files for `DefaultUserName`, `DefaultPassword`, `DefaultDomainName`, and `AutoAdminLogon` values configured via Group Policy.
+
+Extracted credentials are printed and stored in the `credentials` table.
+
+---
+
+## SMB Data Storage
+
+SMB findings are stored in two tables:
+
+| Table | Contents |
+|-------|----------|
+| `smb_servers` | SMB server metadata: IP, hostname, signing status, dialect version, OS |
+| `smb_shares` | Enumerated shares: name, path, access level, notes |
+
+---
+
+## Common SMB Workflows
+
+### Identify Relay Targets
+
+```bash
+# Scan all stored targets for SMB signing
+r4t smb scan --threads 20
+
+# Export unsigned hosts for relay tools
+r4t smb scan --no-signing > unsigned_hosts.txt
+```
+
+### Extract GPP Credentials
+
+```bash
+# Extract all GPP password types
+r4t smb gpp password
+r4t smb gpp autologin
+
+# View extracted credentials in the database
+r4t creds list
+```
+
+### Full SMB Reconnaissance
+
+```bash
+# Scan then extract
+r4t smb scan
+r4t smb gpp password
+r4t smb gpp autologin
+```
+
+---
+
+## Notes
+
+- GPP credential extraction requires read access to the `SYSVOL` share, which all authenticated domain users have by default.
+- SMB signing scanning does not require authentication — it uses an unauthenticated SMB negotiate.
+- SMB relay attacks themselves are out of scope for R4t (use external tools like `ntlmrelayx.py`); R4t helps identify targets and credentials that result from relay.
