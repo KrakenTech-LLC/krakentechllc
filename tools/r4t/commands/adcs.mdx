@@ -105,30 +105,6 @@ r4t adcs req --ca "corp-CA" --target dc01.corp.example.com \
 
 ---
 
-### `adcs nt`
-
-Extract the NT hash of an account using PKINIT + UnPAC-the-Hash.
-
-When you have a valid certificate for an account (e.g., obtained via `adcs req`), you can authenticate via Kerberos PKINIT to get a TGT, then extract the NT hash from the PAC field. This allows lateral movement with Pass-the-Hash even when you only have a certificate.
-
-```bash
-# Using PFX certificate (loaded from stored credential or inline)
-r4t adcs nt --pfx /tmp/admin.pfx
-
-# Override UPN (when the certificate UPN differs from the target)
-r4t adcs nt --pfx /tmp/admin.pfx --upn administrator@corp.example.com
-```
-
-#### Flags
-
-| Flag | Description |
-|------|-------------|
-| `--upn` | Override UPN for authentication |
-
-> Authentication flags (`--pfx`, `--pfx-password`, `--cert`, `--key`, `--ccache`) are inherited from the global flags or stored credential.
-
----
-
 ### `adcs relay`
 
 Enumerate and support ADCS relay attacks (ESC8).

@@ -1,12 +1,12 @@
-# krb (Kerberos)
+# Kerberos
 
-The `krb` command provides Kerberos ticket operations: obtaining TGTs and TGSs, and extracting NT hashes via PKINIT + UnPAC-the-Hash.
+The `krb` command provides Kerberos ticket operations: obtaining TGTs and TGSs, and extracting NT hashes via PKINIT \+ UnPAC-the-Hash.
 
 ---
 
 ## Usage
 
-```
+```text
 r4t krb <subcommand> [flags]
 ```
 
@@ -15,12 +15,36 @@ r4t krb <subcommand> [flags]
 ## Persistent Flags
 
 | Flag | Description |
-|------|-------------|
+| --- | --- |
 | `--dcs` | Load domain controllers from the database as targets |
 
 ---
 
 ## Subcommands
+
+### `krb nt`
+
+Extract the NT hash of an account using PKINIT + UnPAC-the-Hash.
+
+When you have a valid certificate for an account (e.g., obtained via `adcs req`), you can authenticate via Kerberos PKINIT to get a TGT, then extract the NT hash from the PAC field. This allows lateral movement with Pass-the-Hash even when you only have a certificate.
+
+```bash
+# Using PFX certificate (loaded from stored credential or inline)
+r4t krb nt --pfx /tmp/admin.pfx
+
+# Override UPN (when the certificate UPN differs from the target)
+r4t krb nt --pfx /tmp/admin.pfx --upn administrator@corp.example.com
+```
+
+#### Flags
+
+| Flag | Description |
+|------|-------------|
+| `--upn` | Override UPN for authentication |
+
+> Authentication flags (`--pfx`, `--pfx-password`, `--cert`, `--key`, `--ccache`) are inherited from the global flags or stored credential.
+
+---
 
 ### `krb tgt`
 
@@ -49,7 +73,7 @@ r4t krb tgt --key /tmp/shadow.key -u jsmith -d corp.example.com
 #### Flags
 
 | Flag | Description |
-|------|-------------|
+| --- | --- |
 | `--upn` | User Principal Name (optional override) |
 | `--key` | Private key file for shadow credential / key-only PKINIT |
 | `--pfx` | PFX file for PKINIT authentication |
@@ -57,6 +81,7 @@ r4t krb tgt --key /tmp/shadow.key -u jsmith -d corp.example.com
 | `--aes` | AES-128 or AES-256 key |
 
 The resulting TGT is:
+
 - Written to a ccache file (path printed to stdout)
 - Stored in the `tgts` table in SQLite
 - Linked to the active credential record
@@ -78,11 +103,12 @@ r4t krb tgs --spn "MSSQLSvc/sql.corp.example.com:1433" --sid S-1-5-21-...
 #### Flags
 
 | Flag | Description |
-|------|-------------|
+| --- | --- |
 | `--spn` | Target Service Principal Name **(required)** |
 | `--sid` | Target account SID |
 
 The resulting TGS is:
+
 - Written as a kirbi/ccache file
 - Output in hashcat format for offline cracking (`$krb5tgs$23$...`)
 - Stored in the `tgss` table and the hash in `kerberoast_hashes`
@@ -91,7 +117,7 @@ The resulting TGS is:
 
 ### `krb nt`
 
-Extract the NT hash of an account using PKINIT + UnPAC-the-Hash.
+Extract the NT hash of an account using PKINIT \+ UnPAC-the-Hash.
 
 This requires a valid certificate for the target account. Authenticate via Kerberos PKINIT to receive a TGT, then extract the NT hash embedded in the PAC (Privilege Attribute Certificate).
 
@@ -109,12 +135,12 @@ r4t krb nt --upn administrator@corp.example.com
 #### Flags
 
 | Flag | Description |
-|------|-------------|
+| --- | --- |
 | `--upn` | Override the UPN used for PKINIT |
 
 The extracted NT hash is printed and stored in the `credentials` table.
 
-> This is the same operation as `adcs nt` — both subcommands perform PKINIT + UnPAC-the-Hash. `krb nt` is the Kerberos-centric entry point, `adcs nt` is the ADCS-centric one.
+> This is the same operation as `adcs nt` — both subcommands perform PKINIT \+ UnPAC-the-Hash. `krb nt` is the Kerberos-centric entry point, `adcs nt` is the ADCS-centric one.
 
 ---
 
@@ -123,12 +149,12 @@ The extracted NT hash is printed and stored in the `credentials` table.
 R4t supports all standard Kerberos authentication pre-authentication methods:
 
 | Method | Description |
-|--------|-------------|
+| --- | --- |
 | Password | Standard PA-ENC-TIMESTAMP |
 | NT Hash | RC4-HMAC pre-auth |
 | AES Key | AES-128 or AES-256 pre-auth |
 | PKINIT (PFX) | Public key pre-authentication with PFX certificate |
-| PKINIT (PEM) | Public key pre-authentication with PEM cert + key |
+| PKINIT (PEM) | Public key pre-authentication with PEM cert \+ key |
 | PKINIT (Key-only) | Shadow credential attack — key without a certificate |
 
 ---
@@ -136,7 +162,7 @@ R4t supports all standard Kerberos authentication pre-authentication methods:
 ## Ticket Storage
 
 | Table | Contents |
-|-------|----------|
+| --- | --- |
 | `tgts` | Kerberos TGTs (base64-encoded ticket, expiry, target DC) |
 | `tgss` | Kerberos TGSs (ticket, SPN, encryption type) |
 | `kerberoast_hashes` | Kerberoastable TGS hashes in hashcat format |
