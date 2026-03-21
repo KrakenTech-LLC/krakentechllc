@@ -1,3 +1,7 @@
+---
+title: "RPC"
+---
+
 # rpc
 
 RPC (Remote Procedure Call) enumeration and endpoint discovery. R4t uses null sessions and authenticated RPC to enumerate users, groups, trusts, machines, printers, and endpoint bindings.
@@ -6,7 +10,7 @@ RPC (Remote Procedure Call) enumeration and endpoint discovery. R4t uses null se
 
 ## Usage
 
-```
+```text
 r4t rpc <subcommand> [flags]
 ```
 
@@ -18,20 +22,20 @@ r4t rpc <subcommand> [flags]
 
 Enumerate AD and host information via RPC protocols.
 
-```
+```text
 r4t rpc get <type> [flags]
 ```
 
 Each subtype supports the same output flag:
 
 | Flag | Short | Description |
-|------|-------|-------------|
+| --- | --- | --- |
 | `--output` | `-o` | Write results to file |
 
 #### Types
 
 | Type | Description |
-|------|-------------|
+| --- | --- |
 | `user` | Enumerate user accounts via RPC (SAM / SAMR) |
 | `group` | Enumerate local and domain groups via RPC |
 | `trust` | Enumerate domain trusts via RPC (LSARPC) |
@@ -87,7 +91,7 @@ Connects to the target's endpoint mapper and enumerates all registered RPC inter
 RPC findings are stored in the database:
 
 | Table | Contents |
-|-------|----------|
+| --- | --- |
 | `rpc_permissions` | Enumerated RPC access rights per endpoint |
 | `rpc_sessions` | Active RPC session tracking |
 
@@ -96,6 +100,7 @@ RPC findings are stored in the database:
 ## Null Session vs Authenticated
 
 RPC enumeration can work via:
+
 - **Null session** (unauthenticated) — use `--anonymous` flag. Works against legacy or misconfigured systems.
 - **Authenticated** — uses stored or inline credentials via global flags.
 

@@ -1,3 +1,7 @@
+---
+title: "Port"
+---
+
 # port
 
 Port scanning and banner grabbing.
@@ -6,7 +10,7 @@ Port scanning and banner grabbing.
 
 ## Usage
 
-```
+```text
 r4t port <subcommand> <target> <port> [flags]
 ```
 
@@ -27,7 +31,7 @@ r4t port scan 10.10.10.10 161 --udp
 ```
 
 | Flag | Short | Description |
-|------|-------|-------------|
+| --- | --- | --- |
 | `--udp` | `-U` | Use UDP instead of TCP |
 
 Returns open/closed/filtered status.
@@ -47,7 +51,7 @@ r4t port banner 10.10.10.10 161 --udp
 ```
 
 | Flag | Short | Description |
-|------|-------|-------------|
+| --- | --- | --- |
 | `--udp` | `-U` | Use UDP instead of TCP |
 
 Connects to the target port, reads the initial server response, and displays it. Useful for quick service fingerprinting without a full port scanner.

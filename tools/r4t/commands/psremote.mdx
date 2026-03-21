@@ -1,3 +1,7 @@
+---
+title: "PSRemote"
+---
+
 # psremote
 
 The `psremote` command provides PowerShell Remoting operations for remote command execution, script delivery, and interactive sessions over WS-Management.
@@ -6,7 +10,7 @@ The `psremote` command provides PowerShell Remoting operations for remote comman
 
 ## Usage
 
-```
+```text
 r4t psremote <subcommand> [flags]
 ```
 
@@ -23,7 +27,7 @@ PSRemote is distinct from raw WinRM command execution — it provides a full Pow
 ## Planned Capabilities
 
 | Capability | Description |
-|-----------|-------------|
+| --- | --- |
 | **Command Execution** | Execute PowerShell commands on remote hosts |
 | **Script Execution** | Run PowerShell script files (.ps1) remotely |
 | **Interactive Session** | Establish an interactive PowerShell Remoting session |
@@ -37,7 +41,7 @@ PSRemote is distinct from raw WinRM command execution — it provides a full Pow
 PSRemote uses the same global authentication flags as all other R4t commands. The following authentication methods are supported:
 
 | Method | Flag | Description |
-|--------|------|-------------|
+| --- | --- | --- |
 | Password | `-u` / `-p` | Domain username and password |
 | NTLM Hash | `--hash` | Pass-the-hash via NT hash |
 | Kerberos | `--aes` / `--ccache` | Kerberos authentication via AES key or ccache |
@@ -71,7 +75,7 @@ r4t psremote exec --credential-id 1 10.10.10.20 "hostname"
 ## Connection Details
 
 | Property | Value |
-|----------|-------|
+| --- | --- |
 | Protocol | PowerShell Remoting over WS-Management |
 | HTTP Port | 5985 |
 | HTTPS Port | 5986 |
@@ -116,7 +120,7 @@ r4t psremote exec -u admin -p 'P@ssw0rd' -d corp.example.com 10.10.10.20 \
 When the payload factory is operational, PSRemote execution modules will request artifacts by capability:
 
 | Capability Request | Use Case |
-|-------------------|----------|
+| --- | --- |
 | `execution=script`, `type=ps1` | PowerShell stager for direct execution |
 | `inmemory=true`, `execution=script` | Fileless execution via encoded PowerShell |
 | `reflective=true`, `execution=reflective-load` | Reflective DLL loaded via `[Reflection.Assembly]::Load` |

@@ -1,14 +1,18 @@
+---
+title: "Query"
+---
+
 # query
 
 Query and export data from the R4t SQLite database. Supports table-based queries with column filtering, WHERE clauses, and export to multiple file formats.
 
-> **Note**: The CLI command is `r4t query` (not `r4t dbquery`).
+> **Note**: The CLI command is `r4t query` (not `r4t query`).
 
 ---
 
 ## Usage
 
-```
+```text
 r4t query [flags]
 ```
 
@@ -17,7 +21,7 @@ r4t query [flags]
 ## Flags
 
 | Flag | Short | Type | Description |
-|------|-------|------|-------------|
+| --- | --- | --- | --- |
 | `--list` | — | bool | List all available tables and their columns |
 | `--table` | `-t` | string | Table to query |
 | `--columns` | `-c` | string | Comma-delimited list of columns to display |
@@ -35,7 +39,7 @@ r4t query [flags]
 The output format is determined by the file extension given to `--out`:
 
 | Extension | Format |
-|-----------|--------|
+| --- | --- |
 | `.json` | JSON array |
 | `.yaml` | YAML |
 | `.xml` | XML |
@@ -91,7 +95,7 @@ r4t query --table users --limit 0 --out all-users.csv
 Run `r4t query --list` for the current schema. Key tables include:
 
 | Table | Contents |
-|-------|----------|
+| --- | --- |
 | `credentials` | Stored credentials (passwords, hashes, certs) |
 | `targets` | Stored target hosts |
 | `users` | Enumerated AD users |

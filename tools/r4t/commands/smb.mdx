@@ -1,3 +1,7 @@
+---
+title: "SMB"
+---
+
 # smb
 
 The `smb` command provides SMB-focused operations including signing requirement scanning and Group Policy Preference (GPP) credential extraction.
@@ -6,7 +10,7 @@ The `smb` command provides SMB-focused operations including signing requirement 
 
 ## Usage
 
-```
+```text
 r4t smb <subcommand> [flags]
 ```
 
@@ -32,7 +36,7 @@ r4t smb scan --no-signing
 #### Flags
 
 | Flag | Short | Description |
-|------|-------|-------------|
+| --- | --- | --- |
 | `--no-signing` | `-N` | Output only hosts that do not require SMB signing |
 | `--threads` | `-t` | Number of concurrent scanning threads (default: 10) |
 
@@ -49,7 +53,7 @@ Results are printed as a table and stored in the database. Use `--no-signing` to
 
 #### Example Output
 
-```
+```text
 ┌──────────────┬───────────────────────────┬──────────────────┐
 │ IP           │ Hostname                  │ Signing          │
 ├──────────────┼───────────────────────────┼──────────────────┤
@@ -67,7 +71,7 @@ Extract credentials stored in Group Policy Preference (GPP) XML files from SYSVO
 
 GPP files frequently contain AES-256 encrypted passwords — but Microsoft published the static decryption key in 2012, making any passwords stored this way trivially recoverable.
 
-```
+```text
 r4t smb gpp <subcommand>
 ```
 
@@ -104,7 +108,7 @@ Extracted credentials are printed and stored in the `credentials` table.
 SMB findings are stored in two tables:
 
 | Table | Contents |
-|-------|----------|
+| --- | --- |
 | `smb_servers` | SMB server metadata: IP, hostname, signing status, dialect version, OS |
 | `smb_shares` | Enumerated shares: name, path, access level, notes |
 

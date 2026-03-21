@@ -1,3 +1,7 @@
+---
+title: "Parse"
+---
+
 # parse
 
 Parse and inspect local certificate and key files. Decodes PEM and PFX/PKCS#12 files and pretty-prints their contents.
@@ -6,7 +10,7 @@ Parse and inspect local certificate and key files. Decodes PEM and PFX/PKCS#12 f
 
 ## Usage
 
-```
+```text
 r4t parse <subcommand> <file> [flags]
 ```
 
@@ -30,10 +34,11 @@ r4t parse pem /tmp/chain.pem
 ```
 
 | Flag | Short | Description |
-|------|-------|-------------|
+| --- | --- | --- |
 | `--key` | `-k` | Path to a separate PEM private key file |
 
 Displays:
+
 - Subject and Issuer DNs
 - Serial number
 - Validity period (Not Before / Not After)
@@ -61,12 +66,13 @@ r4t parse pfx /tmp/legacy.pfx --legacy
 ```
 
 | Flag | Short | Description |
-|------|-------|-------------|
+| --- | --- | --- |
 | `--password` | `-p` | Password for the PFX file (leave empty for passwordless) |
 | `--legacy` | — | Use legacy decode mode for non-standard / older PFX files |
 
 Displays:
-- All certificates in the PFX (leaf + chain)
+
+- All certificates in the PFX (leaf \+ chain)
 - Private key presence and type
 - Subject and Issuer for each certificate
 - SANs, EKUs, and validity for each certificate

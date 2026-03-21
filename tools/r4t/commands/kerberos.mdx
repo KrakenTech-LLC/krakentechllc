@@ -1,3 +1,7 @@
+---
+title: "Kerberos"
+---
+
 # Kerberos
 
 The `krb` command provides Kerberos ticket operations: obtaining TGTs and TGSs, and extracting NT hashes via PKINIT \+ UnPAC-the-Hash.
@@ -24,7 +28,7 @@ r4t krb <subcommand> [flags]
 
 ### `krb nt`
 
-Extract the NT hash of an account using PKINIT + UnPAC-the-Hash.
+Extract the NT hash of an account using PKINIT \+ UnPAC-the-Hash.
 
 When you have a valid certificate for an account (e.g., obtained via `adcs req`), you can authenticate via Kerberos PKINIT to get a TGT, then extract the NT hash from the PAC field. This allows lateral movement with Pass-the-Hash even when you only have a certificate.
 
@@ -39,7 +43,7 @@ r4t krb nt --pfx /tmp/admin.pfx --upn administrator@corp.example.com
 #### Flags
 
 | Flag | Description |
-|------|-------------|
+| --- | --- |
 | `--upn` | Override UPN for authentication |
 
 > Authentication flags (`--pfx`, `--pfx-password`, `--cert`, `--key`, `--ccache`) are inherited from the global flags or stored credential.

@@ -1,3 +1,7 @@
+---
+title: "DNS"
+---
+
 # dns
 
 DNS enumeration and lookup operations against Active Directory environments.
@@ -6,7 +10,7 @@ DNS enumeration and lookup operations against Active Directory environments.
 
 ## Usage
 
-```
+```text
 r4t dns <subcommand> [flags]
 ```
 
@@ -28,7 +32,7 @@ r4t dns dc --output /tmp/dcs.txt
 Queries `_ldap._tcp.dc._msdcs.<domain>` SRV records using the configured nameserver, resolves hostnames, and stores results in the `domain_controllers` table.
 
 | Flag | Short | Description |
-|------|-------|-------------|
+| --- | --- | --- |
 | `--output` | `-o` | Output file for enumerated DCs |
 
 ---

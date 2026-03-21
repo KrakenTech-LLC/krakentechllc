@@ -1,3 +1,7 @@
+---
+title: "Proxy"
+---
+
 # proxy
 
 SOCKS5 proxy configuration. When a proxy is configured, all R4t protocol connections (LDAP, Kerberos, SMB, RPC, etc.) are routed through it. This enables operating against internal networks via pivot points like Ligolo-ng, Chisel, or SSH tunnels.
@@ -6,7 +10,7 @@ SOCKS5 proxy configuration. When a proxy is configured, all R4t protocol connect
 
 ## Usage
 
-```
+```text
 r4t proxy <subcommand> [flags]
 ```
 
@@ -36,7 +40,7 @@ r4t proxy set --enabled true
 ```
 
 | Flag | Description |
-|------|-------------|
+| --- | --- |
 | `--host` | Proxy host or IP address |
 | `--port` | Proxy port |
 | `--username` | Proxy username (optional, for authenticated proxies) |

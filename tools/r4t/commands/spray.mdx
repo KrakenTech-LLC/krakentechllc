@@ -1,3 +1,7 @@
+---
+title: "Spray"
+---
+
 # spray
 
 The `spray` command performs password spraying across multiple protocols. It takes a credential (username and password or hash) and tests it against a list of target servers, supporting lockout awareness and configurable threading.
@@ -6,7 +10,7 @@ The `spray` command performs password spraying across multiple protocols. It tak
 
 ## Usage
 
-```
+```text
 r4t spray <protocol> [targets...] [flags]
 ```
 
@@ -17,7 +21,7 @@ r4t spray <protocol> [targets...] [flags]
 These flags apply to all `spray` subcommands:
 
 | Flag | Short | Description |
-|------|-------|-------------|
+| --- | --- | --- |
 | `--db-users` | — | Spray using users without credentials from the database |
 | `--dcs` | — | Load domain controllers from the database as targets |
 | `--stop-on-success` | `-S` | Stop when a successful authentication is found |
@@ -33,7 +37,7 @@ These flags apply to all `spray` subcommands:
 
 Spray credentials via the Kerberos protocol (AS-REQ). This is the most evasion-friendly method as it does not touch LDAP or SMB directly.
 
-```
+```text
 r4t spray kerberos <method> [servers...] [flags]
 ```
 
@@ -59,7 +63,7 @@ r4t spray kerberos pwd --downgrade
 ```
 
 | Flag | Description |
-|------|-------------|
+| --- | --- |
 | `--safe` | Safe mode — abort spray if any user lockout is detected |
 | `--downgrade` | Force downgraded encryption (arcfour-hmac-md5 / RC4) |
 
@@ -78,7 +82,7 @@ r4t spray kerberos enum --db-users dc01.corp.example.com
 ```
 
 | Flag | Description |
-|------|-------------|
+| --- | --- |
 | `--safe` | Safe mode |
 | `--downgrade` | Force RC4 encryption |
 
@@ -100,7 +104,7 @@ r4t spray smb --threads 20 --stop-on-success
 ```
 
 | Flag | Description |
-|------|-------------|
+| --- | --- |
 | `--local` | Use local authentication — do not append domain prefix |
 
 ---
@@ -131,25 +135,25 @@ r4t spray ssh --stop-on-success 10.10.10.50
 
 ---
 
-### `spray ftp` *(planned)*
+### `spray ftp` _(planned)_
 
 FTP password spraying. Not yet implemented.
 
 ---
 
-### `spray mssql` *(planned)*
+### `spray mssql` _(planned)_
 
 MSSQL password spraying. Not yet implemented.
 
 ---
 
-### `spray winrm` *(planned)*
+### `spray winrm` _(planned)_
 
 WinRM password spraying. Not yet implemented.
 
 ---
 
-### `spray tftp` *(planned)*
+### `spray tftp` _(planned)_
 
 TFTP spraying. Not yet implemented.
 
@@ -180,7 +184,7 @@ r4t spray ldap
 All spray operations are recorded in the `sprays` table in SQLite:
 
 | Column | Description |
-|--------|-------------|
+| --- | --- |
 | Target | Server that was sprayed |
 | Protocol | Protocol used |
 | Username | Account sprayed |
@@ -196,7 +200,7 @@ Successful credentials are automatically added to the `credentials` table.
 R4t provides multiple layers of lockout protection:
 
 | Feature | Flag | Behavior |
-|---------|------|---------|
+| --- | --- | --- |
 | Stop on lockout | `--stop-on-lockout` / `-L` | Halt all spraying when any lockout is detected |
 | Safe mode (Kerberos) | `--safe` | Abort Kerberos spray if lockout detected |
 | Stop on success | `--stop-on-success` / `-S` | Stop after first valid authentication |

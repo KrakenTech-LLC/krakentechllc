@@ -1,3 +1,7 @@
+---
+title: "WMI"
+---
+
 # wmi
 
 The `wmi` command provides Windows Management Instrumentation (WMI) operations for remote system querying and command execution via DCOM/RPC.
@@ -6,7 +10,7 @@ The `wmi` command provides Windows Management Instrumentation (WMI) operations f
 
 ## Usage
 
-```
+```text
 r4t wmi <subcommand> [flags]
 ```
 
@@ -14,7 +18,7 @@ r4t wmi <subcommand> [flags]
 
 ## Overview
 
-WMI enables operators to interact with remote Windows hosts using the WMI protocol over DCOM (port 135 + dynamic RPC ports). It provides capabilities for remote process execution, system enumeration, and arbitrary WQL queries — all without requiring SMB file transfers or WinRM to be enabled.
+WMI enables operators to interact with remote Windows hosts using the WMI protocol over DCOM (port 135 \+ dynamic RPC ports). It provides capabilities for remote process execution, system enumeration, and arbitrary WQL queries — all without requiring SMB file transfers or WinRM to be enabled.
 
 WMI is a powerful lateral movement and execution vector because it is natively available on all Windows systems and often permitted through firewalls in enterprise environments.
 
@@ -23,7 +27,7 @@ WMI is a powerful lateral movement and execution vector because it is natively a
 ## Planned Capabilities
 
 | Capability | Description |
-|-----------|-------------|
+| --- | --- |
 | **Process Execution** | Execute commands on remote hosts via `Win32_Process.Create` |
 | **WQL Queries** | Run arbitrary WQL queries against remote WMI namespaces |
 | **System Enumeration** | Query installed software, services, OS details, and hardware |
@@ -36,7 +40,7 @@ WMI is a powerful lateral movement and execution vector because it is natively a
 WMI uses the same global authentication flags as all other R4t commands. The following authentication methods are supported:
 
 | Method | Flag | Description |
-|--------|------|-------------|
+| --- | --- | --- |
 | Password | `-u` / `-p` | Domain username and password |
 | NTLM Hash | `--hash` | Pass-the-hash via NT hash |
 | Kerberos | `--aes` / `--ccache` | Kerberos authentication via AES key or ccache |
@@ -60,7 +64,7 @@ r4t wmi exec --credential-id 1 10.10.10.20 "hostname"
 ## Connection Details
 
 | Property | Value |
-|----------|-------|
+| --- | --- |
 | Protocol | DCOM / DCE/RPC |
 | Initial Port | 135 (RPC Endpoint Mapper) |
 | Data Ports | Dynamic high ports (49152–65535) |
@@ -92,7 +96,7 @@ r4t wmi exec -u admin -p 'P@ssw0rd' -d corp.example.com 10.10.10.20 "C:\Windows\
 When the payload factory is operational, WMI execution modules will request artifacts by capability rather than filename:
 
 | Capability Request | Use Case |
-|-------------------|----------|
+| --- | --- |
 | `execution=self-exec`, `os=windows` | Standard EXE dropped to disk then executed |
 | `execution=script`, `type=ps1` | PowerShell stager executed inline |
 | `inmemory=true`, `execution=script` | Fileless execution via encoded PowerShell |

@@ -1,3 +1,7 @@
+---
+title: "Bloodhound"
+---
+
 # bloodhound
 
 The `bloodhound` command collects Active Directory data in BloodHound-compatible format. It integrates with both BloodHound Community Edition (CE) and BloodHound Legacy, producing the JSON files that BloodHound uses to build its attack path graph.
@@ -6,7 +10,7 @@ The `bloodhound` command collects Active Directory data in BloodHound-compatible
 
 ## Usage
 
-```
+```text
 r4t bloodhound <subcommand> [flags]
 ```
 
@@ -47,7 +51,7 @@ r4t bloodhound collect --computerfile /tmp/computers.txt dc01.corp.example.com
 #### Flags
 
 | Flag | Short | Description |
-|------|-------|-------------|
+| --- | --- | --- |
 | `--legacy` | — | Use BloodHound Legacy format (instead of CE) |
 | `--collection-method` | `-c` | Comma-separated collection methods (see below) |
 | `--workers` | `-w` | Worker thread count (default: 10) |
@@ -70,7 +74,7 @@ r4t bloodhound collect --computerfile /tmp/computers.txt dc01.corp.example.com
 The `--collection-method` / `-c` flag controls what data is collected. Multiple methods can be specified as a comma-separated list.
 
 | Method | Description |
-|--------|-------------|
+| --- | --- |
 | `default` | Group membership, local admins, sessions, trusts, ACLs |
 | `all` | All methods (equivalent to running everything) |
 | `group` | Group membership |
@@ -105,7 +109,7 @@ r4t bloodhound collect -c dconly dc01.corp.example.com
 ## BloodHound CE vs Legacy
 
 | Feature | BloodHound CE (default) | BloodHound Legacy |
-|---------|------------------------|-------------------|
+| --- | --- | --- |
 | Format | JSON with `_` prefix files | JSON with older schema |
 | Compatibility | BloodHound CE / BHCE | BloodHound 4.x |
 | Flag | (default) | `--legacy` |
@@ -119,7 +123,7 @@ Use `--legacy` if you are using BloodHound 4.x or older. Use the default (no fla
 BloodHound collection produces several JSON files in the output directory:
 
 | File | Contents |
-|------|---------|
+| --- | --- |
 | `*_computers.json` | Computer accounts and properties |
 | `*_users.json` | User accounts and properties |
 | `*_groups.json` | Groups and membership |
@@ -135,6 +139,7 @@ When `--zip` is specified, all files are combined into a single `.zip` archive r
 ## Authentication
 
 `bloodhound collect` uses the same authentication flags as all other R4t commands. The collector requires:
+
 - Read access to AD via LDAP (for user/group/object data)
 - Read access to SYSVOL (for GPO data)
 - SMB access to target computers (for session/local admin enumeration — optional)

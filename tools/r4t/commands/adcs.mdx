@@ -1,3 +1,7 @@
+---
+title: "ADCS"
+---
+
 # adcs
 
 The `adcs` command provides tooling for enumerating, analyzing, and exploiting Active Directory Certificate Services (ADCS). It covers certificate authority enumeration, vulnerability detection across ESC1–ESC16, certificate requests, NT hash extraction via PKINIT, and relay attack enumeration.
@@ -6,7 +10,7 @@ The `adcs` command provides tooling for enumerating, analyzing, and exploiting A
 
 ## Usage
 
-```
+```text
 r4t adcs <subcommand> [flags]
 ```
 
@@ -28,26 +32,26 @@ r4t adcs find --ldap-server 10.10.10.10 --output ./adcs-results/
 #### Flags
 
 | Flag | Description |
-|------|-------------|
+| --- | --- |
 | `--output`, `-o` | Directory to write enumeration results |
 | `--ldap-server` | LDAP server (defaults to stored target) |
 
 #### What It Detects
 
 | ESC | Description |
-|-----|-------------|
+| --- | --- |
 | ESC1 | Template allows client-supplied Subject Alternative Names with enrollment rights to low-privileged users |
 | ESC2 | Template has the Any Purpose or SubCA EKU with enrollment rights to low-privileged users |
 | ESC3 | Template allows enrollment agent enrollment (Certificate Request Agent) |
 | ESC4 | Template has a vulnerable DACL that allows low-privileged users to modify the template |
 | ESC5 | Vulnerable PKI object DACL (CA, AIA, CDP, NTAuthCertificates) |
-| ESC6 | CA has EDITF_ATTRIBUTESUBJECTALTNAME2 flag set |
+| ESC6 | CA has EDITF\_ATTRIBUTESUBJECTALTNAME2 flag set |
 | ESC7 | CA has dangerous permissions for unprivileged users |
 | ESC8 | CA web enrollment is accessible and allows NTLM relay |
 | ESC9 | Certificate template with no security extension and `CT_FLAG_NO_SECURITY_EXTENSION` |
 | ESC10 | Weak certificate mapping configuration on the target domain |
-| ESC11 | CA has IF_ENFORCEENCRYPTICERTREQUEST flag not set |
-| ESC12 | CA Shell access via EDITF_ATTRIBUTEALTNAME2 |
+| ESC11 | CA has IF\_ENFORCEENCRYPTICERTREQUEST flag not set |
+| ESC12 | CA Shell access via EDITF\_ATTRIBUTEALTNAME2 |
 | ESC13 | Issuance policy linked to a group enables privilege escalation |
 | ESC16 | CA does not enforce strong certificate binding |
 
@@ -84,7 +88,7 @@ r4t adcs req --ca "corp-CA" --target dc01.corp.example.com \
 #### Flags
 
 | Flag | Description |
-|------|-------------|
+| --- | --- |
 | `--ca` | Certificate Authority name **(required)** |
 | `--target` | Target CA server hostname/IP **(required)** |
 | `--template` | Certificate template name |
@@ -117,49 +121,49 @@ ESC8 involves relaying NTLM authentication to the CA web enrollment endpoint (`/
 
 ---
 
-### `adcs auth` *(planned)*
+### `adcs auth` _(planned)_
 
 Authenticate using certificates (PKINIT or Schannel). Not yet fully implemented.
 
 ---
 
-### `adcs account` *(planned)*
+### `adcs account` _(planned)_
 
 Manage Active Directory accounts via ADCS. Not yet implemented.
 
 ---
 
-### `adcs ca` *(planned)*
+### `adcs ca` _(planned)_
 
 Manage Certificate Authorities (view, configure). Not yet implemented.
 
 ---
 
-### `adcs cert` *(planned)*
+### `adcs cert` _(planned)_
 
 Certificate format conversion utilities (PFX ↔ PEM, extract private key, etc.). Not yet implemented.
 
 ---
 
-### `adcs forge` *(planned)*
+### `adcs forge` _(planned)_
 
 Forge certificates — Golden Certificate attacks using the stolen CA private key. Not yet implemented.
 
 ---
 
-### `adcs shadow` *(planned)*
+### `adcs shadow` _(planned)_
 
 Shadow Credentials — manipulate `msDS-KeyCredentialLink` on target objects for certificate-based authentication without a template. Not yet implemented as a standalone subcommand (shadow credential detection is available via `ldap scan`).
 
 ---
 
-### `adcs template` *(planned)*
+### `adcs template` _(planned)_
 
 Manage certificate templates (create, modify, delete). Not yet implemented.
 
 ---
 
-### `adcs parse` *(planned)*
+### `adcs parse` _(planned)_
 
 Parse certificate templates from offline LDAP output files. Not yet implemented.
 

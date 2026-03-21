@@ -1,3 +1,7 @@
+---
+title: "ADWS"
+---
+
 # adws
 
 Active Directory Web Services (ADWS) operations. ADWS is the transport layer used by PowerShell's `ActiveDirectory` module — it communicates over port 9389 using SOAP/NBFS rather than raw LDAP. R4t implements ADWS as a fully-featured alternative to the `ldap` command.
@@ -6,14 +10,14 @@ Active Directory Web Services (ADWS) operations. ADWS is the transport layer use
 
 ## Usage
 
-```
+```text
 r4t adws <subcommand> [flags]
 ```
 
 **Persistent Flag:**
 
 | Flag | Short | Description |
-|------|-------|-------------|
+| --- | --- | --- |
 | `--verify` | `-V` | Verify the operation succeeded by re-reading the modified object |
 
 ---
@@ -35,8 +39,8 @@ r4t adws query --filter "(objectClass=computer)" --attrs name,operatingSystem --
 ```
 
 | Flag | Short | Description |
-|------|-------|-------------|
-| `--filter` | `-F` | LDAP filter **[required]** |
+| --- | --- | --- |
+| `--filter` | `-F` | LDAP filter **\[required\]** |
 | `--attrs` | `-A` | Attributes to return (repeatable) |
 | `--max` | `-M` | Maximum results (default: 100) |
 
@@ -46,14 +50,14 @@ r4t adws query --filter "(objectClass=computer)" --attrs name,operatingSystem --
 
 Query specific AD object types.
 
-```
+```text
 r4t adws get <object-type> [name] [flags]
 ```
 
 #### Object Types
 
 | Type | Argument | Description |
-|------|----------|-------------|
+| --- | --- | --- |
 | `users` | — | All user accounts |
 | `computers` | — | All computer accounts |
 | `groups` | — | All security and distribution groups |
@@ -78,7 +82,7 @@ r4t adws get <object-type> [name] [flags]
 #### Flags
 
 | Flag | Description |
-|------|-------------|
+| --- | --- |
 | `--attrs` | Comma-separated attributes to return |
 | `--active` | Filter to only active/enabled objects (for users, computers) |
 | `--person` | Filter to only person-type users (for `users`) |
@@ -134,19 +138,19 @@ r4t adws get gplinks
 
 Create new AD objects.
 
-```
+```text
 r4t adws create <object-type> <name> [password] [flags]
 ```
 
 | Type | Arguments | Description |
-|------|-----------|-------------|
+| --- | --- | --- |
 | `user` | `<samAccountName> <password>` | Create a new user account |
 | `computer` | `<hostname> <password>` | Create a new computer account |
 | `group` | `<samAccountName>` | Create a new security group |
 | `ou` | `<name>` | Create a new Organizational Unit |
 
 | Flag | Description |
-|------|-------------|
+| --- | --- |
 | `--ou` | Parent OU DN for the new object (for user, computer, group) |
 | `--parent` | Parent DN for the new OU |
 
@@ -172,12 +176,12 @@ r4t adws create ou "Staging" --parent "DC=corp,DC=example,DC=com"
 
 Modify existing AD objects.
 
-```
+```text
 r4t adws modify <subcommand> [flags]
 ```
 
 | Subcommand | Arguments | Description |
-|-----------|-----------|-------------|
+| --- | --- | --- |
 | `user` | `<samAccountName>` | Modify user attributes |
 | `computer` | `<hostname>` | Modify computer attributes |
 | `group` | `<samAccountName>` | Modify group attributes |
@@ -190,28 +194,28 @@ r4t adws modify <subcommand> [flags]
 #### Flags for `modify user/computer/group/ou`
 
 | Flag | Description |
-|------|-------------|
-| `--attrs` | Attributes to set in `key=value` format **[required]** |
+| --- | --- |
+| `--attrs` | Attributes to set in `key=value` format **\[required\]** |
 
 #### Flags for `modify attr`
 
 | Flag | Description |
-|------|-------------|
-| `--dn` | DN of the object to modify **[required]** |
-| `--attr` | Attribute name to modify **[required]** |
+| --- | --- |
+| `--dn` | DN of the object to modify **\[required\]** |
+| `--attr` | Attribute name to modify **\[required\]** |
 | `--value` | New value |
 | `--op` | Operation: `replace`, `add`, `delete` |
 
 #### Flags for `modify remove-group-member`
 
 | Flag | Description |
-|------|-------------|
-| `--member-dn` | DN of the member to remove **[required]** |
+| --- | --- |
+| `--member-dn` | DN of the member to remove **\[required\]** |
 
 #### Flags for `modify dacl`
 
 | Flag | Description |
-|------|-------------|
+| --- | --- |
 | `--trustee` | Account to grant/revoke rights to |
 | `--generic-all` | Grant GenericAll |
 | `--dcsync` | Grant DCSync rights (Replicating Directory Changes All) |
@@ -223,7 +227,7 @@ r4t adws modify <subcommand> [flags]
 #### Flags for `modify gplink`
 
 | Flag | Description |
-|------|-------------|
+| --- | --- |
 | `--gpo-guid` | GUID of the GPO |
 | `--link` | Create a new GPO link |
 | `--unlink` | Remove a GPO link |
@@ -262,12 +266,12 @@ r4t adws modify gplink "OU=Workstations,DC=corp,DC=example,DC=com" \
 
 Delete AD objects.
 
-```
+```text
 r4t adws delete <subcommand>
 ```
 
 | Subcommand | Arguments | Description |
-|-----------|-----------|-------------|
+| --- | --- | --- |
 | `dn` | — | Delete by DN (`--dn` required) |
 | `user` | `<samAccountName>` | Delete a user |
 | `computer` | `<hostname>` | Delete a computer |
@@ -291,12 +295,12 @@ r4t adws delete computer FAKEPC$
 
 Interact with LAPS (Local Administrator Password Solution) via ADWS.
 
-```
+```text
 r4t adws laps <subcommand> [computer]
 ```
 
 | Subcommand | Arguments | Description |
-|-----------|-----------|-------------|
+| --- | --- | --- |
 | `enabled` | `[computer]` | List computers with LAPS enabled (or check a specific one) |
 | `dump` | `[computer]` | Dump readable LAPS passwords (or for a specific computer) |
 | `permissions` | `[computer]` | Show principals with LAPS read access |
@@ -324,7 +328,7 @@ r4t adws laps set WS01 'NewLAPSpass123!'
 ## ADWS vs LDAP
 
 | Feature | `adws` | `ldap` |
-|---------|--------|--------|
+| --- | --- | --- |
 | Port | 9389 | 389 / 636 |
 | Protocol | SOAP over NBFS | Raw LDAP |
 | Detection profile | Lower (mimics PowerShell AD module) | Standard LDAP queries |

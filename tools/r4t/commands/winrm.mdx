@@ -1,3 +1,7 @@
+---
+title: "WINRM"
+---
+
 # winrm
 
 The `winrm` command provides Windows Remote Management (WinRM) operations for remote command execution and PowerShell remoting.
@@ -6,7 +10,7 @@ The `winrm` command provides Windows Remote Management (WinRM) operations for re
 
 ## Usage
 
-```
+```text
 r4t winrm <subcommand> [flags]
 ```
 
@@ -23,7 +27,7 @@ WinRM is the protocol underlying PowerShell Remoting (`Enter-PSSession`, `Invoke
 ## Planned Capabilities
 
 | Capability | Description |
-|-----------|-------------|
+| --- | --- |
 | **Command Execution** | Execute arbitrary commands on remote hosts |
 | **PowerShell Remoting** | Run PowerShell scripts and cmdlets remotely |
 | **Interactive Shell** | Establish an interactive remote shell session |
@@ -36,7 +40,7 @@ WinRM is the protocol underlying PowerShell Remoting (`Enter-PSSession`, `Invoke
 WinRM uses the same global authentication flags as all other R4t commands. The following authentication methods are supported:
 
 | Method | Flag | Description |
-|--------|------|-------------|
+| --- | --- | --- |
 | Password | `-u` / `-p` | Domain username and password |
 | NTLM Hash | `--hash` | Pass-the-hash via NT hash |
 | Kerberos | `--aes` / `--ccache` | Kerberos authentication via AES key or ccache |
@@ -66,7 +70,7 @@ r4t winrm exec --credential-id 1 10.10.10.20 "net user"
 ## Connection Details
 
 | Property | Value |
-|----------|-------|
+| --- | --- |
 | Protocol | WS-Management (SOAP over HTTP/HTTPS) |
 | HTTP Port | 5985 |
 | HTTPS Port | 5986 |
@@ -98,7 +102,7 @@ r4t winrm exec -u admin -p 'P@ssw0rd' -d corp.example.com 10.10.10.20 "C:\Window
 When the payload factory is operational, WinRM execution modules will request artifacts by capability:
 
 | Capability Request | Use Case |
-|-------------------|----------|
+| --- | --- |
 | `execution=script`, `type=ps1` | PowerShell stager for in-memory execution |
 | `inmemory=true`, `execution=script` | Fileless execution via encoded PowerShell |
 | `execution=self-exec`, `os=windows` | Standard EXE executed after file transfer |

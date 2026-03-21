@@ -86,7 +86,7 @@
                   "tools/r4t/commands/mssql",
                   "tools/r4t/commands/nfs",
                   "tools/r4t/commands/parse",
-                  "tools/r4t/payloads",
+                  "tools/r4t/commands/payloads",
                   "tools/r4t/commands/poison",
                   "tools/r4t/commands/port",
                   "tools/r4t/commands/proxy",

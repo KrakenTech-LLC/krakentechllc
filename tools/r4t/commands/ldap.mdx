@@ -1,3 +1,7 @@
+---
+title: "LDAP"
+---
+
 # ldap
 
 The `ldap` command is R4t's primary interface for interacting with Active Directory via the Lightweight Directory Access Protocol. It supports enumeration, modification, object creation and deletion, vulnerability scanning, DACL manipulation, GPO management, and LAPS interaction.
@@ -8,7 +12,7 @@ All `ldap` subcommands use the [global authentication and connection flags](../i
 
 ## Usage
 
-```
+```text
 r4t ldap <subcommand> [flags]
 ```
 
@@ -20,14 +24,14 @@ r4t ldap <subcommand> [flags]
 
 Query and retrieve AD objects.
 
-```
+```text
 r4t ldap get <object-type> [flags]
 ```
 
 #### Object Types
 
 | Type | Description |
-|------|-------------|
+| --- | --- |
 | `user` | Single user by samAccountName, DN, or UPN |
 | `users` | All domain user accounts |
 | `computer` | Single computer account |
@@ -43,7 +47,7 @@ r4t ldap get <object-type> [flags]
 #### Common Flags
 
 | Flag | Description |
-|------|-------------|
+| --- | --- |
 | `--name` | Filter by samAccountName, CN, or DN |
 | `--output`, `-o` | Write results to file |
 | `--raw` | Output raw LDAP attributes |
@@ -73,14 +77,14 @@ r4t ldap get desc
 
 Create new AD objects.
 
-```
+```text
 r4t ldap create <object-type> [flags]
 ```
 
 #### Object Types
 
 | Type | Description |
-|------|-------------|
+| --- | --- |
 | `user` | Create a new user account |
 | `computer` | Create a new computer account |
 | `group` | Create a new security group |
@@ -109,14 +113,14 @@ r4t ldap create ou --name "Staging" --parent "DC=corp,DC=example,DC=com"
 
 Delete AD objects.
 
-```
+```text
 r4t ldap delete <object-type> [flags]
 ```
 
 #### Object Types
 
 | Type | Description |
-|------|-------------|
+| --- | --- |
 | `user` | Delete a user account |
 | `computer` | Delete a computer account |
 | `group-member` | Remove a member from a group |
@@ -128,12 +132,12 @@ r4t ldap delete <object-type> [flags]
 
 Modify attributes on an existing AD object.
 
-```
+```text
 r4t ldap modify [flags]
 ```
 
 | Flag | Description |
-|------|-------------|
+| --- | --- |
 | `--dn` | Distinguished Name of the object to modify |
 | `--attribute` | LDAP attribute name to change |
 | `--value` | New value for the attribute |
@@ -156,14 +160,14 @@ r4t ldap modify --dn "CN=svcApp,CN=Users,DC=corp,DC=example,DC=com" --attribute 
 
 Re-enable a disabled AD object.
 
-```
+```text
 r4t ldap enable <object-type> [flags]
 ```
 
 #### Object Types
 
 | Type | Description |
-|------|-------------|
+| --- | --- |
 | `user` | Enable a disabled user account |
 | `computer` | Enable a disabled computer account |
 
@@ -173,12 +177,12 @@ r4t ldap enable <object-type> [flags]
 
 Reset or change an account password.
 
-```
+```text
 r4t ldap password [flags]
 ```
 
 | Flag | Description |
-|------|-------------|
+| --- | --- |
 | `--target-user` | The user whose password to change |
 | `--new-password` | The new password to set |
 | `--old-password` | Current password (required for self-service change) |
@@ -199,12 +203,12 @@ r4t ldap password --target-user jsmith --old-password 'OldP@ss' --new-password '
 
 Execute a raw LDAP search query.
 
-```
+```text
 r4t ldap query [flags]
 ```
 
 | Flag | Description |
-|------|-------------|
+| --- | --- |
 | `--filter` | LDAP search filter (e.g., `(objectClass=user)`) |
 | `--attributes` | Comma-separated list of attributes to return |
 | `--base` | Search base DN (defaults to domain root) |
@@ -230,7 +234,7 @@ r4t ldap query --filter "(objectClass=user)" --base "OU=Employees,DC=corp,DC=exa
 
 Scan for AD vulnerabilities and misconfigurations.
 
-```
+```text
 r4t ldap scan [flags]
 ```
 
@@ -248,7 +252,7 @@ This subcommand performs a broad vulnerability scan of the AD environment and po
 - NOPAC-vulnerable accounts
 
 | Flag | Description |
-|------|-------------|
+| --- | --- |
 | `--output`, `-o` | Write scan results to file |
 
 ---
@@ -257,12 +261,12 @@ This subcommand performs a broad vulnerability scan of the AD environment and po
 
 Full domain reconnaissance — enumerates users, computers, groups, OUs, GPOs, trusts, domain controllers, and password policies, storing everything in the database.
 
-```
+```text
 r4t ldap recon [flags]
 ```
 
 | Flag | Description |
-|------|-------------|
+| --- | --- |
 | `--output`, `-o` | Output directory for results |
 
 This is typically the first command run after gaining credentials. It populates the full local database for offline analysis.
@@ -273,20 +277,20 @@ This is typically the first command run after gaining credentials. It populates 
 
 Enumerate and modify Discretionary Access Control Lists (DACLs) on AD objects.
 
-```
+```text
 r4t ldap dacl <subcommand> [flags]
 ```
 
 #### Subcommands
 
 | Subcommand | Description |
-|-----------|-------------|
+| --- | --- |
 | `get` | Enumerate DACL ACEs on an object |
 | `add` | Add an ACE to an object's DACL |
 | `remove` | Remove an ACE from an object's DACL |
 
 | Flag | Description |
-|------|-------------|
+| --- | --- |
 | `--dn` | Target object DN |
 | `--trustee` | Account to grant/revoke rights to |
 | `--right` | AD right (e.g., `GenericAll`, `WriteProperty`, `ResetPassword`) |
@@ -308,14 +312,14 @@ r4t ldap dacl add --dn "CN=Domain Admins,CN=Users,DC=corp,DC=example,DC=com" \
 
 Manage Group Policy Object links to containers (OUs, domains, sites).
 
-```
+```text
 r4t ldap gplink <subcommand> [flags]
 ```
 
 #### Subcommands
 
 | Subcommand | Description |
-|-----------|-------------|
+| --- | --- |
 | `add` | Link a GPO to a container |
 | `remove` | Unlink a GPO from a container |
 | `list` | List all GPO links |
@@ -326,12 +330,12 @@ r4t ldap gplink <subcommand> [flags]
 
 Interact with LAPS (Local Administrator Password Solution).
 
-```
+```text
 r4t ldap laps [flags]
 ```
 
 | Flag | Description |
-|------|-------------|
+| --- | --- |
 | `--computer` | Target computer name |
 | `--all` | Retrieve LAPS passwords for all computers |
 | `--output`, `-o` | Write results to file |
@@ -354,12 +358,12 @@ r4t ldap laps --all
 
 Enumerate Group Policy Objects.
 
-```
+```text
 r4t ldap gpo [flags]
 ```
 
 | Flag | Description |
-|------|-------------|
+| --- | --- |
 | `--output`, `-o` | Write results to file |
 | `--links` | Include GPO link information |
 

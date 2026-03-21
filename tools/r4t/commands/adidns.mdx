@@ -1,3 +1,7 @@
+---
+title: "ADIDNS"
+---
+
 # adidns
 
 Active Directory Integrated DNS (ADIDNS) enumeration and manipulation. ADIDNS stores DNS records directly as objects in Active Directory. By default, any authenticated domain user can add new records, making this a common vector for name poisoning attacks.
@@ -6,7 +10,7 @@ Active Directory Integrated DNS (ADIDNS) enumeration and manipulation. ADIDNS st
 
 ## Usage
 
-```
+```text
 r4t adidns <subcommand> [flags]
 ```
 
@@ -52,10 +56,10 @@ r4t adidns add --record _custom._tcp --type SRV --data target.corp.example.com \
 ```
 
 | Flag | Short | Type | Description |
-|------|-------|------|-------------|
-| `--record` | `-r` | string | Target record name (FQDN or relative name) **[required]** |
+| --- | --- | --- | --- |
+| `--record` | `-r` | string | Target record name (FQDN or relative name) **\[required\]** |
 | `--type` | `-t` | string | Record type: `A`, `AAAA`, `CNAME`, `SRV` (default: `A`) |
-| `--data` | `-D` | string | Record data (IP address, target hostname, etc.) **[required]** |
+| `--data` | `-D` | string | Record data (IP address, target hostname, etc.) **\[required\]** |
 | `--zone` | — | string | DNS zone (defaults to domain) |
 | `--forest` | — | bool | Use `ForestDnsZones` instead of `DomainDnsZones` |
 | `--legacy` | — | bool | Use the System partition (legacy DNS storage) |
@@ -63,7 +67,7 @@ r4t adidns add --record _custom._tcp --type SRV --data target.corp.example.com \
 | `--ttl` | — | int | TTL in seconds (default: 180) |
 | `--dns-server` | — | string | DNS server IP for SOA serial lookup |
 | `--tcp` | — | bool | Use DNS over TCP for SOA lookup |
-| `--rpc` | — | bool | Use RPC instead of LDAP *(not yet implemented)* |
+| `--rpc` | — | bool | Use RPC instead of LDAP _(not yet implemented)_ |
 | `--priority` | — | uint16 | SRV record priority |
 | `--weight` | — | uint16 | SRV record weight |
 | `--port` | — | uint16 | SRV record port |
@@ -101,8 +105,8 @@ r4t adidns remove --record wpad --zone corp.example.com
 Tombstoning marks the record for deletion. The record is not immediately removed — AD replication handles cleanup.
 
 | Flag | Short | Type | Description |
-|------|-------|------|-------------|
-| `--record` | `-r` | string | Record name to remove **[required]** |
+| --- | --- | --- | --- |
+| `--record` | `-r` | string | Record name to remove **\[required\]** |
 | `--zone` | — | string | DNS zone |
 | `--forest` | — | bool | Use `ForestDnsZones` |
 | `--legacy` | — | bool | Use System partition |
@@ -136,8 +140,8 @@ r4t adidns query --record _ldap._tcp --type SRV
 ```
 
 | Flag | Short | Type | Description |
-|------|-------|------|-------------|
-| `--record` | `-r` | string | Record name to query **[required]** |
+| --- | --- | --- | --- |
+| `--record` | `-r` | string | Record name to query **\[required\]** |
 | `--type` | `-t` | string | Record type filter |
 | `--zone` | — | string | DNS zone |
 | `--forest` | — | bool | Use `ForestDnsZones` |
