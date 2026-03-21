@@ -28,6 +28,7 @@ R4t covers the full lifecycle of an AD engagement:
 | **Reconnaissance** | Users, groups, computers, OUs, GPOs, trusts, domain controllers, DNS, ADIDNS |
 | **Vulnerability Assessment** | ADCS ESC1–ESC16, DCSync, LAPS exposure, Kerberoasting, AS-REP Roasting, shadow credentials, pre-Windows 2000 accounts, coercible hosts |
 | **Exploitation** | Certificate requests, Kerberos ticket manipulation, NT hash extraction, GPP password dumping, authentication coercion |
+| **Execution** | WMI remote execution, WinRM/PSRemote command execution, payload generation via the [payload factory](./payloads) |
 | **Persistence & Movement** | Credential spraying, DACL modification, shadow credential injection, LAPS enumeration |
 | **Reporting** | BloodHound collection, structured database of findings, tabular output, file output |
 
@@ -55,6 +56,7 @@ R4t is organized into top-level commands. Each command groups related operations
 | [`rdp`](./commands/rdp) | RDP operations |
 | [`ssh`](./commands/ssh) | SSH operations |
 | [`winrm`](./commands/winrm) | WinRM operations |
+| [`psremote`](./commands/psremote) | PowerShell Remoting operations |
 | [`wmi`](./commands/wmi) | WMI queries |
 | [`mssql`](./commands/mssql) | MSSQL enumeration and exploitation |
 | [`rpc`](./commands/rpc) | RPC operations |
@@ -124,6 +126,7 @@ All commands inherit these persistent flags from the root command:
 - [**Credentials**](./credentials) — Authentication material (passwords, hashes, certificates, ccache files). Stored securely and selected by ID or set as default.
 - [**Settings**](./settings) — Persistent configuration like domain, nameserver, proxy, and output options.
 - [**Database**](./database) — A dual-store system (Badger KV \+ SQLite) that persists all findings, scan results, and configuration.
+- [**Payload Factory**](./payloads) — A deterministic, recipe-based build system that generates execution artifacts (EXE, DLL, shellcode, PIC, BOF, scripts) on demand with capability-based resolution.
 
 ---
 
@@ -134,4 +137,5 @@ All commands inherit these persistent flags from the root command:
 - [Database](./database)
 - [Settings](./settings)
 - [Targets](./targets)
+- [Payload Factory](./payloads)
 - [Credentials](./credentials)

