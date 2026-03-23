@@ -1,0 +1,110 @@
+---
+title: "WAF Engine"
+description: "Web Application Firewall engine with OWASP Top 10 coverage"
+---
+
+# WAF Engine
+
+The Aegis WAF engine evaluates every proxied request against a chain of compiled rules. Each proxy host independently runs in `off`, `detect`, or `enforce` mode.
+
+---
+
+## WAF Modes
+
+| Mode | Behavior |
+| --- | --- |
+| **Off** | Pure reverse proxy — no WAF evaluation |
+| **Detect** | Evaluate rules and log matches, but allow all traffic through |
+| **Enforce** | Evaluate rules and block matching requests |
+
+---
+
+## Built-in Capabilities
+
+| Capability | Details |
+| --- | --- |
+| **26 built-in rules** | OWASP Top 10 coverage across all major attack categories |
+| **Per-host WAF mode** | `off`, `detect`, `enforce` per proxy host |
+| **Rate limiting** | Token bucket algorithm per IP or per host with burst allowance |
+| **IP blacklists** | Block by IP/CIDR; compiled to `net.IPNet` for fast matching |
+| **IP whitelists** | Bypass all WAF rules for trusted IPs/CIDRs |
+| **CORS enforcement** | Per-host origin, method, header, credential, and max-age policies; optionally block invalid origins |
+| **Input normalization** | URL decoding + double-decode detection before rule evaluation |
+| **Method restriction** | Per-host allowed HTTP methods |
+| **Response filtering** | Strip `Server`, `X-Powered-By`, `X-AspNet-Version` headers |
+| **Security header injection** | Auto-inject `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy` |
+| **SameSite cookie enforcement** | Force `SameSite=Lax` on upstream `Set-Cookie` headers missing the attribute |
+| **Paranoia levels** | Rules tagged with paranoia level (1-4) for tunable sensitivity |
+| **Configurable targets** | Each rule targets specific input surfaces: path, query, body, headers, cookies, user-agent |
+| **Severity-based auto blocking** | Automatically blacklists offending IPs when a blocked match meets the configured minimum severity |
+
+---
+
+## Detection Categories
+
+The built-in rule library covers the following attack classes:
+
+| Category | Rules | Examples |
+| --- | --- | --- |
+| **SQL Injection** | Core, Extended, Comment Bypass | `UNION SELECT`, `SLEEP()`, `BENCHMARK()`, stacked queries |
+| **Cross-Site Scripting** | Core, Event Handlers, SVG/MathML | `<script>`, `onerror=`, `javascript:`, SVG/iframe/embed |
+| **Server-Side Template Injection** | SSTI | `{{7*7}}`, `${T(java.lang.Runtime)}`, `<%`, `{%` |
+| **SSRF** | Core, Extended | `127.0.0.1`, `169.254.169.254`, `file://`, decimal/octal IPs |
+| **Command Injection** | Core, PowerShell | Shell metacharacters, `Invoke-Expression` |
+| **Path Traversal** | Traversal + Null Bytes | `../`, `%2e%2e%2f`, double-encoded variants |
+| **LDAP Injection** | LDAP Filter Manipulation | `)(`, `*)(cn=*`, filter injection |
+| **XPath Injection** | XPath Function Abuse | `string()`, `count()`, `contains()` |
+| **CRLF Header Injection** | HTTP Response Splitting | `%0d%0a`, `\r\n` in header values |
+| **Log4Shell** | JNDI Injection | `${jndi:ldap://}`, obfuscated variants |
+| **Spring4Shell** | Java Runtime Exec | `class.module.classLoader` |
+| **Deserialization** | Java, PHP, Python | `aced0005` (Java magic bytes), `O:` (PHP), pickle signatures |
+| **Scanner Detection** | User-Agent Fingerprinting | sqlmap, Nikto, Nmap, Burp Suite, Nuclei, WPScan |
+| **Sensitive File Probing** | Config/VCS File Access | `.env`, `.git`, `.htaccess`, `WEB-INF`, `web.config` |
+| **Session Fixation** | Session ID in URL | `JSESSIONID=`, `PHPSESSID=`, token parameters |
+
+---
+
+## Auto Blocking by Severity
+
+Aegis can automatically blacklist source IPs when a request is blocked by the WAF and the matched rule severity meets or exceeds a configured threshold.
+
+How it works:
+
+1. The request must be actively blocked by the WAF
+2. Aegis compares the matched rule severity against the configured minimum severity
+3. If the rule severity meets or exceeds that threshold, the source IP is added to that host's blacklist as a `/32` CIDR entry
+4. The proxy runtime is reloaded so the new blacklist entry takes effect immediately
+
+### Configuration
+
+| Setting | Value |
+| --- | --- |
+| Setting key | `waf.auto_blacklist_min_severity` |
+| Location | Admin UI -> Settings -> Auto-Blacklist Minimum Severity |
+| Default | `high` |
+
+Available values: `off`, `low`, `medium`, `high`, `critical`
+
+- `high` — auto-blacklist `high` and `critical` blocked attacks
+- `critical` — only auto-blacklist `critical` blocked attacks
+- `off` — disable severity-based auto blacklisting entirely
+
+Auto blocking is host-specific. Requests that are only detected or logged (not blocked) do not trigger auto blacklisting.
+
+---
+
+## Geolocation
+
+Aegis enriches traffic analytics with city and country geolocation using `ipgeolocation.io`.
+
+Used for:
+- Dashboard Traffic Origins
+- Analytics geographic distribution
+- City and country enrichment on traffic and top-IP views
+
+Setup:
+1. Create an account at `ipgeolocation.io`
+2. Generate an API key
+3. Open Aegis Settings and set the API Key
+
+Lookups are cached locally in SQLite. Geolocation enrichment is cache-first and does not block the request path.

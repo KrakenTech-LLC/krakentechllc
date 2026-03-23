@@ -1,0 +1,118 @@
+---
+title: "Custom Rules"
+description: "Custom WAF rule authoring in Aegis"
+---
+
+# Custom WAF Rules
+
+Aegis supports fully custom WAF rules in two modes: **Condition Builder** for structured field/operator/value rules and **Raw Regex** for advanced RE2-based pattern matching.
+
+---
+
+## Rule Options
+
+Every custom rule supports the following configuration:
+
+| Option | Description |
+| --- | --- |
+| Name | Rule display name |
+| Description | Detailed description of what the rule detects |
+| Category | Classification category |
+| Severity | `low`, `medium`, `high`, or `critical` |
+| Action | `block`, `allow`, `challenge`, `log`, or `redirect` |
+| Enabled | Toggle rule on/off |
+| Paranoia | Paranoia level (1-4) |
+| Tags | Free-form tags for organization |
+| OWASP IDs | Associated OWASP identifiers |
+| CVE IDs | Associated CVE identifiers |
+
+---
+
+## Condition Builder Mode
+
+Condition Builder is the standard rule-authoring flow. It supports multi-line field-based rules with `AND` / `OR` logic.
+
+### Available Fields
+
+| Field | Description |
+| --- | --- |
+| Request URI | Full request URI |
+| Request Path | URL path component |
+| Query String | URL query string |
+| HTTP Method | Request method (GET, POST, etc.) |
+| Request Body | Request body content |
+| User Agent | User-Agent header value |
+| Host Header | Host header value |
+| Content-Type | Content-Type header value |
+| Referer | Referer header value |
+| Source IP | Client source IP address |
+| Any Header | Match against any request header |
+| Specific Header | Match against a named header |
+| Any Cookie | Match against any cookie |
+| Specific Cookie | Match against a named cookie |
+
+### Available Operators
+
+| Operator | Description |
+| --- | --- |
+| `contains` | Field contains the value |
+| `does not contain` | Field does not contain the value |
+| `equals` | Exact match |
+| `does not equal` | Not an exact match |
+| `starts with` | Field starts with the value |
+| `ends with` | Field ends with the value |
+| `matches regex` | RE2 regex match |
+| `does not match regex` | RE2 regex non-match |
+| `is in list` | Value is in a provided list |
+| `is not in list` | Value is not in a provided list |
+| `greater than` | Numeric comparison |
+| `less than` | Numeric comparison |
+| `exists` | Field is present (no value needed) |
+| `does not exist` | Field is absent (no value needed) |
+| `is IP in range` | IP or CIDR range match |
+
+### Per-Condition Options
+
+- **Case Sensitive** — toggle case sensitivity
+- **Negate Result** — invert the condition match
+
+### Examples
+
+- Block requests where `Request Path` `contains` `/wp-admin`
+- Block requests where `Specific Header` `matches regex` a malicious header pattern
+- Allow requests where `Source IP` `is IP in range` `10.0.0.0/8`
+
+---
+
+## Raw Regex Mode
+
+Raw Regex mode is for advanced rules and built-in style pattern matching. You provide a Go RE2 pattern and one or more request targets to inspect.
+
+### Supported Targets
+
+| Target | Description |
+| --- | --- |
+| Path / URI | Request path and URI |
+| Query String | URL query parameters |
+| Body | Request body |
+| Headers | All request headers |
+| Cookies | All cookies |
+| User Agent | User-Agent header |
+
+### Notes
+
+- Patterns are compiled with Go's `regexp` engine (RE2 syntax)
+- Inline flags such as `(?i)` are supported (server-side evaluation)
+- Rules require both a pattern and at least one target
+
+---
+
+## Rule Testing
+
+The rule tester uses the real backend evaluation path. You can test:
+
+- Condition-based rules
+- Regex-based rules
+- Full request shapes including path, query, headers, cookies, body, and user-agent
+
+Validation and test results are based on the same Go-side logic the live WAF uses, not a browser-only approximation.

@@ -57,6 +57,18 @@
             ]
           },
           {
+            "tab": "Aegis",
+            "pages": [
+              "tools/aegis/introduction",
+              "tools/aegis/reverse-proxy",
+              "tools/aegis/waf-engine",
+              "tools/aegis/custom-rules",
+              "tools/aegis/allow-lists",
+              "tools/aegis/cli-reference",
+              "tools/aegis/api-reference"
+            ]
+          },
+          {
             "tab": "R4t",
             "pages": [
               "tools/r4t/introduction",

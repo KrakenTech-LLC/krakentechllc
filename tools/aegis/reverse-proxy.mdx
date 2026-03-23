@@ -1,0 +1,98 @@
+---
+title: "Reverse Proxy"
+description: "NPM-equivalent reverse proxy capabilities in Aegis"
+---
+
+# Reverse Proxy
+
+Aegis provides a full-featured reverse proxy engine as a drop-in replacement for Nginx Proxy Manager. All proxy configuration is managed through the admin UI and stored in SQLite.
+
+---
+
+## Capabilities
+
+| Capability | Details |
+| --- | --- |
+| **Multi-host routing** | Domain-based routing via `Host` header; unlimited proxy hosts |
+| **Load balancing** | Round-robin, least-connections, IP-hash policies per host |
+| **Health checks** | Active HTTP health checks per upstream with configurable path and interval |
+| **WebSocket proxying** | Transparent `Upgrade`/`Connection` header passthrough |
+| **SSL/TLS termination** | Let's Encrypt (ACME HTTP-01 via `autocert`) + custom certificate upload |
+| **Force HTTPS** | Per-host 301 redirect from HTTP to HTTPS |
+| **HSTS** | Configurable `max-age`, `includeSubDomains`, `preload` per host |
+| **SNI routing** | TLS certificate selection based on SNI with custom + autocert fallback |
+| **Custom headers** | Per-host request and response header injection/removal |
+| **Proxy timeouts** | Configurable connect, read, write, idle timeouts |
+| **Host preservation** | Preserve or rewrite the upstream `Host` header |
+| **X-Forwarded headers** | Automatic `X-Forwarded-For`, `X-Forwarded-Host`, `X-Real-IP` injection |
+| **Max body size** | Per-host request body size limit |
+| **Enable/disable** | Toggle hosts on/off without deleting configuration |
+
+---
+
+## Load Balancing Policies
+
+| Policy | Description |
+| --- | --- |
+| **Round-robin** | Distributes requests evenly across all healthy upstreams |
+| **Least-connections** | Routes to the upstream with the fewest active connections |
+| **IP-hash** | Consistently routes the same client IP to the same upstream |
+
+Each policy is configured per proxy host. Unhealthy upstreams (as determined by health checks) are automatically removed from the rotation.
+
+---
+
+## SSL/TLS
+
+Aegis supports two certificate sources:
+
+### Let's Encrypt (Automatic)
+
+- Uses ACME HTTP-01 challenge via `golang.org/x/crypto/acme/autocert`
+- Certificates are requested and renewed automatically
+- Requires port 80 to be reachable for challenge validation
+
+### Custom Certificates
+
+- Upload PEM-encoded certificate and private key through the admin UI
+- Private keys are encrypted at rest using AES-256-GCM
+- Encryption key can be auto-generated or provided via `AEGIS_SSL_KEY`
+
+### HSTS Configuration
+
+Per-host HSTS headers with configurable:
+- `max-age` duration
+- `includeSubDomains` directive
+- `preload` directive
+
+---
+
+## Proxy Host Configuration
+
+Each proxy host supports the following settings:
+
+| Setting | Description |
+| --- | --- |
+| Domain(s) | One or more domain names for routing |
+| Upstream(s) | Backend server addresses with port |
+| Load balance policy | Round-robin, least-connections, or IP-hash |
+| SSL mode | None, Let's Encrypt, or custom certificate |
+| Force HTTPS | Redirect HTTP to HTTPS |
+| HSTS | Strict Transport Security settings |
+| Custom headers | Request and response header modifications |
+| Timeouts | Connect, read, write, idle timeouts |
+| Preserve host | Forward original Host header to upstream |
+| Max body size | Request body size limit |
+| WAF mode | Off, detect, or enforce |
+| Access list | Optional allow list attachment |
+| Enabled | Toggle host on/off |
+
+---
+
+## Health Checks
+
+Active health checks probe each upstream backend at a configurable interval:
+
+- **Path** — HTTP path to check (e.g., `/health`)
+- **Interval** — Time between checks
+- **Behavior** — Unhealthy upstreams are removed from the load balancer rotation and re-added when they recover

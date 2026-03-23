@@ -1,0 +1,96 @@
+---
+title: "API Reference"
+description: "Aegis REST API reference"
+---
+
+# API Reference
+
+All API endpoints are served on the admin listener (`127.0.0.1:9443` by default). Authenticated endpoints require a valid session cookie (`kwaf_session`) and CSRF token.
+
+---
+
+## Setup
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `GET` | `/api/v1/setup/status` | Check if initial setup has been completed |
+| `POST` | `/api/v1/setup/init` | Create the first admin user and optionally configure SMTP |
+
+---
+
+## Authentication
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `POST` | `/api/v1/auth/login` | Authenticate with username and password |
+| `POST` | `/api/v1/auth/logout` | Destroy the current session |
+| `POST` | `/api/v1/auth/magic-link` | Request a passwordless login email |
+| `GET` | `/api/v1/auth/verify` | Verify a magic link token and create a session |
+
+---
+
+## Proxy Hosts
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `GET` | `/api/v1/hosts` | List all proxy hosts |
+| `POST` | `/api/v1/hosts` | Create a new proxy host |
+| `GET` | `/api/v1/hosts/{id}` | Get a proxy host by ID |
+| `PUT` | `/api/v1/hosts/{id}` | Update a proxy host |
+| `DELETE` | `/api/v1/hosts/{id}` | Delete a proxy host |
+
+---
+
+## WAF Rules
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `GET` | `/api/v1/rules` | List all WAF rules (filterable by `host_id`) |
+| `POST` | `/api/v1/rules` | Create a custom WAF rule |
+| `GET` | `/api/v1/rules/{id}` | Get a WAF rule by ID |
+| `PUT` | `/api/v1/rules/{id}` | Update a WAF rule |
+| `DELETE` | `/api/v1/rules/{id}` | Delete a WAF rule |
+
+---
+
+## Traffic & Analytics
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `GET` | `/api/v1/traffic` | Query request logs with filters (host, IP, status, action, time range) |
+| `GET` | `/api/v1/analytics/top-ips` | Top source IPs by request and block count |
+| `GET` | `/api/v1/analytics/top-hosts` | Top attacked hosts |
+| `GET` | `/api/v1/analytics/timeline` | Traffic timeline with allowed/blocked/detected buckets |
+| `GET` | `/api/v1/analytics/top-rules` | Most frequently triggered WAF rules |
+| `GET` | `/api/v1/analytics/geo` | Geographic traffic distribution by country |
+| `GET` | `/api/v1/events` | Server-Sent Events stream for live traffic |
+
+---
+
+## Dashboard & System
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `GET` | `/api/v1/dashboard` | Aggregate dashboard stats (host count, request count, block rate, top rule) |
+| `GET` | `/api/v1/audit` | Admin audit log |
+| `POST` | `/api/v1/reload` | Hot reload proxy hosts and WAF rules from the database |
+
+---
+
+## SMTP & Notifications
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `GET` | `/api/v1/smtp` | List SMTP sending profiles |
+| `POST` | `/api/v1/smtp` | Create an SMTP profile |
+| `PUT` | `/api/v1/smtp/{id}` | Update an SMTP profile |
+| `DELETE` | `/api/v1/smtp/{id}` | Delete an SMTP profile |
+| `POST` | `/api/v1/smtp/test` | Test SMTP connection |
+
+---
+
+## Users
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `GET` | `/api/v1/users/me` | Get the currently authenticated user |

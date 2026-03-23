@@ -1,0 +1,146 @@
+---
+title: "Allow Lists"
+description: "Access control policies for Aegis proxy hosts"
+---
+
+# Allow Lists
+
+An allow list is a reusable access-control policy that you attach to a proxy host to restrict who can reach the protected upstream application.
+
+---
+
+## How Allow Lists Work
+
+1. You create the allow list once in the admin UI
+2. You attach it to a proxy host in that host's configuration
+3. Aegis evaluates the allow list before proxying the request upstream
+4. If the client or user does not satisfy the allow list, access is denied before the upstream application is reached
+
+**Where to apply:** Admin UI -> Hosts -> edit a proxy host -> Access List
+
+---
+
+## Allow List Types
+
+| Type | Description |
+| --- | --- |
+| [IP / CIDR](#ip--cidr) | Restrict by source IP address or CIDR range |
+| [Local Username / Password](#local-username--password) | Basic auth-style protection with local credentials |
+| [OAuth / OIDC SSO](#oauth--oidc-sso) | Single sign-on via Azure AD, AWS Cognito, GitHub |
+| [Active Directory (LDAP)](#active-directory-ldap) | LDAP bind authentication against AD |
+
+---
+
+## IP / CIDR
+
+Use IP-based allow lists to permit specific addresses or ranges:
+
+- Office IP ranges
+- VPN egress IPs
+- Internal networks
+- Specific trusted addresses
+
+If the client IP matches a configured entry, the request is allowed. Otherwise, the request is denied. The same allow list can be reused across multiple hosts.
+
+---
+
+## Local Username / Password
+
+Protect a host with a local auth group, similar to basic auth in Nginx.
+
+- Define one or more usernames in the allow list
+- Aegis stores their passwords securely
+- Visitors are prompted for username and password
+- After successful authentication, an auth cookie is set so re-prompting is not immediate
+
+Useful for staging sites, internal dashboards, and temporary hostname protection.
+
+---
+
+## OAuth / OIDC SSO
+
+Aegis supports host-level OAuth/OIDC access lists. These run on the protected host itself, not on the admin UI. The redirect URI always points at the protected application hostname:
+
+```text
+https://<protected-host>/_aegis/oauth/callback
+```
+
+The callback path `/_aegis/oauth/callback` is reserved by Aegis. A successful login sets an auth cookie on the protected host.
+
+### Azure AD / Microsoft Entra ID
+
+App registration setup for a protected host `app.example.com`:
+
+1. Open Microsoft Entra ID -> App registrations -> New registration
+2. Name the app (e.g., `Aegis - app.example.com`)
+3. Choose the supported account type
+4. Under Redirect URI, choose platform Web
+5. Set the redirect URI to `https://app.example.com/_aegis/oauth/callback`
+6. Create the app registration
+7. Copy the Application (client) ID
+8. Choose a tenant identifier (single-tenant: Directory ID; multi-tenant: `common`, `organizations`, or `consumers`)
+9. Create a client secret under Certificates & secrets
+10. For user/group picker support, add Microsoft Graph application permissions: `User.Read.All`, `Group.Read.All` and grant admin consent
+
+In Aegis, configure:
+- Provider: `Azure AD (OIDC)`
+- Client ID: the Azure Application (client) ID
+- Client Secret: the client secret value
+- Issuer URL: `https://login.microsoftonline.com/<tenant-id>/v2.0`
+
+Azure-specific behavior:
+- Aegis queries Microsoft Graph to populate searchable user and group pickers
+- Users are stored by UPN/email
+- Groups are stored by Graph group ID and matched during login
+
+### AWS Cognito
+
+- Provider: `AWS Cognito (OIDC)`
+- Client ID: Cognito app client ID
+- Client Secret: Cognito app client secret
+- Issuer URL: `https://cognito-idp.<region>.amazonaws.com/<user-pool-id>`
+
+### GitHub
+
+- Provider: `GitHub OAuth`
+- Client ID: GitHub OAuth app client ID
+- Client Secret: GitHub OAuth app client secret
+
+GitHub access can be restricted by:
+- Allowed Usernames
+- Allowed Emails
+- Allowed Email Domains
+- Allowed GitHub Organizations
+
+---
+
+## Active Directory (LDAP)
+
+Host-level Active Directory access lists using LDAP bind and directory search.
+
+### Configuration
+
+| Setting | Description |
+| --- | --- |
+| Domain | AD DNS domain (e.g., `corp.example.com`) |
+| Domain Controller | Hostname or IP with port (e.g., `dc01.corp.example.com:389`) |
+| Bind Username | Service account with directory read access |
+| Bind Password | Service account password |
+| Allowed Users | Permitted user list |
+| Allowed Groups | Permitted group list |
+| Pass Through | Forward authenticated identity headers upstream (optional) |
+
+### Runtime Behavior
+
+1. End user is prompted for username and password via HTTP Basic Auth
+2. Aegis binds to LDAP with the service account
+3. Finds the user object and resolves the UPN
+4. Attempts LDAP authentication with the end user's supplied password
+5. Access is allowed only if the user bind succeeds and the user is in the allowed list
+
+### Notes
+
+- Plain LDAP: port `389`
+- LDAPS: port `636`
+- The bind account needs directory read access only; domain admin is not required
+- Aegis can test the LDAP connection and load searchable user/group pickers after AD connection details are provided

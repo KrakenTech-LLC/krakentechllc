@@ -1,0 +1,228 @@
+---
+title: "Introduction"
+description: "Aegis — Production-grade Web Application Firewall & Reverse Proxy Manager"
+---
+
+<Frame>
+  <img
+    src="/tools/aegis/aegis.svg"
+    alt="Aegis"
+    className="mx-auto"
+  />
+</Frame>
+
+# Aegis — Web Application Firewall & Reverse Proxy Manager
+
+Aegis is a production-grade Web Application Firewall (WAF) and Reverse Proxy Manager written in Go. It combines the host management experience of Nginx Proxy Manager with a full WAF engine that evaluates OWASP Top 10 rule sets on every proxied request.
+
+**Single binary. SQLite storage. Zero risky dependencies.**
+
+Aegis ships as a single static binary with an embedded admin UI, uses SQLite (WAL mode) for all persistent storage, and binds the admin dashboard to `127.0.0.1:9443` by default for security. No Nginx, no Docker, no external database required — just run the binary and start adding hosts.
+
+---
+
+## Design Principles
+
+- **NPM replacement** — domain-based routing, load balancing, SSL/TLS termination, health checks, and WebSocket proxying without needing a separate reverse proxy
+- **Per-host WAF profiles** — each proxy host independently runs in `off`, `detect`, or `enforce` mode with its own rule chain
+- **Zero-lock hot path** — atomic pointer swaps for config, channel-buffered log writes, per-bucket rate limiters; no mutex on the request path
+- **First-run setup wizard** — no default credentials; forces secure initialization on first launch
+
+---
+
+## Feature Overview
+
+<Columns cols={3}>
+  <Card title="Reverse Proxy" icon="network-wired" href="/tools/aegis/reverse-proxy">
+    NPM-equivalent multi-host routing, load balancing, SSL/TLS, WebSocket proxying
+  </Card>
+  <Card title="WAF Engine" icon="shield-halved" href="/tools/aegis/waf-engine">
+    26 built-in OWASP rules, rate limiting, IP blacklists/whitelists, CORS enforcement
+  </Card>
+  <Card title="Allow Lists" icon="lock" href="/tools/aegis/allow-lists">
+    IP/CIDR, local auth, OAuth/OIDC SSO, Active Directory access control
+  </Card>
+  <Card title="Custom Rules" icon="code" href="/tools/aegis/custom-rules">
+    Condition builder and raw regex rule authoring with live testing
+  </Card>
+  <Card title="CLI & Operations" icon="terminal" href="/tools/aegis/cli-reference">
+    CLI reference, configuration, service management, environment variables
+  </Card>
+  <Card title="API Reference" icon="plug" href="/tools/aegis/api-reference">
+    Full REST API for hosts, rules, traffic, analytics, SMTP, and system management
+  </Card>
+</Columns>
+
+---
+
+## Quick Start
+
+### Build from source
+
+```bash
+git clone https://github.com/KrakenTech-LLC/aegis.git
+cd aegis
+go build -o aegis ./cmd/aegis/
+```
+
+### First run
+
+```bash
+./aegis run
+```
+
+On first launch, Aegis starts in setup mode. Open `http://127.0.0.1:9443` in your browser to run the setup wizard, which prompts for:
+
+1. Admin username and password (minimum 12 characters)
+2. Email address (for magic link authentication, optional)
+3. SMTP configuration (optional, enables passwordless login and alerts)
+
+After setup completes, the default WAF rules are seeded into SQLite and the proxy begins listening.
+
+### Default Listeners
+
+| Service | Default Address | Description |
+| --- | --- | --- |
+| Admin UI | `127.0.0.1:9443` | Dashboard and API (localhost only) |
+| HTTP Proxy | `:80` | Inbound HTTP traffic + ACME HTTP-01 challenges |
+| HTTPS Proxy | `:443` | Inbound HTTPS traffic with TLS termination |
+
+---
+
+## Architecture
+
+```text
+                  +-------------------------------------+
+   Clients ------►|            Aegis (Go)               |
+                  |                                     |
+                  |  +-----------+   +---------------+  |
+                  |  |  Reverse  |   |   WAF Engine  |  |
+                  |  |  Proxy    |◄--|  (per-host    |  |
+                  |  |  Router   |   |  rule chains) |  |
+                  |  +-----+-----+   +---------------+  |
+                  |        |                            |
+                  |  +-----v-----+   +---------------+  |
+                  |  |  Upstream |   |  Admin Web UI |  |
+                  |  |  Backends |   |  (localhost)  |  |
+                  |  +-----------+   +---------------+  |
+                  |        |                            |
+                  |  +-----v-------------------------+  |
+                  |  |        SQLite Storage         |  |
+                  |  +-------------------------------+  |
+                  +-------------------------------------+
+```
+
+### Request Lifecycle
+
+```text
+Client
+  |
+  v
+TLS Termination (autocert / custom cert via SNI)
+  |
+  v
+Host Lookup (domain -> runtimeHost via atomic.Pointer)
+  |
+  v
+WAF Mode Check ──► "off" ──► skip directly to Reverse Proxy
+  |
+  v (detect / enforce)
+IP Whitelist ──► match ──► allow, skip rules
+  |
+  v
+IP Blacklist ──► match ──► block (enforce) or log (detect)
+  |
+  v
+Method Restriction
+  |
+  v
+Body Size Check
+  |
+  v
+CORS Origin Validation
+  |
+  v
+Rate Limiting (token bucket)
+  |
+  v
+Rule Chain Evaluation (26 compiled regex rules)
+  |
+  v
+Reverse Proxy (httputil.ReverseProxy with load balancing)
+  |
+  v
+Response Filtering (strip headers, inject security headers, SameSite cookies)
+  |
+  v
+Client Response
+```
+
+### Concurrency Model
+
+- **Goroutine per request** — Go's `net/http.Server` default model
+- **Atomic config reads** — `atomic.Pointer[map[string]*runtimeHost]` for zero-lock host lookups
+- **Per-bucket rate limiting** — `sync.Map` of token buckets with per-bucket `sync.Mutex`
+- **Buffered log writes** — request logs sent to a buffered channel, batch-inserted by a background goroutine
+- **Background health checks** — periodic goroutine checks upstream health without blocking requests
+
+---
+
+## Building
+
+### From source
+
+```bash
+go build -o aegis ./cmd/aegis/
+```
+
+### With version injection
+
+```bash
+go build -ldflags "-X main.version=1.0.0" -o aegis ./cmd/aegis/
+```
+
+### Requirements
+
+- Go 1.22 or later
+- No CGO required (uses `modernc.org/sqlite`, a pure Go SQLite implementation)
+
+### Dependencies
+
+| Module | Purpose |
+| --- | --- |
+| `modernc.org/sqlite` | Pure Go SQLite driver (no CGO) |
+| `golang.org/x/crypto` | bcrypt password hashing, ACME/autocert for Let's Encrypt |
+| `gopkg.in/yaml.v3` | YAML configuration file parsing |
+
+---
+
+## Authentication
+
+- **Password-based** login with bcrypt hashing (minimum 12 characters)
+- **Passwordless magic link** authentication via email
+- Backup email address support
+- Per-session CSRF token protection
+- Session cookies with `HttpOnly`, `Secure`, `SameSite=Strict`
+
+---
+
+## Notifications
+
+- SMTP sending profile management (create, update, delete, test connection)
+- Encrypted SMTP password storage (AES-256-GCM)
+- Magic link authentication emails
+- Alert notification emails
+- Configurable `From` name and address
+
+---
+
+## Admin Dashboard
+
+- Real-time traffic analytics (request counts, block rates, 24h stats)
+- Top attacker IPs with request and block counts
+- Top attacked hosts breakdown
+- Attack trend timeline with allowed/blocked/detected bucketing
+- Rule effectiveness stats (hits per rule)
+- Geographic analytics with country enrichment and local cache
+- Live traffic streaming via Server-Sent Events (SSE)
+- Audit log of all admin actions

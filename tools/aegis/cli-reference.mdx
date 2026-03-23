@@ -1,0 +1,154 @@
+---
+title: "CLI & Configuration"
+description: "Aegis CLI reference and configuration options"
+---
+
+# CLI Reference
+
+```text
+aegis <command> [flags]
+```
+
+---
+
+## Commands
+
+| Command | Description |
+| --- | --- |
+| `run` | Start the Aegis server in the foreground |
+| `install` | Install Aegis as a system service (systemd on Linux, launchd on macOS) |
+| `uninstall` | Remove the Aegis system service |
+| `status` | Show current service status |
+| `version` | Print the version string |
+| `help` | Show usage information |
+
+---
+
+## Run Flags
+
+| Flag | Default | Description |
+| --- | --- | --- |
+| `-db` | `Aegis.db` | SQLite database file path |
+| `-admin-listen` | `127.0.0.1:9443` | Admin UI bind address |
+| `-proxy-listen` | `:80` | HTTP proxy bind address |
+| `-https-listen` | `:443` | HTTPS proxy bind address |
+| `-debug` | `false` | Enable debug-level logging |
+
+---
+
+## Install Flags
+
+| Flag | Default | Description |
+| --- | --- | --- |
+| `-user` | current user | System user to run the service as |
+| `-working-dir` | current directory | Working directory for the service |
+
+---
+
+## Examples
+
+```bash
+# Start with defaults
+aegis run
+
+# Debug mode with default edge listeners
+aegis run -debug
+
+# Override the HTTP proxy port for development
+aegis run -proxy-listen :8080
+
+# Custom database location
+aegis run -db /var/lib/aegis/data.db
+
+# Install as system service
+sudo aegis install
+
+# Install as a specific user
+sudo aegis install -user www-data
+
+# Remove system service
+sudo aegis uninstall
+
+# Check service status
+aegis status
+```
+
+---
+
+# Configuration
+
+Aegis loads configuration from three sources with the following precedence (highest wins):
+
+```text
+CLI flags  >  Environment variables  >  Config file  >  Defaults
+```
+
+---
+
+## Config File (`Aegis.yml`)
+
+```yaml
+database_path: Aegis.db
+admin_listen: 127.0.0.1:9443
+proxy_listen: :80
+https_listen: :443
+```
+
+The config file is loaded from `Aegis.yml` in the working directory by default, or from the path specified by the `AEGIS_CONFIG` environment variable.
+
+---
+
+## Environment Variables
+
+| Variable | Maps to |
+| --- | --- |
+| `AEGIS_CONFIG` | Config file path |
+| `AEGIS_DB_PATH` | `database_path` |
+| `AEGIS_ADMIN_LISTEN` | `admin_listen` |
+| `AEGIS_PROXY_LISTEN` | `proxy_listen` |
+| `AEGIS_HTTPS_LISTEN` | HTTPS proxy bind address (default `:443`) |
+| `AEGIS_SSL_KEY` | 64-char hex AES-256 key for encrypting SSL private keys at rest |
+| `AEGIS_SSL_CACHE_DIR` | Directory for autocert cache (default `.cache/ssl`) |
+
+---
+
+## Service Management
+
+### Linux (systemd)
+
+```bash
+# Install
+sudo aegis install
+
+# Check status
+aegis status
+
+# Uninstall
+sudo aegis uninstall
+```
+
+### macOS (launchd)
+
+```bash
+# Install
+sudo aegis install
+
+# Check status
+aegis status
+
+# Uninstall
+sudo aegis uninstall
+```
+
+---
+
+## Operations
+
+| Feature | Details |
+| --- | --- |
+| **Hot reload** | Atomic pointer swap for rule chains and host config; no restart required |
+| **Structured logging** | JSON output via `slog` |
+| **Graceful shutdown** | `SIGINT`/`SIGTERM` handling with 10-second drain |
+| **SQLite WAL mode** | Concurrent reads during writes, auto-migration on startup |
+| **SSL key encryption** | AES-256-GCM at rest with auto-generated or user-provided key |
+| **Embedded frontend** | Admin UI static files compiled into the binary via `embed.FS` |
