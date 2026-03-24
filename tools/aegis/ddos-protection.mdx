@@ -1,0 +1,327 @@
+---
+title: "DDoS Protection"
+description: "Kernel-level XDP/eBPF packet filtering for DDoS mitigation"
+---
+
+# DDoS Protection
+
+Aegis includes a kernel-level DDoS protection engine built on Linux XDP (eXpress Data Path) and eBPF. Packets are inspected and dropped at the network device driver level — before they reach the kernel's TCP/IP stack — making it one of the fastest possible filtering points in the Linux networking pipeline.
+
+---
+
+## Requirements
+
+| Requirement | Details |
+| --- | --- |
+| **Platform** | Linux only |
+| **Kernel** | 5.8+ with eBPF and XDP support |
+| **Architecture** | x86-64 and ARM64 (pre-compiled BPF bytecode for both) |
+
+On non-Linux platforms, the DDoS service returns a stub message indicating the feature requires Linux.
+
+---
+
+## Architecture Overview
+
+```text
+┌──────────────────────────────────────────────────────────────┐
+│                     NETWORK TRAFFIC                          │
+└───────────────────────────┬──────────────────────────────────┘
+                            │
+                            ▼
+               ┌─────────────────────────┐
+               │   XDP Program (Kernel)  │
+               │   aegis_xdp_filter      │
+               │                         │
+               │  ban_map ──► XDP_DROP   │
+               │  rate_map ──► XDP_DROP  │
+               │  config_map (thresholds)│
+               └──────────┬──────────────┘
+                          │
+           ┌──────────────┼──────────────┐
+           │              │              │
+     XDP_PASS        XDP_DROP       Ring Buffer
+           │         (banned/       (events)
+           │          rate/syn)         │
+           ▼              │             ▼
+    TCP/IP Stack          │    ┌──────────────────┐
+           │              │    │  readEvents()    │
+           ▼              │    │  goroutine       │
+    Aegis Reverse         │    └────────┬─────────┘
+    Proxy + WAF           │             │
+                          │             ▼
+                          │    ┌──────────────────┐
+                          │    │ processEvents()  │
+                          │    │ goroutine        │
+                          │    │ • DB logging     │
+                          │    │ • Auto-ban logic │
+                          │    └────────┬─────────┘
+                          │             │
+                          │             ▼
+                          └────► ban_map (kernel)
+                                 (auto-ban writes
+                                  IP back to BPF)
+```
+
+---
+
+## How It Works
+
+### Kernel-Level Filtering (XDP)
+
+The XDP program `aegis_xdp_filter` attaches directly to the network interface and processes every inbound packet:
+
+1. **Check enable state** — reads `config_map[0]`; if disabled, returns `XDP_PASS`
+2. **Parse Ethernet/IP headers** — extracts source IP, destination IP, protocol
+3. **Parse L4 headers** — if TCP, checks the SYN flag; if UDP, extracts ports
+4. **Ban map lookup** — checks `ban_map[src_ip]`; if found and not expired, drops immediately with `XDP_DROP`
+5. **Rate limit check** — looks up `rate_map[src_ip]` for per-IP packet and SYN counters within a 1-second sliding window; drops if thresholds exceeded
+6. **Pass** — increments stats and returns `XDP_PASS`
+
+### BPF Maps
+
+| Map | Type | Capacity | Purpose |
+| --- | --- | --- | --- |
+| `ban_map` | Hash | 100,000 IPs | Banned IP lookup (key: uint32 IP, value: expiry + reason + drop count) |
+| `rate_map` | LRU Hash | 500,000 IPs | Per-IP packet/SYN counters with 1-second window (auto-evicts oldest) |
+| `config_map` | Array | 1 entry | Global thresholds: packets/sec, SYN/sec, sample rate, enabled flag |
+| `stats_map` | Array | 4 entries | Atomic counters: passed, ban drops, rate drops, SYN drops |
+| `events` | Ring Buffer | 256 KB | Kernel-to-userspace event stream |
+
+### Kernel Data Structures
+
+**Ban Entry:**
+```text
+expires_ns    — Monotonic timestamp (0 = permanent ban)
+reason        — Code: 1=manual, 2=rate_limit, 3=syn_flood, 4=app_layer
+drop_count    — Atomic counter of packets dropped for this IP
+```
+
+**Rate Entry:**
+```text
+window_start_ns — Start of the current 1-second window
+packet_count    — Total packets in current window
+syn_count       — TCP SYN packets in current window
+```
+
+**Global Config:**
+```text
+packets_per_second — Global PPS threshold (0 = disabled)
+syn_per_second     — Global SYN/sec threshold (0 = disabled)
+event_sample_rate  — Emit 1 pass event per N packets
+enabled            — Master enable flag
+```
+
+---
+
+## Rule Types
+
+### `ip_ban` — Direct Kernel-Level Ban
+
+The most direct kernel rule. When you save an `ip_ban` rule, the Go service writes the IP into the BPF `ban_map` immediately. The XDP program checks `ban_map` on every packet and returns `XDP_DROP` for matches.
+
+- Enforcement: **Kernel-level, per-IP**
+- Latency: **Immediate** — packets never reach the TCP/IP stack
+
+### `cidr_ban` — CIDR Block Ban
+
+Currently only `/32` CIDRs (single IPs) are synced into the kernel ban map. Broader CIDRs (e.g., `/24`) are not yet implemented in the XDP program — the service logs a warning for non-/32 entries.
+
+- Enforcement: **Kernel-level for /32 only**
+- Broader CIDR support: Planned
+
+### `rate_limit` — Packets Per Second Threshold
+
+Rate limit rules are not independently represented in the kernel. Instead, the service computes a single **effective global PPS threshold** from all enabled `rate_limit` rules and the default config, then writes that value into `config_map`. The XDP program enforces one `packets_per_second` value against per-IP counters.
+
+**Threshold computation:**
+- Start with the configured `DefaultPPS`
+- For each enabled `rate_limit` rule with a `packets_per_second` value > 0: take the minimum
+- The strictest enabled rule wins
+
+This means:
+- Adding a stricter `rate_limit` rule changes the kernel threshold immediately
+- Adding a looser rule has no effect if a stricter enabled rule already exists
+- The XDP program always reads one current `packets_per_second` value from `config_map`
+
+- Enforcement: **Kernel-level, single global threshold**
+
+### `syn_limit` — SYN Packets Per Second Threshold
+
+Same architecture as `rate_limit`. The service computes one effective SYN/sec threshold and writes it to `config_map`. The XDP program enforces that threshold against per-IP SYN counters.
+
+- Enforcement: **Kernel-level, single global threshold**
+
+---
+
+## Rule Lifecycle
+
+Every time a DDoS rule is created, updated, or deleted:
+
+1. The service reloads all rules from the database
+2. Recomputes effective global thresholds (minimum across all enabled rules + default)
+3. Writes updated values into the kernel `config_map`
+4. For `ip_ban` and `/32` `cidr_ban` rules: syncs the `ban_map` directly
+
+The kernel enforcement changes take effect on the very next packet.
+
+---
+
+## Auto-Ban
+
+When the kernel drops a packet due to rate or SYN threshold violations, it emits an event through the ring buffer. The userspace Go service reads these events and can automatically promote threshold violations into full bans:
+
+1. Kernel drops packet, emits `drop_rate` or `drop_syn` event
+2. `readEvents()` goroutine parses the event from the ring buffer
+3. `processEvents()` goroutine calls `handleAutoBan()`
+4. Auto-ban TTL is computed as the maximum of:
+   - Global `AutoBanDuration` config value
+   - The `auto_ban_duration_sec` of the first enabled matching rule
+5. If TTL > 0: the source IP is written into the kernel `ban_map` with that TTL
+6. Subsequent packets from that IP are dropped at the XDP level without rate-map evaluation
+
+### Ban Entry Lifecycle
+
+- Bans are stored with a monotonic expiration timestamp
+- The XDP program checks expiry on every lookup — expired entries are deleted inline
+- A `cleanupLoop()` goroutine runs every 30 seconds to sweep expired bans from userspace
+
+### Ban Reasons
+
+| Code | Reason | Source |
+| --- | --- | --- |
+| 1 | `manual` | Admin-created ban via UI or API |
+| 2 | `rate_limit` | Auto-ban from PPS threshold violation |
+| 3 | `syn_flood` | Auto-ban from SYN/sec threshold violation |
+| 4 | `app_layer` | Application-layer triggered ban |
+
+---
+
+## Event System
+
+### Event Types
+
+| Type | Description |
+| --- | --- |
+| `drop_banned` | Packet dropped because source IP is in ban map |
+| `drop_rate` | Packet dropped because source IP exceeded PPS threshold |
+| `drop_syn` | SYN packet dropped because source IP exceeded SYN/sec threshold |
+| `pass` | Packet allowed through (sampled) |
+
+### Event Sampling
+
+To reduce ring buffer overhead on high-traffic deployments:
+
+- **Drop events**: Emitted every 100th dropped packet per ban entry
+- **Pass events**: Sampled at the configurable `event_sample_rate` (default: 1 in 1,000)
+
+### Event Data
+
+Each event includes:
+- Source and destination IP
+- Source and destination port
+- Protocol (TCP, UDP, other)
+- Event type
+- Packets in current window
+- Drop count
+
+Events are stored in SQLite with automatic retention cleanup (1 hour default).
+
+---
+
+## Configuration
+
+**Location:** Admin UI -> Config -> DDoS Protection
+
+| Setting | Default | Description |
+| --- | --- | --- |
+| **Enabled** | `false` | Master toggle for DDoS protection |
+| **Interface** | — | Network interface to attach XDP to (e.g., `eth0`) |
+| **Default PPS** | — | Default packets-per-second threshold per IP |
+| **Default SYN/sec** | — | Default SYN packets-per-second threshold per IP |
+| **Auto-Ban Duration** | — | Seconds to ban IPs that exceed thresholds |
+| **Event Sample Rate** | 1000 | Sample 1 in N passed packets for logging |
+| **Notify on Ban** | `false` | Send admin notification when an IP is auto-banned |
+| **Notify on Attack** | `false` | Send admin notification when an attack is detected |
+
+---
+
+## Real-Time Statistics
+
+The stats endpoint reads directly from kernel BPF maps:
+
+| Metric | Source |
+| --- | --- |
+| **Total Passed** | `stats_map[0]` — atomic counter |
+| **Total Drop (Ban)** | `stats_map[1]` — packets dropped by ban map |
+| **Total Drop (Rate)** | `stats_map[2]` — packets dropped by PPS threshold |
+| **Total Drop (SYN)** | `stats_map[3]` — packets dropped by SYN threshold |
+| **Active Bans** | Count of entries in `ban_map` |
+| **Active Rules** | Count of enabled rules in database |
+| **Tracked IPs** | Count of entries in `rate_map` (LRU) |
+
+The admin dashboard displays a live traffic chart with a 5-minute window showing passed vs. dropped packets per second.
+
+---
+
+## Service Lifecycle
+
+### Startup
+
+1. Remove memory lock limit (`rlimit.RemoveMemlock`)
+2. Load pre-compiled BPF bytecode (x86-64 or ARM64)
+3. Attach XDP program to the configured network interface
+4. Create ring buffer reader for kernel events
+5. Sync configuration, rules, and bans to kernel maps
+6. Launch goroutines: `readEvents()`, `processEvents()`, `cleanupLoop()`
+
+### Shutdown
+
+1. Close ring buffer reader
+2. Detach XDP program from network interface
+3. Close BPF map file descriptors
+
+### Concurrency
+
+| Component | Model |
+| --- | --- |
+| Service state | `sync.RWMutex` for all shared state |
+| BPF counters | Atomic operations (`__sync_fetch_and_add`) |
+| Event pipeline | Buffered channel (10,000 capacity) |
+| Cleanup | Background goroutine every 30 seconds |
+
+---
+
+## API Endpoints
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `GET` | `/api/v1/ddos/status` | XDP attachment status, kernel version, mode |
+| `GET` | `/api/v1/ddos/interfaces` | List available network interfaces |
+| `GET` | `/api/v1/ddos/config` | Get global DDoS configuration |
+| `PUT` | `/api/v1/ddos/config` | Update config (restarts XDP if interface changes) |
+| `GET` | `/api/v1/ddos/rules` | List all DDoS rules |
+| `POST` | `/api/v1/ddos/rules` | Create a new rule |
+| `GET` | `/api/v1/ddos/rules/{id}` | Get a specific rule |
+| `PUT` | `/api/v1/ddos/rules/{id}` | Update a rule |
+| `DELETE` | `/api/v1/ddos/rules/{id}` | Delete a rule |
+| `GET` | `/api/v1/ddos/bans` | List active bans (with live drop counts from kernel) |
+| `POST` | `/api/v1/ddos/bans` | Manually ban an IP |
+| `DELETE` | `/api/v1/ddos/bans/{ip}` | Unban an IP |
+| `GET` | `/api/v1/ddos/events` | Query event log (filterable by type, source IP, time) |
+| `GET` | `/api/v1/ddos/stats` | Real-time stats from kernel maps |
+
+---
+
+## Current Limitations
+
+| Feature | Status |
+| --- | --- |
+| `ip_ban` | Fully kernel-level |
+| `cidr_ban` | Only `/32` is kernel-level; broader CIDRs not yet in XDP |
+| `rate_limit` | Kernel-level enforcement as one global effective threshold, not per-rule kernel objects |
+| `syn_limit` | Same as `rate_limit` — single global threshold |
+| IPv6 | Not supported (IPv4 only) |
+| Platform | Linux only (stub on macOS/Windows) |
+
+The UI is currently more expressive than the kernel implementation. Multiple `rate_limit` or `syn_limit` rules are collapsed into a single effective global threshold (the strictest enabled value). This means individual rules serve as policy definitions that influence the global kernel enforcement, not as independent kernel-level filter objects.

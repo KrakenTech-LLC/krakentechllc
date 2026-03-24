@@ -112,6 +112,27 @@ GitHub access can be restricted by:
 - Allowed Email Domains
 - Allowed GitHub Organizations
 
+### Generic OIDC
+
+Aegis also supports any OpenID Connect-compliant identity provider:
+
+- Provider: `Generic OIDC`
+- Client ID: your application client ID
+- Client Secret: your application client secret
+- Issuer URL: the provider's OIDC issuer URL (must serve `/.well-known/openid-configuration`)
+
+Default scopes: `openid`, `profile`, `email`
+
+### OAuth Pass-Through Headers
+
+When **Pass Through** is enabled on an OAuth access list, Aegis injects identity headers into the proxied request so the upstream application can identify the authenticated user without its own OAuth flow:
+
+| Header | Value |
+| --- | --- |
+| `X-Aegis-OAuth-User` | Authenticated username or subject |
+| `X-Aegis-OAuth-Email` | User email address |
+| `X-Aegis-OAuth-Groups` | Group memberships (if available) |
+
 ---
 
 ## Active Directory (LDAP)
@@ -138,9 +159,37 @@ Host-level Active Directory access lists using LDAP bind and directory search.
 4. Attempts LDAP authentication with the end user's supplied password
 5. Access is allowed only if the user bind succeeds and the user is in the allowed list
 
+### AD Pass-Through Headers
+
+When **Pass Through** is enabled on an AD access list, Aegis injects identity headers into the proxied request:
+
+| Header | Value |
+| --- | --- |
+| `X-Aegis-AD-Username` | sAMAccountName |
+| `X-Aegis-AD-Display-Name` | Display name from AD |
+| `X-Aegis-AD-UPN` | User Principal Name |
+| `X-Aegis-AD-Email` | Email address |
+| `X-Aegis-AD-DN` | Distinguished Name |
+| `X-Aegis-AD-Groups` | Group memberships |
+
+### Connection Testing and Directory Search
+
+Aegis provides built-in tools for verifying AD connectivity and browsing directory objects:
+
+- **Test Connection** — validates the LDAP bind and returns the base DN if successful
+- **Search Users** — queries AD for user objects matching a search string; populates a searchable picker in the access list editor
+- **Search Groups** — queries AD for group objects matching a search string
+
+These are available in the access list editor after the AD connection details are provided, and also via the API:
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `POST` | `/api/v1/access-lists/ad/test` | Test LDAP connection (returns base DN) |
+| `POST` | `/api/v1/access-lists/ad/search` | Search AD users or groups |
+| `POST` | `/api/v1/access-lists/azure-directory/search` | Search Azure AD users or groups via Microsoft Graph |
+
 ### Notes
 
 - Plain LDAP: port `389`
 - LDAPS: port `636`
 - The bind account needs directory read access only; domain admin is not required
-- Aegis can test the LDAP connection and load searchable user/group pickers after AD connection details are provided

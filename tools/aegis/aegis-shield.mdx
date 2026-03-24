@@ -1,0 +1,123 @@
+---
+title: "Aegis Shield"
+description: "Built-in challenge system for filtering automated traffic"
+---
+
+# Aegis Shield
+
+Aegis Shield is Aegis' built-in challenge system for filtering automated traffic before a request is ever proxied to the upstream application.
+
+---
+
+## What It Does
+
+- Intercepts requests at the proxy layer before the WAF and upstream
+- Issues an internal challenge from Aegis itself with no third-party CAPTCHA dependency
+- Combines proof-of-work, passive browser verification, and optionally an interactive checkbox step
+- Sets a signed host-scoped pass cookie after successful verification so later requests pass normally until the cookie expires
+
+---
+
+## How It Works
+
+1. A protected host receives a request
+2. If the client does not already have a valid `aegis_shield` cookie, Aegis serves the Shield page instead of proxying upstream
+3. The browser runs **Phase 1 passive verification**:
+   - Proof-of-work computation
+   - Rotating browser probe subset
+4. Depending on the configured mode and passive confidence score, Aegis either:
+   - Passes immediately
+   - Requires the interactive checkbox
+   - Rejects the request as bot-like
+5. If the checkbox is required, Aegis collects interaction data (mouse trajectory, hover time, click timing, path entropy) before issuing the pass cookie
+
+---
+
+## Shield Modes
+
+### `managed` (default)
+
+- Runs passive verification first
+- Auto-passes clearly human traffic
+- Shows the checkbox only for ambiguous traffic
+- Hard-fails clearly bot-like traffic without offering the checkbox
+
+### `invisible`
+
+- Never shows the checkbox
+- Pass/fail is based only on passive verification and proof-of-work
+- Best when you want zero visible challenge UI for normal visitors and are comfortable with stricter automatic decisions
+
+### `interactive`
+
+- Always shows the checkbox after passive verification completes
+- Useful when you explicitly want a visible confirmation step for every challenged visitor
+- Still uses the passive phase first, but does not auto-pass based on passive confidence alone
+
+---
+
+## Per-Host Settings
+
+| Setting | Description |
+| --- | --- |
+| **Enable Shield Challenge** | Toggle Shield on/off per host |
+| **Mode** | `managed`, `invisible`, or `interactive` |
+| **Difficulty** | Proof-of-work difficulty level |
+| **Cookie Duration** | How long the pass cookie remains valid |
+| **Exempt Paths** | URL paths that bypass the challenge |
+| **Exempt CIDRs** | IP ranges that bypass the challenge |
+| **Exempt User-Agents** | User-Agent strings that bypass the challenge |
+
+---
+
+## Configuration
+
+Shield is configured per proxy host:
+
+- **Admin UI** -> Hosts -> edit a proxy host -> Aegis Shield Challenge
+- **Admin UI** -> Config -> Bots
+
+---
+
+## Use Cases
+
+- Protecting admin panels or staging environments from commodity bots
+- Forcing a stronger anti-automation gate in front of login or sensitive application paths
+- Reducing AI scraping, scanner noise, and scripted abuse before it reaches the upstream app
+
+---
+
+## Challenge Flow Diagram
+
+```text
+Client Request
+  |
+  v
+Has valid aegis_shield cookie? ──► Yes ──► Proceed to WAF / Proxy
+  |
+  v (No)
+Serve Shield Challenge Page
+  |
+  v
+Phase 1: Passive Verification
+  ├── Proof-of-work computation
+  └── Browser probe subset
+  |
+  v
+Confidence Score Evaluation
+  |
+  ├── High confidence ──► Issue pass cookie ──► Proceed
+  ├── Ambiguous ──► Show interactive checkbox (managed/interactive mode)
+  └── Bot-like ──► Reject (managed mode) or Fail (invisible mode)
+  |
+  v (checkbox shown)
+Phase 2: Interactive Verification
+  ├── Mouse trajectory analysis
+  ├── Hover time measurement
+  ├── Click timing analysis
+  └── Path entropy calculation
+  |
+  v
+Pass ──► Issue aegis_shield cookie ──► Proceed to WAF / Proxy
+Fail ──► Reject request
+```

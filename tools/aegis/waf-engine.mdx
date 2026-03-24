@@ -95,7 +95,7 @@ Auto blocking is host-specific. Requests that are only detected or logged (not b
 
 ## Geolocation
 
-Aegis enriches traffic analytics with city and country geolocation using `ipgeolocation.io`.
+Aegis enriches traffic analytics with city and country geolocation using the embedded GeoLite2 city database.
 
 Used for:
 - Dashboard Traffic Origins
@@ -103,8 +103,8 @@ Used for:
 - City and country enrichment on traffic and top-IP views
 
 Setup:
-1. Create an account at `ipgeolocation.io`
-2. Generate an API key
-3. Open Aegis Settings and set the API Key
+1. Start Aegis normally
+2. Open Aegis Settings
+3. Confirm the Geolocation panel shows the embedded GeoLite2 database status
 
-Lookups are cached locally in SQLite. Geolocation enrichment is cache-first and does not block the request path.
+Aegis opens a shared GeoIP reader at startup and performs lookups internally instead of calling an external API. Lookups are cached locally in SQLite so repeated dashboard and analytics loads stay fast. If the embedded GeoIP database cannot be opened, the dashboard reports that geographic analytics are unavailable.

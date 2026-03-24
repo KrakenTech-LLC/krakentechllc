@@ -42,6 +42,15 @@ Aegis ships as a single static binary with an embedded admin UI, uses SQLite (WA
   <Card title="Allow Lists" icon="lock" href="/tools/aegis/allow-lists">
     IP/CIDR, local auth, OAuth/OIDC SSO, Active Directory access control
   </Card>
+  <Card title="DDoS Protection" icon="explosion" href="/tools/aegis/ddos-protection">
+    Kernel-level XDP/eBPF packet filtering — ban maps, rate limiting, SYN flood protection
+  </Card>
+  <Card title="Bot & AI Protection" icon="robot" href="/tools/aegis/bot-ai-protection">
+    AI crawler blocking, robots.txt generation, scanner detection
+  </Card>
+  <Card title="Aegis Shield" icon="shield" href="/tools/aegis/aegis-shield">
+    Built-in challenge system — proof-of-work, browser verification, interactive checkbox
+  </Card>
   <Card title="Custom Rules" icon="code" href="/tools/aegis/custom-rules">
     Condition builder and raw regex rule authoring with live testing
   </Card>
@@ -122,6 +131,9 @@ TLS Termination (autocert / custom cert via SNI)
   |
   v
 Host Lookup (domain -> runtimeHost via atomic.Pointer)
+  |
+  v
+Aegis Shield Challenge (if enabled, check aegis_shield cookie)
   |
   v
 WAF Mode Check ──► "off" ──► skip directly to Reverse Proxy
@@ -223,6 +235,6 @@ go build -ldflags "-X main.version=1.0.0" -o aegis ./cmd/aegis/
 - Top attacked hosts breakdown
 - Attack trend timeline with allowed/blocked/detected bucketing
 - Rule effectiveness stats (hits per rule)
-- Geographic analytics with country enrichment and local cache
+- Geographic analytics with embedded GeoLite2 country and city enrichment plus local cache
 - Live traffic streaming via Server-Sent Events (SSE)
 - Audit log of all admin actions

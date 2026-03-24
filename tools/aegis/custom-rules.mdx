@@ -116,3 +116,136 @@ The rule tester uses the real backend evaluation path. You can test:
 - Full request shapes including path, query, headers, cookies, body, and user-agent
 
 Validation and test results are based on the same Go-side logic the live WAF uses, not a browser-only approximation.
+
+---
+
+## Rule Import (JSON / YAML)
+
+Aegis supports bulk importing WAF rules from JSON or YAML files via the admin API. This allows you to share rule sets between Aegis instances, version-control your custom rules, or ingest community rule definitions.
+
+### Endpoint
+
+```text
+POST /api/v1/rules/import
+Content-Type: multipart/form-data
+```
+
+Upload a `.json`, `.yaml`, or `.yml` file (max 4 MB). The format is auto-detected from the file extension.
+
+### File Format
+
+Rules can be provided in either a wrapped or direct array format:
+
+**Wrapped format (JSON):**
+
+```json
+{
+  "version": "1.0",
+  "rules": [
+    {
+      "name": "Block WordPress Admin",
+      "category": "custom",
+      "severity": "high",
+      "action": "block",
+      "enabled": true,
+      "paranoia": 1,
+      "match_mode": "conditions",
+      "condition_logic": "AND",
+      "conditions": [
+        {
+          "field": "Request Path",
+          "operator": "contains",
+          "value": "/wp-admin"
+        }
+      ],
+      "description": "Block access to WordPress admin panel",
+      "tags": ["wordpress"],
+      "owasp_ids": [],
+      "cve_ids": []
+    }
+  ]
+}
+```
+
+**Wrapped format (YAML):**
+
+```yaml
+version: "1.0"
+rules:
+  - name: Block WordPress Admin
+    category: custom
+    severity: high
+    action: block
+    enabled: true
+    paranoia: 1
+    match_mode: conditions
+    condition_logic: AND
+    conditions:
+      - field: Request Path
+        operator: contains
+        value: /wp-admin
+    description: Block access to WordPress admin panel
+    tags:
+      - wordpress
+```
+
+**Direct array format (JSON):**
+
+```json
+[
+  {
+    "name": "Block SQLi in Query",
+    "category": "sqli",
+    "severity": "critical",
+    "action": "block",
+    "match_mode": "regex",
+    "pattern": "(?i)(union\\s+select|sleep\\s*\\(|benchmark\\s*\\()",
+    "targets": ["query", "body"],
+    "enabled": true,
+    "paranoia": 1
+  }
+]
+```
+
+### Import Behavior
+
+- **IDs are reset** — imported rules receive new IDs; existing rules are not overwritten
+- **Host ID is cleared** — all imported rules become global (not host-specific)
+- **Defaults applied** — missing fields are normalized:
+  - Category defaults to `custom`
+  - Severity defaults to `medium`
+  - Action defaults to `block`
+  - Paranoia defaults to `1`
+  - Regex rules with no targets default to `path`, `query`, `body`, `headers`
+- **Validation** — each rule is validated through the same logic used by the UI (regex compilation, condition field/operator checks, etc.)
+- **Proxy reload** — after import, the proxy manager reloads all rule chains
+
+### Rule Schema Reference
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `name` | string | Rule display name (required) |
+| `description` | string | Detailed description |
+| `category` | string | Classification (e.g., `sqli`, `xss`, `custom`) |
+| `severity` | string | `low`, `medium`, `high`, or `critical` |
+| `action` | string | `block`, `allow`, `challenge`, `log`, or `redirect` |
+| `enabled` | boolean | Whether the rule is active |
+| `paranoia` | integer | Paranoia level (1-4) |
+| `match_mode` | string | `conditions` or `regex` |
+| `condition_logic` | string | `AND` or `OR` (for condition mode) |
+| `conditions` | array | List of condition objects (for condition mode) |
+| `pattern` | string | RE2 regex pattern (for regex mode) |
+| `targets` | array | Request surfaces to inspect (for regex mode) |
+| `tags` | array | Free-form string tags |
+| `owasp_ids` | array | Associated OWASP identifiers |
+| `cve_ids` | array | Associated CVE identifiers |
+
+### Condition Object Schema
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `field` | string | Request field to inspect |
+| `operator` | string | Comparison operator |
+| `value` | string | Value to compare against |
+| `case_sensitive` | boolean | Enable case-sensitive matching |
+| `negated` | boolean | Invert the condition result |

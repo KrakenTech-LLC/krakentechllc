@@ -50,6 +50,22 @@ All API endpoints are served on the admin listener (`127.0.0.1:9443` by default)
 | `GET` | `/api/v1/rules/{id}` | Get a WAF rule by ID |
 | `PUT` | `/api/v1/rules/{id}` | Update a WAF rule |
 | `DELETE` | `/api/v1/rules/{id}` | Delete a WAF rule |
+| `POST` | `/api/v1/rules/import` | Bulk import rules from JSON or YAML file (multipart, max 4 MB) |
+
+---
+
+## Access Lists
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `GET` | `/api/v1/access-lists` | List all access lists |
+| `POST` | `/api/v1/access-lists` | Create a new access list |
+| `GET` | `/api/v1/access-lists/{id}` | Get an access list by ID |
+| `PUT` | `/api/v1/access-lists/{id}` | Update an access list |
+| `DELETE` | `/api/v1/access-lists/{id}` | Delete an access list |
+| `POST` | `/api/v1/access-lists/azure-directory/search` | Search Azure AD users/groups via Microsoft Graph |
+| `POST` | `/api/v1/access-lists/ad/test` | Test Active Directory LDAP connection |
+| `POST` | `/api/v1/access-lists/ad/search` | Search Active Directory users/groups |
 
 ---
 
@@ -86,6 +102,27 @@ All API endpoints are served on the admin listener (`127.0.0.1:9443` by default)
 | `PUT` | `/api/v1/smtp/{id}` | Update an SMTP profile |
 | `DELETE` | `/api/v1/smtp/{id}` | Delete an SMTP profile |
 | `POST` | `/api/v1/smtp/test` | Test SMTP connection |
+
+---
+
+## DDoS Protection
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `GET` | `/api/v1/ddos/status` | XDP attachment status, kernel version, mode |
+| `GET` | `/api/v1/ddos/interfaces` | List available network interfaces |
+| `GET` | `/api/v1/ddos/config` | Get global DDoS configuration |
+| `PUT` | `/api/v1/ddos/config` | Update config (restarts XDP if interface changes) |
+| `GET` | `/api/v1/ddos/rules` | List all DDoS rules |
+| `POST` | `/api/v1/ddos/rules` | Create a new DDoS rule |
+| `GET` | `/api/v1/ddos/rules/{id}` | Get a specific DDoS rule |
+| `PUT` | `/api/v1/ddos/rules/{id}` | Update a DDoS rule |
+| `DELETE` | `/api/v1/ddos/rules/{id}` | Delete a DDoS rule |
+| `GET` | `/api/v1/ddos/bans` | List active bans (with live drop counts from kernel) |
+| `POST` | `/api/v1/ddos/bans` | Manually ban an IP |
+| `DELETE` | `/api/v1/ddos/bans/{ip}` | Unban an IP |
+| `GET` | `/api/v1/ddos/events` | Query event log (filterable by type, source IP, time) |
+| `GET` | `/api/v1/ddos/stats` | Real-time stats from kernel BPF maps |
 
 ---
 
