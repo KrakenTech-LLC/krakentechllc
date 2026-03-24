@@ -14,7 +14,7 @@ Aegis includes a kernel-level DDoS protection engine built on Linux XDP (eXpress
 | Requirement | Details |
 | --- | --- |
 | **Platform** | Linux only |
-| **Kernel** | 5.8+ with eBPF and XDP support |
+| **Kernel** | 5.8\+ with eBPF and XDP support |
 | **Architecture** | x86-64 and ARM64 (pre-compiled BPF bytecode for both) |
 
 On non-Linux platforms, the DDoS service returns a stub message indicating the feature requires Linux.
@@ -24,38 +24,38 @@ On non-Linux platforms, the DDoS service returns a stub message indicating the f
 ## Architecture Overview
 
 ```text
-┌──────────────────────────────────────────────────────────────┐
+┌───────────────────────────────────────┐
 │                     NETWORK TRAFFIC                          │
-└───────────────────────────┬──────────────────────────────────┘
-                            │
-                            ▼
-               ┌─────────────────────────┐
-               │   XDP Program (Kernel)  │
-               │   aegis_xdp_filter      │
-               │                         │
-               │  ban_map ──► XDP_DROP   │
-               │  rate_map ──► XDP_DROP  │
-               │  config_map (thresholds)│
-               └──────────┬──────────────┘
+└───────────────────┬───────────────────┘
+                                │
+                               ▼
+               ┌─────────────────┐
+               │   XDP Program (Kernel)     │
+               │   aegis_xdp_filter         │
+               │                            │
+               │  ban_map  ─► XDP_DROP    │
+               │  rate_map ─► XDP_DROP    │
+               │  config_map (thresholds).  │
+               └──────┬──────────┘
                           │
-           ┌──────────────┼──────────────┐
+           ┌────────┼─────────┐
            │              │              │
      XDP_PASS        XDP_DROP       Ring Buffer
            │         (banned/       (events)
-           │          rate/syn)         │
-           ▼              │             ▼
-    TCP/IP Stack          │    ┌──────────────────┐
+           │          rate/syn)          │
+           ▼             │            ▼
+    TCP/IP Stack          │    ┌───────────┐
            │              │    │  readEvents()    │
-           ▼              │    │  goroutine       │
-    Aegis Reverse         │    └────────┬─────────┘
-    Proxy + WAF           │             │
+           ▼             │    │  goroutine       │
+    Aegis Reverse         │    └─────┬──────┘
+    Proxy + WAF           │              │
                           │             ▼
-                          │    ┌──────────────────┐
+                          │    ┌───────────┐
                           │    │ processEvents()  │
                           │    │ goroutine        │
                           │    │ • DB logging     │
                           │    │ • Auto-ban logic │
-                          │    └────────┬─────────┘
+                          │    └────────┬──┘
                           │             │
                           │             ▼
                           └────► ban_map (kernel)
@@ -82,7 +82,7 @@ The XDP program `aegis_xdp_filter` attaches directly to the network interface an
 
 | Map | Type | Capacity | Purpose |
 | --- | --- | --- | --- |
-| `ban_map` | Hash | 100,000 IPs | Banned IP lookup (key: uint32 IP, value: expiry + reason + drop count) |
+| `ban_map` | Hash | 100,000 IPs | Banned IP lookup (key: uint32 IP, value: expiry \+ reason \+ drop count) |
 | `rate_map` | LRU Hash | 500,000 IPs | Per-IP packet/SYN counters with 1-second window (auto-evicts oldest) |
 | `config_map` | Array | 1 entry | Global thresholds: packets/sec, SYN/sec, sample rate, enabled flag |
 | `stats_map` | Array | 4 entries | Atomic counters: passed, ban drops, rate drops, SYN drops |
@@ -91,6 +91,7 @@ The XDP program `aegis_xdp_filter` attaches directly to the network interface an
 ### Kernel Data Structures
 
 **Ban Entry:**
+
 ```text
 expires_ns    — Monotonic timestamp (0 = permanent ban)
 reason        — Code: 1=manual, 2=rate_limit, 3=syn_flood, 4=app_layer
@@ -98,6 +99,7 @@ drop_count    — Atomic counter of packets dropped for this IP
 ```
 
 **Rate Entry:**
+
 ```text
 window_start_ns — Start of the current 1-second window
 packet_count    — Total packets in current window
@@ -105,6 +107,7 @@ syn_count       — TCP SYN packets in current window
 ```
 
 **Global Config:**
+
 ```text
 packets_per_second — Global PPS threshold (0 = disabled)
 syn_per_second     — Global SYN/sec threshold (0 = disabled)
@@ -135,15 +138,16 @@ Currently only `/32` CIDRs (single IPs) are synced into the kernel ban map. Broa
 Rate limit rules are not independently represented in the kernel. Instead, the service computes a single **effective global PPS threshold** from all enabled `rate_limit` rules and the default config, then writes that value into `config_map`. The XDP program enforces one `packets_per_second` value against per-IP counters.
 
 **Threshold computation:**
+
 - Start with the configured `DefaultPPS`
-- For each enabled `rate_limit` rule with a `packets_per_second` value > 0: take the minimum
+- For each enabled `rate_limit` rule with a `packets_per_second` value \> 0: take the minimum
 - The strictest enabled rule wins
 
 This means:
+
 - Adding a stricter `rate_limit` rule changes the kernel threshold immediately
 - Adding a looser rule has no effect if a stricter enabled rule already exists
 - The XDP program always reads one current `packets_per_second` value from `config_map`
-
 - Enforcement: **Kernel-level, single global threshold**
 
 ### `syn_limit` — SYN Packets Per Second Threshold
@@ -159,7 +163,7 @@ Same architecture as `rate_limit`. The service computes one effective SYN/sec th
 Every time a DDoS rule is created, updated, or deleted:
 
 1. The service reloads all rules from the database
-2. Recomputes effective global thresholds (minimum across all enabled rules + default)
+2. Recomputes effective global thresholds (minimum across all enabled rules \+ default)
 3. Writes updated values into the kernel `config_map`
 4. For `ip_ban` and `/32` `cidr_ban` rules: syncs the `ban_map` directly
 
@@ -177,7 +181,7 @@ When the kernel drops a packet due to rate or SYN threshold violations, it emits
 4. Auto-ban TTL is computed as the maximum of:
    - Global `AutoBanDuration` config value
    - The `auto_ban_duration_sec` of the first enabled matching rule
-5. If TTL > 0: the source IP is written into the kernel `ban_map` with that TTL
+5. If TTL \> 0: the source IP is written into the kernel `ban_map` with that TTL
 6. Subsequent packets from that IP are dropped at the XDP level without rate-map evaluation
 
 ### Ban Entry Lifecycle
@@ -218,6 +222,7 @@ To reduce ring buffer overhead on high-traffic deployments:
 ### Event Data
 
 Each event includes:
+
 - Source and destination IP
 - Source and destination port
 - Protocol (TCP, UDP, other)
@@ -231,7 +236,7 @@ Events are stored in SQLite with automatic retention cleanup (1 hour default).
 
 ## Configuration
 
-**Location:** Admin UI -> Config -> DDoS Protection
+**Location:** Admin UI -\> Config -\> DDoS Protection
 
 | Setting | Default | Description |
 | --- | --- | --- |
