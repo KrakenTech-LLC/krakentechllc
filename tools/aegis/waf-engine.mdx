@@ -37,6 +37,7 @@ The Aegis WAF engine evaluates every proxied request against a chain of compiled
 | **Paranoia levels** | Rules tagged with paranoia level (1-4) for tunable sensitivity |
 | **Configurable targets** | Each rule targets specific input surfaces: path, query, body, headers, cookies, user-agent |
 | **Severity-based auto blocking** | Automatically blacklists offending IPs when a blocked match meets the configured minimum severity |
+| **Mnemos correlation engine** | Stateful multi-request correlation — detects attack campaigns that span multiple requests from the same client within a time window. See [Mnemos](./mnemos) |
 
 ---
 

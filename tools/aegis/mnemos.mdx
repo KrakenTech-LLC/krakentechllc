@@ -1,0 +1,259 @@
+---
+title: "Mnemos"
+description: "Stateful request correlation engine for multi-request attack detection"
+---
+
+# Mnemos — Correlation Engine
+
+Mnemos is Aegis' stateful request correlation engine. It detects attacks that span multiple HTTP requests from the same client within a configurable time window — the kind of campaigns that single-request WAF rules cannot catch.
+
+Mnemos is analogous to Snort's `flowbits` + `threshold` + `detection_filter`, but operates at the HTTP application layer instead of the packet layer.
+
+---
+
+## Why Correlation Matters
+
+Traditional WAF rules evaluate each request in isolation. Many real-world attacks look like a sequence of individually benign or low-severity requests that become dangerous only in aggregate:
+
+- **OOB SQL Injection campaigns** — a client probing multiple endpoints with `LOAD_FILE`, `xp_dirtree`, and DNS exfil patterns
+- **Data exfiltration** — systematically walking sensitive endpoints (`/api/users`, `/api/billing`, `/api/config/export`) with bulk extraction parameters
+- **Credential stuffing** — repeated login attempts with different usernames from the same IP
+- **Scanner reconnaissance** — schema probing followed by targeted injection attempts
+
+Mnemos links these individual request signals into a single correlated detection event and escalates severity automatically.
+
+---
+
+## How It Works
+
+### Architecture
+
+Mnemos maintains an in-memory circular buffer of recent request history per client (keyed by `host:source_ip`). Every proxied request is recorded as a snapshot containing path, query, body, headers, user-agent, matched WAF rules, and action taken.
+
+```text
+Request arrives
+  |
+  v
+WAF rule chain evaluates (regex + condition rules)
+  |
+  v
+Request snapshot recorded into Mnemos correlation store
+  |
+  v
+Correlation rules evaluate against client history
+  |
+  v
+If threshold met within window ──► correlation event fires
+```
+
+### Core Components
+
+| Component | Description |
+| --- | --- |
+| **CorrelationStore** | `sync.Map` of per-client circular buffers (default 64 entries per client, 5-minute TTL) |
+| **RequestSnapshot** | Captured request data: timestamp, method, path, query, body (first 512 bytes), headers, cookies, user-agent, content-type, source IP, matched rules, action |
+| **Correlation Rules** | WAF rules with `match_mode: correlated` and a `correlation_config` block |
+| **Background GC** | Periodic garbage collection removes stale client histories (2x TTL) |
+
+### Evaluation Flow
+
+When a correlation rule evaluates:
+
+1. **Window** — filter the client's history to only snapshots within `window_seconds` of the current request
+2. **Predicates** — apply optional condition filters to narrow the snapshot set (e.g., only `GET`/`POST` requests to API paths)
+3. **Trigger rules** — check that the required WAF rules have fired within the window (all must be present, or in sequence if `sequence_mode` is enabled)
+4. **Unique fields** — if configured, count distinct values across the specified fields (e.g., unique paths) and compare against threshold
+5. **Threshold** — if the filtered snapshot count meets or exceeds the threshold, the correlation fires
+
+---
+
+## Correlation Config Schema
+
+Correlation rules use `match_mode: correlated` and require a `correlation_config` block:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `window_seconds` | integer | yes | Time window for correlation analysis (1–3600 seconds) |
+| `threshold` | integer | yes | Minimum number of matching requests required (minimum 2) |
+| `group_by` | string | no | Grouping key — currently only `source_ip` is supported |
+| `trigger_rules` | array of strings | no | WAF rule names that must have fired within the window |
+| `sequence_mode` | boolean | no | If `true`, trigger rules must occur in the specified order |
+| `unique_fields` | array of strings | no | Count unique values across these fields: `path`, `query`, `body`, `user_agent` |
+| `predicates` | array of objects | no | Condition filters applied to snapshots before evaluation |
+
+### Predicate Object Schema
+
+Predicates use the same field/operator/value structure as condition-based WAF rules:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `field` | string | Request field to inspect |
+| `operator` | string | Comparison operator |
+| `value` | string | Value to compare against |
+| `case_sensitive` | boolean | Enable case-sensitive matching |
+| `negated` | boolean | Invert the result |
+
+---
+
+## Example: OOB SQL Injection Campaign
+
+This is a real detection chain from the bundled `mnemos-oob-sqli-and-exfil.yaml` rule file. It uses two regex trigger rules that detect individual OOB SQLi techniques, then a Mnemos correlation rule that links them into a campaign:
+
+### Step 1 — Trigger rules (regex)
+
+```yaml
+# Trigger 1: OOB SQLi function primitives
+- name: OOB-SQLi-Payload
+  match_mode: regex
+  severity: high
+  action: block
+  targets: [query, body, path]
+  pattern: >-
+    (?i)(?:load_file\s*\(|into\s+(?:out|dump)file\b|xp_cmdshell|
+    xp_dirtree|utl_http\.request|dblink\s*\()
+
+# Trigger 2: DNS/UNC exfil patterns
+- name: OOB-SQLi-DNS-Exfil
+  match_mode: regex
+  severity: high
+  action: block
+  targets: [query, body]
+  pattern: >-
+    (?i)(?:\\\\\\\\[a-z0-9][-a-z0-9]*\.[a-z]{2,}\\\\|
+    \.(?:burpcollaborator|oastify|interact\.sh)\b)
+```
+
+### Step 2 — Mnemos correlation rule
+
+```yaml
+- name: Mnemos - OOB SQLi Campaign
+  match_mode: correlated
+  severity: critical
+  action: block
+  tags: [mnemos, correlation, oob-sqli]
+  correlation_config:
+    window_seconds: 180
+    threshold: 3
+    group_by: source_ip
+    trigger_rules:
+      - OOB-SQLi-Payload
+      - OOB-SQLi-DNS-Exfil
+    sequence_mode: false
+    unique_fields:
+      - path
+    predicates:
+      - field: request.method
+        operator: in_list
+        value: GET,POST,PUT
+      - field: request.path
+        operator: matches_regex
+        value: '(?i)(?:/api|/graphql|/query|/search|/admin|/v[0-9])'
+```
+
+This fires when the same client triggers both OOB-SQLi rules across 3+ unique paths within 3 minutes, targeting API-like endpoints. A single probing request is blocked by the trigger rules; the Mnemos rule escalates repeated probing to critical severity.
+
+---
+
+## Example: Data Exfiltration Campaign
+
+```yaml
+- name: Mnemos - Data Exfiltration Campaign
+  match_mode: correlated
+  severity: critical
+  action: block
+  tags: [mnemos, correlation, exfiltration]
+  correlation_config:
+    window_seconds: 300
+    threshold: 3
+    group_by: source_ip
+    trigger_rules:
+      - Exfil-Sensitive-Endpoint
+      - Exfil-Bulk-Extraction
+      - Exfil-Schema-Recon
+    sequence_mode: false
+    unique_fields:
+      - path
+    predicates:
+      - field: request.method
+        operator: in_list
+        value: GET,POST
+```
+
+This correlates a client systematically walking sensitive endpoints (`/api/users`, `/api/config`, `/api/billing/export`) with bulk extraction parameters or schema reconnaissance within 5 minutes. The `unique_fields: [path]` constraint ensures the rule only fires when the client is walking different resources, not refreshing the same page.
+
+---
+
+## Importing Mnemos Rules
+
+Mnemos correlation rules can be imported alongside regular WAF rules via the same JSON/YAML import endpoint. The bundled `mnemos-oob-sqli-and-exfil.yaml` file is a complete example containing trigger rules and their corresponding Mnemos correlation rules in a single file.
+
+```text
+POST /api/v1/rules/import
+Content-Type: multipart/form-data
+```
+
+Imported correlation rules are validated through the same pipeline as UI-created rules — `window_seconds`, `threshold`, `trigger_rules`, `unique_fields`, and `predicates` are all checked server-side.
+
+---
+
+## Correlation Events
+
+When a Mnemos rule fires, a `CorrelationEvent` is persisted to SQLite with the matched snapshots. These events are queryable via the admin API and visible in the Mnemos page of the admin UI.
+
+### API
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `GET` | `/api/v1/correlation-events` | Query correlation events (filterable by host, source IP, rule, time range) |
+
+### Event Data
+
+| Field | Description |
+| --- | --- |
+| `id` | Event ID |
+| `host` | Proxy host where the correlation fired |
+| `source_ip` | Client IP that triggered the correlation |
+| `rule_name` | Name of the Mnemos correlation rule |
+| `rule_id` | WAF rule ID |
+| `matched_snapshots` | JSON array of the request snapshots that contributed to the match |
+| `window_seconds` | The correlation window that was configured |
+| `threshold` | The threshold that was configured |
+| `created_at` | When the correlation event fired |
+
+---
+
+## Request Log Enrichment
+
+When a request triggers a correlation match, the WAF detail in the request log is enriched with correlation context:
+
+| Field | Description |
+| --- | --- |
+| `correlation.window_seconds` | The correlation window |
+| `correlation.threshold` | The configured threshold |
+| `correlation.matched_snapshots` | Summary of contributing requests |
+
+This allows traffic log queries to surface which requests were part of a correlated campaign, not just which individual rule matched.
+
+---
+
+## Admin UI
+
+Mnemos has its own page in the Aegis admin dashboard accessible from the sidebar. The Mnemos page provides:
+
+- Live view of correlation events
+- Stateful request correlation history per client
+- Filtering by host, source IP, rule, and time range
+
+In the rule editor, selecting `match_mode: correlated` switches to the correlation configuration interface where you define the window, threshold, trigger rules, predicates, and unique field constraints.
+
+---
+
+## Tuning
+
+| Parameter | Effect of increasing | Effect of decreasing |
+| --- | --- | --- |
+| `window_seconds` | Catches slower campaigns | Reduces false positives from unrelated requests |
+| `threshold` | Fewer false positives | Catches faster / shorter campaigns |
+| Trigger rules | More specific detection | Broader detection with fewer prerequisites |
+| `unique_fields` | Requires diversity (different paths) | Fires on repeated access to same resource |
+| Predicates | Narrows to specific traffic patterns | Broadens to all client traffic |

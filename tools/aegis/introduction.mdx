@@ -51,8 +51,11 @@ Aegis ships as a single static binary with an embedded admin UI, uses SQLite (WA
   <Card title="Aegis Shield" icon="shield" href="/tools/aegis/aegis-shield">
     Built-in challenge system — proof-of-work, browser verification, interactive checkbox
   </Card>
+  <Card title="Mnemos" icon="radar" href="/tools/aegis/mnemos">
+    Stateful multi-request correlation engine for detecting attack campaigns
+  </Card>
   <Card title="Custom Rules" icon="code" href="/tools/aegis/custom-rules">
-    Condition builder and raw regex rule authoring with live testing
+    Condition builder, raw regex, and correlated rule authoring with live testing
   </Card>
   <Card title="CLI & Operations" icon="terminal" href="/tools/aegis/cli-reference">
     CLI reference, configuration, service management, environment variables
@@ -160,6 +163,9 @@ Rate Limiting (token bucket)
 Rule Chain Evaluation (26 compiled regex rules)
   |
   v
+Mnemos Correlation (multi-request campaign detection)
+  |
+  v
 Reverse Proxy (httputil.ReverseProxy with load balancing)
   |
   v
@@ -205,6 +211,8 @@ go build -ldflags "-X main.version=1.0.0" -o aegis ./cmd/aegis/
 | `modernc.org/sqlite` | Pure Go SQLite driver (no CGO) |
 | `golang.org/x/crypto` | bcrypt password hashing, ACME/autocert for Let's Encrypt |
 | `gopkg.in/yaml.v3` | YAML configuration file parsing |
+| `github.com/cilium/ebpf` | eBPF program management for kernel-level DDoS protection |
+| `github.com/oschwald/maxminddb-golang/v2` | Embedded GeoLite2 database reader for geolocation |
 
 ---
 

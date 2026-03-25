@@ -5,7 +5,7 @@ description: "Custom WAF rule authoring in Aegis"
 
 # Custom WAF Rules
 
-Aegis supports fully custom WAF rules in two modes: **Condition Builder** for structured field/operator/value rules and **Raw Regex** for advanced RE2-based pattern matching.
+Aegis supports three rule match modes: **Condition Builder** for structured field/operator/value rules, **Raw Regex** for advanced RE2-based pattern matching, and **Correlated** for multi-request [Mnemos](./mnemos) correlation rules.
 
 ---
 
@@ -231,7 +231,8 @@ rules:
 | `action` | string | `block`, `allow`, `challenge`, `log`, or `redirect` |
 | `enabled` | boolean | Whether the rule is active |
 | `paranoia` | integer | Paranoia level (1-4) |
-| `match_mode` | string | `conditions` or `regex` |
+| `match_mode` | string | `conditions`, `regex`, or `correlated` |
+| `correlation_config` | object | Correlation configuration (for correlated mode — see [Mnemos](./mnemos)) |
 | `condition_logic` | string | `AND` or `OR` (for condition mode) |
 | `conditions` | array | List of condition objects (for condition mode) |
 | `pattern` | string | RE2 regex pattern (for regex mode) |
