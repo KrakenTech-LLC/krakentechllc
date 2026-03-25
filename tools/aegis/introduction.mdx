@@ -86,33 +86,43 @@ Changing the paranoia level takes effect immediately — Aegis updates all inher
   <Card title="Reverse Proxy" icon="network-wired" href="/tools/aegis/reverse-proxy">
     NPM-equivalent multi-host routing, load balancing, SSL/TLS, WebSocket proxying
   </Card>
+
   <Card title="WAF Engine" icon="shield-halved" href="/tools/aegis/waf-engine">
     26 built-in OWASP rules, rate limiting, IP blacklists/whitelists, CORS enforcement
   </Card>
+
   <Card title="Allow Lists" icon="lock" href="/tools/aegis/allow-lists">
     IP/CIDR, local auth, OAuth/OIDC SSO, Active Directory access control
   </Card>
+
   <Card title="DDoS Protection" icon="explosion" href="/tools/aegis/ddos-protection">
     Kernel-level XDP/eBPF packet filtering — ban maps, rate limiting, SYN flood protection
   </Card>
+
   <Card title="Bot & AI Protection" icon="robot" href="/tools/aegis/bot-ai-protection">
     AI crawler blocking, robots.txt generation, scanner detection
   </Card>
+
   <Card title="Aegis Shield" icon="shield" href="/tools/aegis/aegis-shield">
     Built-in challenge system — proof-of-work, browser verification, interactive checkbox
   </Card>
+
   <Card title="Mnemos" icon="radar" href="/tools/aegis/mnemos">
     Stateful multi-request correlation engine for detecting attack campaigns
   </Card>
+
   <Card title="Custom Rules" icon="code" href="/tools/aegis/custom-rules">
     Condition builder, raw regex, and correlated rule authoring with live testing
   </Card>
+
   <Card title="Certificates" icon="certificate" href="/tools/aegis/certificates">
     Let's Encrypt, Cloudflare Origin CA, custom upload, SNI routing, key encryption
   </Card>
+
   <Card title="CLI & Operations" icon="terminal" href="/tools/aegis/cli-reference">
     CLI reference, configuration, service management, environment variables
   </Card>
+
   <Card title="API Reference" icon="plug" href="/tools/aegis/api-reference">
     Full REST API for hosts, rules, traffic, analytics, SMTP, and system management
   </Card>
@@ -149,7 +159,7 @@ After setup completes, the default WAF rules are seeded into SQLite and the prox
 | Service | Default Address | Description |
 | --- | --- | --- |
 | Admin UI | `127.0.0.1:9443` | Dashboard and API (localhost only) |
-| HTTP Proxy | `:80` | Inbound HTTP traffic + ACME HTTP-01 challenges |
+| HTTP Proxy | `:80` | Inbound HTTP traffic \+ ACME HTTP-01 challenges |
 | HTTPS Proxy | `:443` | Inbound HTTPS traffic with TLS termination |
 
 ---
@@ -158,11 +168,11 @@ After setup completes, the default WAF rules are seeded into SQLite and the prox
 
 ```text
                   +-------------------------------------+
-   Clients ------►|            Aegis (Go)               |
+   Clients -----►|            Aegis (Go)               |
                   |                                     |
                   |  +-----------+   +---------------+  |
                   |  |  Reverse  |   |   WAF Engine  |  |
-                  |  |  Proxy    |◄--|  (per-host    |  |
+                  |  |  Proxy    |◄-|  (per-host    |  |
                   |  |  Router   |   |  rule chains) |  |
                   |  +-----+-----+   +---------------+  |
                   |        |                            |
