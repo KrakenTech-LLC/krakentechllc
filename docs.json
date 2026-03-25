@@ -68,6 +68,7 @@
               "tools/aegis/mnemos",
               "tools/aegis/custom-rules",
               "tools/aegis/allow-lists",
+              "tools/aegis/certificates",
               "tools/aegis/cli-reference",
               "tools/aegis/api-reference"
             ]

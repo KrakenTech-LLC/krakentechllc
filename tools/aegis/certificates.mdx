@@ -1,0 +1,248 @@
+---
+title: "Certificates"
+description: "SSL/TLS certificate management, Let's Encrypt automation, and Cloudflare Origin CA integration"
+---
+
+# SSL/TLS Certificates
+
+Aegis manages SSL/TLS certificates for all proxy hosts. It supports three certificate sources: **Let's Encrypt** (automatic ACME), **Cloudflare Origin CA** (API-integrated), and **Custom** (manual PEM upload). Private keys are encrypted at rest using AES-256-GCM.
+
+---
+
+## Certificate Sources
+
+| Source | Mode | Description |
+| --- | --- | --- |
+| **Let's Encrypt** | `letsencrypt` | Automatic certificate issuance and renewal via ACME HTTP-01 challenge |
+| **Cloudflare Origin CA** | `custom` (source: `cloudflare_origin`) | Origin certificates issued through the Cloudflare API |
+| **Custom Upload** | `custom` | Manual PEM-encoded certificate and key upload |
+| **Self-Signed Fallback** | automatic | Generated automatically when no other certificate is available for a host |
+
+---
+
+## Let's Encrypt (ACME)
+
+Aegis uses Go's `autocert` library to obtain and renew Let's Encrypt certificates automatically via the ACME HTTP-01 challenge.
+
+### How It Works
+
+1. Set the proxy host's SSL mode to `letsencrypt` in the admin UI
+2. Aegis validates that the domain is configured as a proxy host (host policy check)
+3. When a TLS handshake arrives for that domain, `autocert` requests a certificate from Let's Encrypt
+4. The HTTP-01 challenge is served on port 80 (the HTTP proxy listener handles `/.well-known/acme-challenge/` paths)
+5. The certificate is cached in the autocert cache directory (default `.cache/ssl`)
+6. Renewal happens automatically before expiration
+
+### Requirements
+
+- Port 80 must be reachable from the internet for HTTP-01 challenge validation
+- The domain must resolve to the Aegis server's public IP
+- The proxy host must have `ssl_mode` set to `letsencrypt`
+
+### Configuration
+
+| Setting | Default | Description |
+| --- | --- | --- |
+| `AEGIS_SSL_CACHE_DIR` | `.cache/ssl` | Directory for autocert's file-based certificate cache |
+
+```bash
+# Start with custom SSL cache directory
+AEGIS_SSL_CACHE_DIR=/var/lib/aegis/ssl aegis run
+```
+
+---
+
+## Cloudflare Origin CA
+
+Aegis can request Cloudflare Origin CA certificates directly through the Cloudflare API. This is ideal when Aegis sits behind Cloudflare's proxy, where Let's Encrypt HTTP-01 challenges may not reach the origin server.
+
+### How It Works
+
+1. Aegis generates a CSR (Certificate Signing Request) with the requested hostnames
+2. The CSR is submitted to Cloudflare's Origin CA API (`/client/v4/certificates`)
+3. Cloudflare issues a signed certificate (valid up to 15 years)
+4. Aegis stores the certificate and encrypted private key in SQLite
+5. The certificate is loaded into the TLS configuration for SNI-based selection
+
+### Authentication Methods
+
+| Method | Header | Description |
+| --- | --- | --- |
+| `api_token` | `Authorization: Bearer <token>` | Cloudflare API Token with Origin CA permissions |
+| `origin_ca_key` | `X-Auth-User-Service-Key: <key>` | Cloudflare Origin CA Key (found in the Cloudflare dashboard under API Tokens) |
+
+### Request Options
+
+| Field | Default | Description |
+| --- | --- | --- |
+| `hostnames` | (required) | Domain names for the certificate (e.g., `["app.example.com", "*.example.com"]`) |
+| `request_type` | `origin-rsa` | Key type — `origin-rsa` (RSA 2048) or `origin-ecc` (ECDSA P-256) |
+| `requested_validity` | `5475` | Certificate validity in days (default: 15 years) |
+| `zone_id` | (optional) | Cloudflare Zone ID (for audit/tracking) |
+
+### API Endpoint
+
+```text
+POST /api/v1/certificates/cloudflare-origin
+```
+
+```json
+{
+  "auth_method": "api_token",
+  "api_token": "your-cloudflare-api-token",
+  "hostnames": ["app.example.com", "*.example.com"],
+  "request_type": "origin-rsa",
+  "requested_validity": 5475
+}
+```
+
+**Response:**
+
+```json
+{
+  "status": "created",
+  "id": 1,
+  "cloudflare_id": "cf-cert-id",
+  "expires_on": "2041-03-23T00:00:00Z",
+  "requested_zone": ""
+}
+```
+
+The private key is generated locally, never sent to Cloudflare, and stored encrypted (AES-256-GCM) in SQLite.
+
+---
+
+## Custom Certificate Upload
+
+Upload any PEM-encoded certificate and private key pair through the admin UI or API.
+
+### API Endpoint
+
+```text
+POST /api/v1/certificates
+```
+
+```json
+{
+  "domains": ["app.example.com"],
+  "cert_pem": "-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----",
+  "key_pem": "-----BEGIN RSA PRIVATE KEY-----\n...\n-----END RSA PRIVATE KEY-----"
+}
+```
+
+### Validation
+
+- The certificate and key must form a valid X.509 key pair
+- The leaf certificate is parsed to extract the issuer, expiration, and subject
+- The private key is encrypted with AES-256-GCM before storage
+
+---
+
+## Assigning Certificates to Hosts
+
+Certificates are assigned to proxy hosts through the host configuration:
+
+### Let's Encrypt
+
+Set `ssl_mode` to `letsencrypt` on the proxy host. No certificate ID is needed — autocert handles issuance automatically.
+
+```json
+{
+  "domain": "app.example.com",
+  "ssl_mode": "letsencrypt",
+  "force_https": true
+}
+```
+
+### Custom / Cloudflare Origin
+
+Set `ssl_mode` to `custom` and either:
+
+- **Inline PEM** — provide `ssl_cert_pem` and `ssl_key_pem` directly in the host update (Aegis stores and encrypts them automatically)
+- **Certificate ID** — reference an existing certificate by `ssl_cert_id`
+
+```json
+{
+  "domain": "app.example.com",
+  "ssl_mode": "custom",
+  "ssl_cert_id": 1,
+  "force_https": true
+}
+```
+
+---
+
+## SNI Certificate Selection
+
+When a TLS handshake arrives, Aegis selects the certificate in this order:
+
+1. **Host binding** — if the proxy host has an `ssl_cert_id`, use that certificate
+2. **Domain match** — check all stored custom certificates for a domain match
+3. **Autocert** — attempt Let's Encrypt certificate retrieval (for hosts with `ssl_mode: letsencrypt`)
+4. **Self-signed fallback** — generate a self-signed certificate covering all configured domains
+
+This ensures every TLS connection receives a certificate, even if the preferred source is unavailable.
+
+---
+
+## Private Key Encryption
+
+All private keys are encrypted at rest using AES-256-GCM:
+
+- **Key source** — provided via `AEGIS_SSL_KEY` (64-char hex string) or auto-generated on first run
+- **Auto-generated keys** are stored in the SQLite `settings` table
+- **Each key** gets a unique random nonce (GCM nonce size)
+- **Decryption** happens only when loading certificates into memory at startup or after a reload
+
+---
+
+## Certificate Lifecycle
+
+| Event | Behavior |
+| --- | --- |
+| **Host created with Let's Encrypt** | Certificate requested on first TLS handshake |
+| **Host created with custom cert** | Certificate stored immediately, proxy reloaded |
+| **Cloudflare Origin requested** | CSR generated, sent to Cloudflare API, cert stored |
+| **Certificate approaches expiry** | Let's Encrypt: auto-renewed by autocert. Custom/Cloudflare: manual renewal required |
+| **Certificate deleted** | Only allowed if not assigned to any host. Proxy reloaded after deletion |
+| **Host SSL mode changed** | Certificate binding updated, proxy reloaded |
+
+---
+
+## Host SSL Settings
+
+Each proxy host supports these SSL-related settings:
+
+| Setting | Description |
+| --- | --- |
+| `ssl_mode` | `none`, `letsencrypt`, or `custom` |
+| `ssl_cert_id` | Reference to a stored certificate (for custom mode) |
+| `force_https` | 301 redirect HTTP to HTTPS |
+| `hsts_enabled` | Enable Strict Transport Security header |
+| `hsts_max_age` | HSTS max-age in seconds |
+| `hsts_include_subdomains` | Include subdomains in HSTS |
+| `hsts_preload` | Add preload directive to HSTS |
+| `tls_min_version` | Minimum TLS version (default: TLS 1.2) |
+
+---
+
+## API Reference
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `GET` | `/api/v1/certificates` | List all stored certificates (domains, source, issuer, expiry) |
+| `POST` | `/api/v1/certificates` | Upload a custom certificate (PEM cert + key) |
+| `DELETE` | `/api/v1/certificates/{id}` | Delete a certificate (fails if assigned to a host) |
+| `POST` | `/api/v1/certificates/cloudflare-origin` | Request a Cloudflare Origin CA certificate |
+
+### Certificate Object
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `id` | integer | Certificate ID |
+| `domains` | array | Domain names covered by the certificate |
+| `source` | string | `custom`, `cloudflare_origin`, or `letsencrypt` |
+| `issuer` | string | Certificate issuer common name |
+| `expires_at` | string | ISO 8601 expiration timestamp |
+| `auto_renew` | boolean | Whether the certificate was marked for auto-renewal |
+| `created_at` | string | ISO 8601 creation timestamp |

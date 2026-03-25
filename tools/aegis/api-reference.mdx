@@ -51,6 +51,19 @@ All API endpoints are served on the admin listener (`127.0.0.1:9443` by default)
 | `PUT` | `/api/v1/rules/{id}` | Update a WAF rule |
 | `DELETE` | `/api/v1/rules/{id}` | Delete a WAF rule |
 | `POST` | `/api/v1/rules/import` | Bulk import rules from JSON or YAML file (multipart, max 4 MB) |
+| `POST` | `/api/v1/rules/test` | Test a single rule against a crafted request |
+| `POST` | `/api/v1/rules/test-all` | Test a crafted request against all enabled rules |
+
+---
+
+## Certificates
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `GET` | `/api/v1/certificates` | List all stored certificates (domains, source, issuer, expiry) |
+| `POST` | `/api/v1/certificates` | Upload a custom certificate (PEM cert + key) |
+| `DELETE` | `/api/v1/certificates/{id}` | Delete a certificate (fails if assigned to a host) |
+| `POST` | `/api/v1/certificates/cloudflare-origin` | Request a Cloudflare Origin CA certificate |
 
 ---
 

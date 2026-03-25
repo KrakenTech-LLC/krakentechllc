@@ -109,13 +109,133 @@ Raw Regex mode is for advanced rules and built-in style pattern matching. You pr
 
 ## Rule Testing
 
-The rule tester uses the real backend evaluation path. You can test:
+The rule tester uses the real backend WAF evaluation path — the same compiled Go regex engine and condition evaluator that runs in production. This is not a browser-side JavaScript approximation.
 
-- Condition-based rules
-- Regex-based rules
-- Full request shapes including path, query, headers, cookies, body, and user-agent
+### Single Rule Test
 
-Validation and test results are based on the same Go-side logic the live WAF uses, not a browser-only approximation.
+Test an individual rule against a crafted request:
+
+```text
+POST /api/v1/rules/test
+```
+
+```json
+{
+  "rule": {
+    "name": "Test SQLi",
+    "match_mode": "regex",
+    "pattern": "(?i)union\\s+select",
+    "targets": ["query", "body"],
+    "action": "block"
+  },
+  "request": {
+    "method": "GET",
+    "url": "/api/search?q=1 UNION SELECT 1,2,3",
+    "headers": {"User-Agent": "Mozilla/5.0"},
+    "body": "",
+    "source_ip": "10.0.0.1"
+  }
+}
+```
+
+**Response:**
+
+```json
+{
+  "matched": true,
+  "matched_target": "query",
+  "matched_value": "UNION SELECT",
+  "pattern_valid": true,
+  "pattern_error": "",
+  "processing_us": 42
+}
+```
+
+The response includes:
+
+| Field | Description |
+| --- | --- |
+| `matched` | Whether the rule fired on the test request |
+| `matched_target` | Which request surface matched (path, query, body, headers, cookies, user-agent) |
+| `matched_value` | The specific value that triggered the match |
+| `pattern_valid` | Whether the regex compiled successfully (RE2 syntax) |
+| `pattern_error` | Compilation error message if the pattern is invalid |
+| `processing_us` | Evaluation time in microseconds |
+
+### Test All Rules
+
+Test a crafted request against all enabled WAF rules to see which ones fire:
+
+```text
+POST /api/v1/rules/test-all
+```
+
+```json
+{
+  "request": {
+    "method": "POST",
+    "url": "/api/login",
+    "headers": {"Content-Type": "application/json"},
+    "body": "{\"user\":\"admin' OR 1=1--\"}",
+    "source_ip": "10.0.0.1"
+  }
+}
+```
+
+**Response:**
+
+```json
+{
+  "matched": true,
+  "tested_rules": 26,
+  "matches": [
+    {
+      "rule_id": 1,
+      "rule_name": "SQLi - Core",
+      "category": "sqli",
+      "severity": "high",
+      "action": "block",
+      "matched_target": "body",
+      "matched_value": "OR 1=1"
+    }
+  ],
+  "processing_us": 187
+}
+```
+
+### Testing Correlation Rules
+
+Correlated (Mnemos) rules can be tested by providing an array of requests that simulate a multi-request sequence:
+
+```json
+{
+  "rule": {
+    "name": "Test Correlation",
+    "match_mode": "correlated",
+    "action": "block",
+    "correlation_config": {
+      "window_seconds": 60,
+      "threshold": 2,
+      "group_by": "source_ip"
+    }
+  },
+  "requests": [
+    {"method": "GET", "url": "/api/users", "source_ip": "10.0.0.1"},
+    {"method": "GET", "url": "/api/config", "source_ip": "10.0.0.1"},
+    {"method": "GET", "url": "/api/billing/export", "source_ip": "10.0.0.1"}
+  ]
+}
+```
+
+### What Gets Tested
+
+| Rule Mode | Evaluation |
+| --- | --- |
+| **Regex** | Pattern compiled with Go RE2, tested against selected targets |
+| **Conditions** | Each condition evaluated with the same field extraction and operator logic as production |
+| **Correlated** | Request sequence fed into a real correlation store with compiled host rules |
+
+All three modes run through the same code paths as the live WAF — `engine.TestRule()` and `engine.Evaluate()` — so test results accurately predict production behavior.
 
 ---
 
@@ -250,3 +370,68 @@ rules:
 | `value` | string | Value to compare against |
 | `case_sensitive` | boolean | Enable case-sensitive matching |
 | `negated` | boolean | Invert the condition result |
+
+---
+
+## Bundled Rule Sets
+
+Aegis ships with importable rule sets in the `rules/` directory. These can be imported via the admin API or loaded from the CLI.
+
+### PayloadsAllTheThings Rule Set
+
+The `payloads-all-the-things.yaml` rule set provides 35 detection rules derived from the [PayloadsAllTheThings](https://github.com/swisskyrepo/PayloadsAllTheThings) repository. It covers attack categories beyond the 26 built-in rules, including:
+
+| Category | Rules | Coverage |
+| --- | --- | --- |
+| SQL Injection | 5 | Auth bypass, time-based blind, error-based extraction, polyglots, stacked queries |
+| NoSQL Injection | 2 | MongoDB operator injection, server-side JavaScript injection |
+| Command Injection | 3 | Shellshock, newline injection, backtick/subshell execution |
+| XXE Injection | 3 | Entity declaration, Billion Laughs, XInclude |
+| GraphQL | 2 | Introspection probing, batching attacks |
+| Server Side Includes | 2 | SSI directives, Edge Side Includes (ESI) |
+| XSLT Injection | 1 | XSLT code execution and information disclosure |
+| File Inclusion | 2 | Remote file inclusion, PHP wrapper exploitation |
+| Open Redirect | 1 | Parameter-based redirect manipulation |
+| Request Smuggling | 1 | Transfer-Encoding desync |
+| CSV Injection | 1 | Spreadsheet formula injection |
+| SAML Injection | 1 | Signature stripping and wrapping |
+| JWT Attacks | 1 | Algorithm confusion (alg: none, key confusion) |
+| Prototype Pollution | 1 | __proto__ and constructor.prototype manipulation |
+| Web Cache Deception | 1 | Static extension appended to dynamic paths |
+| HTTP Parameter Pollution | 1 | Duplicate parameter injection |
+| File Upload | 1 | Dangerous extension and null byte injection |
+| LaTeX Injection | 1 | File read and command execution via LaTeX |
+| Prompt Injection | 1 | LLM instruction override and jailbreak |
+| Spring Boot Actuator | 1 | Exposed management endpoints |
+| CSS Injection | 1 | Attribute selector exfiltration |
+| Source Code Exposure | 1 | .git, .svn, .hg directory access |
+| OAuth | 1 | Redirect URI manipulation |
+| LDAP (Extended) | 1 | Blind LDAP and attribute extraction |
+| DNS Rebinding | 1 | Known rebinding service domains |
+| Type Juggling | 1 | PHP loose comparison bypass |
+| Race Condition | 1 | Last-byte sync headers |
+| WebSocket | 1 | Cross-site WebSocket hijacking |
+| IDOR | 1 | Sequential ID enumeration patterns |
+| Dependency Confusion | 1 | Internal package name probing |
+
+The rule set also includes 3 **Mnemos correlation rules** that link reconnaissance and exploitation patterns:
+
+- **Recon to Exploitation Campaign** — introspection/actuator probing followed by active injection
+- **Multi-Vector Injection Campaign** — 4+ distinct injection techniques from the same client in 3 minutes
+- **Auth Attack Campaign** — JWT, SAML, OAuth, and type juggling attacks correlated within 5 minutes
+
+### Mnemos OOB SQLi and Exfiltration Rule Set
+
+The `mnemos-oob-sqli-and-exfil.yaml` rule set provides detection chains for:
+
+- **Out-of-Band SQL Injection** — OOB function primitives + DNS/UNC exfil, correlated by Mnemos
+- **Data Exfiltration Campaigns** — sensitive endpoint access + bulk extraction + schema recon, correlated by Mnemos
+
+### Importing a Rule Set
+
+```bash
+curl -X POST http://127.0.0.1:9443/api/v1/rules/import \
+  -H "Cookie: kwaf_session=<session>" \
+  -H "X-CSRF-Token: <token>" \
+  -F "file=@rules/payloads-all-the-things.yaml"
+```
