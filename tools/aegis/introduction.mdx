@@ -1,5 +1,5 @@
 ---
-title: "Introduction"
+title: "Aegis"
 description: "Aegis — Production-grade Web Application Firewall & Reverse Proxy Manager"
 ---
 
@@ -13,9 +13,9 @@ description: "Aegis — Production-grade Web Application Firewall & Reverse Prox
 
 # Aegis — Web Application Firewall & Reverse Proxy Manager
 
-Aegis is a production-grade Web Application Firewall (WAF) and Reverse Proxy Manager written in Go. It combines the host management experience of Nginx Proxy Manager with a full WAF engine that evaluates OWASP Top 10 rule sets on every proxied request.
+Aegis is a production-grade Web Application Firewall (WAF) and Reverse Proxy Manager written in Go. It combines the host management experience of Nginx Proxy Manager with a full WAF engine that evaluates a customizable set of rules including the OWASP Top 10 and other malicious payloads on every proxied request.
 
-**Single binary. SQLite storage. Zero risky dependencies.**
+**Single binary. SQLite storage. Zero dependencies.**
 
 Aegis ships as a single static binary with an embedded admin UI, uses SQLite (WAL mode) for all persistent storage, and binds the admin dashboard to `127.0.0.1:9443` by default for security. No Nginx, no Docker, no external database required — just run the binary and start adding hosts.
 
@@ -27,6 +27,56 @@ Aegis ships as a single static binary with an embedded admin UI, uses SQLite (WA
 - **Per-host WAF profiles** — each proxy host independently runs in `off`, `detect`, or `enforce` mode with its own rule chain
 - **Zero-lock hot path** — atomic pointer swaps for config, channel-buffered log writes, per-bucket rate limiters; no mutex on the request path
 - **First-run setup wizard** — no default credentials; forces secure initialization on first launch
+
+---
+
+## WAF Paranoia Level
+
+The paranoia level is a global setting that controls which WAF rules are active across all proxy hosts. Every built-in and imported rule is tagged with a paranoia level from 1 to 4. When you set the global paranoia level, all rules at or below that level are automatically enabled, and all rules above it are automatically disabled.
+
+### Paranoia Levels
+
+| Level | Sensitivity | Description |
+| --- | --- | --- |
+| **1** | Low | Core detection rules only — minimal false positives, catches obvious attacks |
+| **2** | Standard (default) | Balanced detection — recommended for most deployments |
+| **3** | High | Aggressive detection — catches more sophisticated attack variants, may produce false positives on complex applications |
+| **4** | Maximum | All rules enabled — highest sensitivity, expect false positives that require tuning |
+
+### How It Works
+
+When the paranoia level is changed (via Settings or during initial setup), Aegis executes a bulk update across all rules:
+
+- Rules with `paranoia <= level` are **enabled**
+- Rules with `paranoia > level` are **disabled**
+- This only affects rules in **inherit** mode (the default)
+
+At runtime, the WAF engine skips any rule whose paranoia level exceeds the host's configured level, so the rule chain only evaluates rules that should be active.
+
+### Per-Rule Override (Manual Mode)
+
+Individual rules can be switched to **manual** paranoia mode, which opts them out of the global paranoia system entirely. A manual rule's enabled/disabled state is controlled only by its own toggle — changing the global paranoia level will not affect it.
+
+This is useful for:
+
+- Keeping a specific high-paranoia rule enabled even when the global level is low
+- Disabling a rule that causes false positives without lowering the global paranoia level
+- Custom rules that should always be active regardless of the global setting
+
+| Paranoia Mode | Behavior |
+| --- | --- |
+| **inherit** (default) | Rule follows the global paranoia level — enabled when `rule.paranoia <= global_level` |
+| **manual** | Rule ignores the global paranoia level — enabled/disabled by its own toggle only |
+
+### Configuration
+
+- **Location:** Admin UI -> Settings -> WAF Paranoia Level
+- **Setting key:** `waf_paranoia_level`
+- **Default:** `2`
+- **Range:** 1–4
+- **API:** `PUT /api/v1/settings` with `{"waf_paranoia_level": "3"}`
+
+Changing the paranoia level takes effect immediately — Aegis updates all inherited rules in SQLite and reloads the proxy rule chains without a restart.
 
 ---
 
@@ -145,7 +195,10 @@ Aegis Shield Challenge (if enabled, check aegis_shield cookie)
 WAF Mode Check ──► "off" ──► skip directly to Reverse Proxy
   |
   v (detect / enforce)
-IP Whitelist ──► match ──► allow, skip rules
+IP Whitelist ──► match ──► suppress enforcement (detect-only)
+  |
+  v
+IP Timeouts ──► active timeout ──► block (temporary auto-block)
   |
   v
 IP Blacklist ──► match ──► block (enforce) or log (detect)
@@ -216,6 +269,41 @@ go build -ldflags "-X main.version=1.0.0" -o aegis ./cmd/aegis/
 | `gopkg.in/yaml.v3` | YAML configuration file parsing |
 | `github.com/cilium/ebpf` | eBPF program management for kernel-level DDoS protection |
 | `github.com/oschwald/maxminddb-golang/v2` | Embedded GeoLite2 database reader for geolocation |
+
+---
+
+## Logs & Retention
+
+Aegis stores traffic request logs and admin audit logs in SQLite. A background rotation cycle runs hourly to manage log retention, optional archiving, and cleanup.
+
+### Retention Settings
+
+| Setting | Key | Default | Description |
+| --- | --- | --- | --- |
+| **Traffic log retention** | `logging.traffic_retention_days` | `30` | Days to keep traffic/request logs before deletion or archiving |
+| **Audit log retention** | `logging.audit_retention_days` | `30` | Days to keep admin audit log entries |
+| **Archive enabled** | `logging.traffic_archive_enabled` | `false` | Archive expired traffic logs to ZIP files instead of deleting directly |
+| **Archive retention** | `logging.traffic_archive_retention_days` | `90` | Days to keep archived ZIP files before deletion |
+
+All settings are configurable in Admin UI -> Settings.
+
+### How Log Rotation Works
+
+Every hour, the log rotation cycle runs:
+
+1. **Traffic logs older than retention period** — either archived to ZIP (if archiving enabled) or deleted directly
+2. **Archived ZIP files older than archive retention** — deleted from disk
+3. **Audit logs older than retention period** — pruned from SQLite
+
+When archiving is enabled, expired traffic logs are batch-exported (500 records per batch) to `traffic-{date}-{timestamp}.zip` files containing `traffic.jsonl` (newline-delimited JSON). This preserves a compressed historical record while keeping the SQLite database lean.
+
+### Log Types
+
+| Log | Contents | Storage |
+| --- | --- | --- |
+| **Traffic log** | Every proxied request — host, source IP, method, path, status, action, matched rule, headers, WAF details, latency | SQLite `request_log` table |
+| **Audit log** | Every admin action — user, action type, resource ID, description, timestamp | SQLite `audit_log` table |
+| **Structured application log** | Server runtime events — JSON output via `slog` | stdout/stderr |
 
 ---
 

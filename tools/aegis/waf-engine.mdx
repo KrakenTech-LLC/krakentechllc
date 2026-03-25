@@ -34,7 +34,7 @@ The Aegis WAF engine evaluates every proxied request against a chain of compiled
 | **Response filtering** | Strip `Server`, `X-Powered-By`, `X-AspNet-Version` headers |
 | **Security header injection** | Auto-inject `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy` |
 | **SameSite cookie enforcement** | Force `SameSite=Lax` on upstream `Set-Cookie` headers missing the attribute |
-| **Paranoia levels** | Rules tagged with paranoia level (1-4) for tunable sensitivity |
+| **Paranoia levels** | Global paranoia level (1-4) controls which rules are active — rules at or below the level are enabled, above are disabled. Per-rule manual override available. See [Paranoia Level](/tools/aegis/introduction#waf-paranoia-level) |
 | **Configurable targets** | Each rule targets specific input surfaces: path, query, body, headers, cookies, user-agent |
 | **Severity-based auto blocking** | Automatically blacklists offending IPs when a blocked match meets the configured minimum severity |
 | **Mnemos correlation engine** | Stateful multi-request correlation — detects attack campaigns that span multiple requests from the same client within a time window. See [Mnemos](./mnemos) |
@@ -65,32 +65,109 @@ The built-in rule library covers the following attack classes:
 
 ---
 
-## Auto Blocking by Severity
+## IP Whitelists
 
-Aegis can automatically blacklist source IPs when a request is blocked by the WAF and the matched rule severity meets or exceeds a configured threshold.
+IP whitelists let you exempt trusted source IPs from WAF enforcement. This is distinct from the [Allow Lists](./allow-lists) access control system — whitelists are per-host CIDR lists configured directly on the proxy host.
 
-How it works:
+### How Whitelists Work
 
-1. The request must be actively blocked by the WAF
-2. Aegis compares the matched rule severity against the configured minimum severity
-3. If the rule severity meets or exceeds that threshold, the source IP is added to that host's blacklist as a `/32` CIDR entry
-4. The proxy runtime is reloaded so the new blacklist entry takes effect immediately
+When a request arrives from a whitelisted IP:
+
+1. The IP is checked against the host's `whitelist_cidrs` list (compiled to `net.IPNet` for fast matching)
+2. If the IP matches, the request is marked as **whitelisted**
+3. All subsequent WAF checks still run — method restriction, body size, CORS, rate limiting, and rule chain evaluation — but any match that would normally be **blocked** is downgraded to **detect** (logged but allowed through)
+4. The request is proxied to the upstream regardless of WAF matches
+
+This means whitelisted traffic is still fully evaluated and logged — you see what would have been blocked — but enforcement is suppressed. This is useful for:
+
+- Internal monitoring tools that trigger WAF rules with legitimate traffic
+- Penetration testing IPs where you want visibility without blocking
+- Trusted office/VPN ranges that should never be interrupted
+
+### Whitelist vs Allow List
+
+| Feature | Whitelist | Allow List |
+| --- | --- | --- |
+| **Scope** | Per-host CIDR list | Reusable policy attached to hosts |
+| **Effect** | Bypasses WAF enforcement (detect-only) | Restricts access (deny if not in list) |
+| **Types** | IP/CIDR only | IP/CIDR, local auth, OAuth/OIDC, Active Directory |
+| **Configuration** | `whitelist_cidrs` on the proxy host | Separate access list object |
+
+### Evaluation Order
+
+The WAF evaluates IP lists in this order:
+
+1. **Allow list** (if attached) — if the IP is NOT in the allow list, block immediately
+2. **Whitelist** — if the IP IS in the whitelist, mark as whitelisted (suppress enforcement)
+3. **IP timeouts** — check for active temporary blocks
+4. **Blacklist** — check static blacklist CIDRs
+5. **WAF rules** — evaluate rule chain (whitelisted IPs get detect-only)
+
+---
+
+## Auto Blocking
+
+Aegis can automatically block source IPs when a WAF rule fires with `action: block` and the matched rule's severity meets or exceeds a configured threshold. Auto blocking supports two action modes: **permanent blacklist** or **temporary timeout**.
+
+### How It Works
+
+1. A request is blocked by the WAF
+2. Aegis compares the matched rule's severity against the configured minimum severity threshold
+3. If the severity meets or exceeds the threshold, auto blocking fires
+4. Depending on the configured action mode:
+   - **Blacklist** — the IP is added as a permanent `/32` CIDR entry to the host or global blacklist
+   - **Timeout** — the IP is added to a temporary block table with an expiration timestamp
+
+Requests that are only detected or logged (not actively blocked) do not trigger auto blocking.
 
 ### Configuration
 
-| Setting | Value |
+Four settings control auto blocking behavior:
+
+| Setting | Key | Default | Description |
+| --- | --- | --- | --- |
+| **Severity Threshold** | `waf.auto_blacklist_min_severity` | `high` | Minimum rule severity that triggers auto blocking |
+| **Action** | `waf.auto_blacklist_action` | `blacklist` | `blacklist` (permanent) or `timeout` (temporary) |
+| **Scope** | `waf.auto_blacklist_scope` | `host` | `host` (per-host) or `global` (all hosts) |
+| **Timeout Duration** | `waf.auto_blacklist_timeout_seconds` | `3600` | Duration in seconds for timeout blocks (only used when action is `timeout`) |
+
+All settings are configurable in Admin UI -> Settings.
+
+### Severity Threshold
+
+| Value | Behavior |
 | --- | --- |
-| Setting key | `waf.auto_blacklist_min_severity` |
-| Location | Admin UI -> Settings -> Auto-Blacklist Minimum Severity |
-| Default | `high` |
+| `off` | Auto blocking disabled entirely |
+| `low` | Auto block on `low`, `medium`, `high`, and `critical` |
+| `medium` | Auto block on `medium`, `high`, and `critical` |
+| `high` (default) | Auto block on `high` and `critical` |
+| `critical` | Auto block on `critical` only |
 
-Available values: `off`, `low`, `medium`, `high`, `critical`
+### Blacklist vs Timeout
 
-- `high` — auto-blacklist `high` and `critical` blocked attacks
-- `critical` — only auto-blacklist `critical` blocked attacks
-- `off` — disable severity-based auto blacklisting entirely
+| Mode | Behavior | Removal |
+| --- | --- | --- |
+| **Blacklist** (default) | IP added permanently to the host or global blacklist as a `/32` CIDR | Manual removal via admin UI or API |
+| **Timeout** | IP added to a temporary block table with `expires_at` timestamp | Automatic — expired entries are cleaned up on the next timeout check |
 
-Auto blocking is host-specific. Requests that are only detected or logged (not blocked) do not trigger auto blacklisting.
+When action is `timeout`, the IP is blocked for the number of seconds configured in `waf.auto_blacklist_timeout_seconds` (default: 1 hour). After expiration, the IP can access the host again. If the IP triggers another WAF block, a new timeout is created.
+
+### Scope
+
+| Scope | Behavior |
+| --- | --- |
+| **host** (default) | The block applies only to the specific proxy host where the WAF rule fired |
+| **global** | The block applies to all proxy hosts system-wide |
+
+### IP Timeout Lifecycle
+
+When auto blocking uses timeout mode:
+
+1. WAF blocks a request that meets the severity threshold
+2. An `IPTimeout` record is created with `expires_at = now + timeout_seconds`
+3. On every subsequent request, the WAF checks active timeouts before evaluating rules
+4. If an active (non-expired) timeout exists for the client IP, the request is blocked immediately
+5. Expired timeouts are cleaned up automatically during the next query
 
 ---
 

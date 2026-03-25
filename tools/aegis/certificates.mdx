@@ -172,6 +172,132 @@ Set `ssl_mode` to `custom` and either:
 
 ---
 
+## Cloudflare Edge Certificates
+
+In addition to Origin CA certificates (which live on the origin server), Aegis can request **Cloudflare Edge Certificates** through the Cloudflare API. Edge certificates are served by Cloudflare's edge network on behalf of your domain — useful when you need Cloudflare to provision and serve a publicly trusted certificate (e.g., for advanced certificate packs, custom hostnames, or alternative CAs).
+
+### API Endpoint
+
+```text
+POST /api/v1/certificates/cloudflare-edge
+```
+
+```json
+{
+  "api_token": "your-cloudflare-api-token",
+  "zone_id": "your-zone-id",
+  "hostnames": ["app.example.com", "*.example.com"],
+  "certificate_authority": "lets_encrypt",
+  "validation_method": "txt",
+  "validity_days": 90
+}
+```
+
+### Options
+
+| Field | Default | Description |
+| --- | --- | --- |
+| `api_token` | (required) | Cloudflare API token with SSL and Certificates Write permissions |
+| `zone_id` | (required) | Cloudflare Zone ID |
+| `hostnames` | (required) | Domain names for the edge certificate |
+| `certificate_authority` | `lets_encrypt` | CA to issue the edge cert: `lets_encrypt`, `google`, or `ssl_com` |
+| `validation_method` | `txt` | Domain validation method: `txt`, `http`, or `email` |
+| `validity_days` | `90` | Certificate validity in days |
+| `cloudflare_branding` | (optional) | Enable Cloudflare branding on the certificate |
+
+Edge certificates are managed by Cloudflare — Aegis submits the order and returns the Cloudflare certificate ID and status. The actual certificate is served by Cloudflare's edge, not stored locally.
+
+---
+
+## Local Certificate Authority (Trust Bundle)
+
+Aegis generates its own **local Certificate Authority** on first run. This CA is used to sign self-signed certificates for the admin UI and proxy fallback TLS. The CA is stored in the SSL cache directory alongside the certificates it issues.
+
+### CA Files
+
+| File | Purpose | Validity |
+| --- | --- | --- |
+| `aegis-local-ca.crt` | CA certificate (public) | 10 years |
+| `aegis-local-ca.key` | CA private key (ECDSA P-256) | — |
+| `admin-ui-self-signed.crt` | Admin UI TLS certificate (signed by CA) | 1 year |
+| `admin-ui-self-signed.key` | Admin UI TLS key | — |
+| `proxy-self-signed.crt` | Proxy fallback TLS certificate (signed by CA) | 1 year |
+| `proxy-self-signed.key` | Proxy fallback TLS key | — |
+
+All self-signed certificates are issued by the local CA, so trusting the single CA certificate on your OS or browser automatically trusts all Aegis-generated certificates.
+
+### Why Trust the CA?
+
+When you first access the Aegis admin UI at `https://127.0.0.1:9443`, your browser will show a certificate warning because the self-signed certificate is not trusted by default. You can either click through the warning each time, or trust the Aegis local CA once to permanently eliminate the warning.
+
+The same applies to the proxy fallback certificate — if a proxy host has no Let's Encrypt or custom certificate configured, Aegis serves a self-signed certificate signed by the local CA.
+
+### Downloading the Trust Bundle
+
+Aegis provides a downloadable trust bundle containing the CA certificate and installation instructions for every major platform:
+
+```text
+GET /api/v1/settings/admin-trust-bundle
+```
+
+This returns a ZIP file containing:
+
+| File | Description |
+| --- | --- |
+| `aegis-local-ca.crt` | The CA certificate in PEM format |
+| `README.txt` | Step-by-step installation instructions |
+
+### Installing the CA Certificate
+
+**macOS:**
+
+```bash
+# Add to system keychain
+sudo security add-trusted-cert -d -r trustRoot \
+  -k /Library/Keychains/System.keychain aegis-local-ca.crt
+```
+
+**Windows:**
+
+```powershell
+# Import to Trusted Root Certification Authorities
+certutil -addstore -f "Root" aegis-local-ca.crt
+```
+
+**Linux (Debian/Ubuntu):**
+
+```bash
+sudo cp aegis-local-ca.crt /usr/local/share/ca-certificates/aegis-local-ca.crt
+sudo update-ca-certificates
+```
+
+**Linux (RHEL/Fedora):**
+
+```bash
+sudo cp aegis-local-ca.crt /etc/pki/ca-trust/source/anchors/aegis-local-ca.crt
+sudo update-ca-trust
+```
+
+**Browser (Firefox — uses its own trust store):**
+
+1. Open Settings -> Privacy & Security -> Certificates -> View Certificates
+2. Import `aegis-local-ca.crt` under the Authorities tab
+3. Check "Trust this CA to identify websites"
+
+After installation, the browser/OS will trust all certificates signed by the Aegis local CA without showing warnings.
+
+### Certificate Renewal
+
+| Certificate | Validity | Renewal |
+| --- | --- | --- |
+| Local CA | 10 years | Regenerated only if deleted from the cache directory |
+| Admin UI cert | 1 year | Automatically regenerated on next startup if expired or missing |
+| Proxy fallback cert | 1 year | Automatically regenerated on next startup if expired or missing |
+
+If a signed certificate is no longer issued by the current CA (e.g., the CA was regenerated), Aegis detects this and re-issues the certificate automatically.
+
+---
+
 ## SNI Certificate Selection
 
 When a TLS handshake arrives, Aegis selects the certificate in this order:
@@ -234,6 +360,8 @@ Each proxy host supports these SSL-related settings:
 | `POST` | `/api/v1/certificates` | Upload a custom certificate (PEM cert + key) |
 | `DELETE` | `/api/v1/certificates/{id}` | Delete a certificate (fails if assigned to a host) |
 | `POST` | `/api/v1/certificates/cloudflare-origin` | Request a Cloudflare Origin CA certificate |
+| `POST` | `/api/v1/certificates/cloudflare-edge` | Order a Cloudflare Edge certificate |
+| `GET` | `/api/v1/settings/admin-trust-bundle` | Download the local CA trust bundle (ZIP) |
 
 ### Certificate Object
 
