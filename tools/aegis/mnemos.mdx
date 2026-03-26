@@ -51,7 +51,7 @@ If threshold met within window ──► correlation event fires
 | Component | Description |
 | --- | --- |
 | **CorrelationStore** | `sync.Map` of per-client circular buffers (default 64 entries per client, 5-minute TTL) |
-| **RequestSnapshot** | Captured request data: timestamp, method, path, query, body (first 512 bytes), headers, cookies, user-agent, content-type, source IP, matched rules, action |
+| **RequestSnapshot** | Captured request and response data: timestamp, request ID, method, path, query, body (first 512 bytes), headers, cookies, user-agent, content-type, source IP, matched rules, action — plus response fields: status, size, content-type, latency, headers, body sample |
 | **Correlation Rules** | WAF rules with `match_mode: correlated` and a `correlation_config` block |
 | **Background GC** | Periodic garbage collection removes stale client histories (2x TTL) |
 
@@ -180,6 +180,143 @@ This fires when the same client triggers both OOB-SQLi rules across 3+ unique pa
 ```
 
 This correlates a client systematically walking sensitive endpoints (`/api/users`, `/api/config`, `/api/billing/export`) with bulk extraction parameters or schema reconnaissance within 5 minutes. The `unique_fields: [path]` constraint ensures the rule only fires when the client is walking different resources, not refreshing the same page.
+
+---
+
+## Bidirectional Correlation (Response-Aware Rules)
+
+Standard Mnemos rules correlate across requests — they evaluate what the client *sends*. Bidirectional correlation extends this to also evaluate what the server *responds*, enabling detection of attack patterns that are only visible in the full request-response flow.
+
+### Why Response Correlation Matters
+
+Some attacks can only be detected by looking at both sides of the conversation:
+
+- **Credential stuffing** — the same client sends login requests, but only the *response* status codes (200 vs 401) reveal success/failure patterns
+- **Forced browsing / IDOR** — a client enumerates IDs, but only the response sizes or status codes reveal which resources exist
+- **Data exfiltration** — a client walks API endpoints, but the response `Content-Type` and body size reveal whether data was actually returned
+- **Error-based reconnaissance** — a client probes endpoints; 500 errors in the responses indicate the server is crashing on specific inputs
+
+### How It Works
+
+Bidirectional correlation uses two separate correlation stores:
+
+```text
+Request arrives
+  |
+  v
+WAF rule chain evaluates (request-side)
+  |
+  v
+Snapshot recorded to REQUEST correlation store
+  |
+  v
+Request-side Mnemos rules evaluate
+  |
+  v
+Request proxied to upstream
+  |
+  v
+Response returns from upstream
+  |
+  v
+Response fields captured (status, size, content-type, latency, headers, body sample)
+  |
+  v
+Snapshot updated with response data, recorded to RESPONSE correlation store
+  |
+  v
+Response-aware Mnemos rules evaluate
+  |
+  v
+If match ──► retrospective block (auto-blacklist/timeout the source IP)
+```
+
+The WAF engine automatically routes correlation rules to the correct store based on their predicates:
+
+- Rules with **only request-side predicates** go to the request correlation store (evaluated immediately)
+- Rules with **any `response.*` predicate** go to the response correlation store (evaluated after the upstream responds)
+
+### Response Fields Available in Predicates
+
+| Field | Description |
+| --- | --- |
+| `response.status` | HTTP status code (e.g., `200`, `401`, `500`) |
+| `response.size` | Response body size in bytes |
+| `response.content_type` | Response `Content-Type` header value |
+| `response.latency_ms` | Request-to-response latency in milliseconds |
+| `response.header.<name>` | Specific response header value |
+| `response.body` | Response body sample (truncated) |
+
+### Response-Aware Unique Fields
+
+In addition to request-side unique fields, correlation rules can count unique values across response fields:
+
+| Field | Description |
+| --- | --- |
+| `response_status` | Unique HTTP status codes |
+| `response_size` | Unique response body sizes |
+| `response_content_type` | Unique Content-Type values |
+
+### Example: Credential Stuffing Detection
+
+```yaml
+- name: Mnemos - Credential Stuffing Campaign
+  match_mode: correlated
+  severity: critical
+  action: block
+  tags: [mnemos, correlation, credential-stuffing]
+  correlation_config:
+    window_seconds: 120
+    threshold: 5
+    group_by: source_ip
+    unique_fields:
+      - body
+    predicates:
+      - field: request.path
+        operator: matches_regex
+        value: '(?i)/(?:api/)?(?:auth|login|signin|token)'
+      - field: response.status
+        operator: equals
+        value: "401"
+```
+
+This fires when the same client makes 5+ login attempts with different request bodies (different credentials) within 2 minutes, where all responses are `401 Unauthorized`.
+
+### Example: Forced Browsing / IDOR Detection
+
+```yaml
+- name: Mnemos - IDOR Enumeration
+  match_mode: correlated
+  severity: high
+  action: block
+  tags: [mnemos, correlation, idor]
+  correlation_config:
+    window_seconds: 60
+    threshold: 10
+    group_by: source_ip
+    unique_fields:
+      - path
+    predicates:
+      - field: request.path
+        operator: matches_regex
+        value: '(?i)/api/(?:users|accounts|orders|invoices)/\d+'
+      - field: response.status
+        operator: equals
+        value: "200"
+```
+
+This detects a client walking sequential numeric IDs across 10+ unique paths within 1 minute where the server responds `200` — indicating the resources exist and were returned.
+
+### Retrospective Blocking
+
+When a response-aware correlation rule fires, the response has already been sent to the client. Aegis cannot undo that response, but it can **retrospectively block** the source IP to prevent future requests:
+
+1. The response correlation match fires
+2. Aegis applies the same auto-blocking logic (blacklist or timeout, host or global scope)
+3. The source IP is blocked for all future requests
+4. The proxy runtime reloads immediately
+
+This means the attacker may receive responses during the detection window, but is cut off as soon as the correlation threshold is met. The block reason is logged as a retrospective block with the correlation rule name and category.
 
 ---
 
