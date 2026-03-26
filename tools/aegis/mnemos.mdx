@@ -7,7 +7,11 @@ description: "Stateful request correlation engine for multi-request attack detec
 
 Mnemos is Aegis' stateful request correlation engine. It detects attacks that span multiple HTTP requests from the same client within a configurable time window — the kind of campaigns that single-request WAF rules cannot catch.
 
-Mnemos is analogous to Snort's `flowbits` + `threshold` + `detection_filter`, but operates at the HTTP application layer instead of the packet layer.
+Mnemos is analogous to Snort's `flowbits` \+ `threshold` \+ `detection_filter`, but operates at the HTTP application layer instead of the packet layer.
+
+<Frame>
+  ![Image](/images/image-42.png)
+</Frame>
 
 ---
 
@@ -150,7 +154,7 @@ This is a real detection chain from the bundled `mnemos-oob-sqli-and-exfil.yaml`
         value: '(?i)(?:/api|/graphql|/query|/search|/admin|/v[0-9])'
 ```
 
-This fires when the same client triggers both OOB-SQLi rules across 3+ unique paths within 3 minutes, targeting API-like endpoints. A single probing request is blocked by the trigger rules; the Mnemos rule escalates repeated probing to critical severity.
+This fires when the same client triggers both OOB-SQLi rules across 3\+ unique paths within 3 minutes, targeting API-like endpoints. A single probing request is blocked by the trigger rules; the Mnemos rule escalates repeated probing to critical severity.
 
 ---
 
@@ -185,13 +189,13 @@ This correlates a client systematically walking sensitive endpoints (`/api/users
 
 ## Bidirectional Correlation (Response-Aware Rules)
 
-Standard Mnemos rules correlate across requests — they evaluate what the client *sends*. Bidirectional correlation extends this to also evaluate what the server *responds*, enabling detection of attack patterns that are only visible in the full request-response flow.
+Standard Mnemos rules correlate across requests — they evaluate what the client _sends_. Bidirectional correlation extends this to also evaluate what the server _responds_, enabling detection of attack patterns that are only visible in the full request-response flow.
 
 ### Why Response Correlation Matters
 
 Some attacks can only be detected by looking at both sides of the conversation:
 
-- **Credential stuffing** — the same client sends login requests, but only the *response* status codes (200 vs 401) reveal success/failure patterns
+- **Credential stuffing** — the same client sends login requests, but only the _response_ status codes (200 vs 401) reveal success/failure patterns
 - **Forced browsing / IDOR** — a client enumerates IDs, but only the response sizes or status codes reveal which resources exist
 - **Data exfiltration** — a client walks API endpoints, but the response `Content-Type` and body size reveal whether data was actually returned
 - **Error-based reconnaissance** — a client probes endpoints; 500 errors in the responses indicate the server is crashing on specific inputs
@@ -280,7 +284,7 @@ In addition to request-side unique fields, correlation rules can count unique va
         value: "401"
 ```
 
-This fires when the same client makes 5+ login attempts with different request bodies (different credentials) within 2 minutes, where all responses are `401 Unauthorized`.
+This fires when the same client makes 5\+ login attempts with different request bodies (different credentials) within 2 minutes, where all responses are `401 Unauthorized`.
 
 ### Example: Forced Browsing / IDOR Detection
 
@@ -305,7 +309,7 @@ This fires when the same client makes 5+ login attempts with different request b
         value: "200"
 ```
 
-This detects a client walking sequential numeric IDs across 10+ unique paths within 1 minute where the server responds `200` — indicating the resources exist and were returned.
+This detects a client walking sequential numeric IDs across 10\+ unique paths within 1 minute where the server responds `200` — indicating the resources exist and were returned.
 
 ### Retrospective Blocking
 

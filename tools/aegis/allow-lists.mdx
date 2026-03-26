@@ -7,6 +7,10 @@ description: "Access control policies for Aegis proxy hosts"
 
 An allow list is a reusable access-control policy that you attach to a proxy host to restrict who can reach the protected upstream application.
 
+<Frame>
+  ![Image](/images/image-36.png)
+</Frame>
+
 ---
 
 ## How Allow Lists Work
@@ -16,7 +20,7 @@ An allow list is a reusable access-control policy that you attach to a proxy hos
 3. Aegis evaluates the allow list before proxying the request upstream
 4. If the client or user does not satisfy the allow list, access is denied before the upstream application is reached
 
-**Where to apply:** Admin UI -> Hosts -> edit a proxy host -> Access List
+**Where to apply:** Admin UI -\> Hosts -\> edit a proxy host -\> Access List
 
 ---
 
@@ -71,7 +75,7 @@ The callback path `/_aegis/oauth/callback` is reserved by Aegis. A successful lo
 
 App registration setup for a protected host `app.example.com`:
 
-1. Open Microsoft Entra ID -> App registrations -> New registration
+1. Open Microsoft Entra ID -\> App registrations -\> New registration
 2. Name the app (e.g., `Aegis - app.example.com`)
 3. Choose the supported account type
 4. Under Redirect URI, choose platform Web
@@ -83,12 +87,14 @@ App registration setup for a protected host `app.example.com`:
 10. For user/group picker support, add Microsoft Graph application permissions: `User.Read.All`, `Group.Read.All` and grant admin consent
 
 In Aegis, configure:
+
 - Provider: `Azure AD (OIDC)`
 - Client ID: the Azure Application (client) ID
 - Client Secret: the client secret value
 - Issuer URL: `https://login.microsoftonline.com/<tenant-id>/v2.0`
 
 Azure-specific behavior:
+
 - Aegis queries Microsoft Graph to populate searchable user and group pickers
 - Users are stored by UPN/email
 - Groups are stored by Graph group ID and matched during login
@@ -107,6 +113,7 @@ Azure-specific behavior:
 - Client Secret: GitHub OAuth app client secret
 
 GitHub access can be restricted by:
+
 - Allowed Usernames
 - Allowed Emails
 - Allowed Email Domains

@@ -7,6 +7,10 @@ description: "Custom WAF rule authoring in Aegis"
 
 Aegis supports three rule match modes: **Condition Builder** for structured field/operator/value rules, **Raw Regex** for advanced RE2-based pattern matching, and **Correlated** for multi-request [Mnemos](./mnemos) correlation rules.
 
+<Frame>
+  ![Image](/images/image-40.png)
+</Frame>
+
 ---
 
 ## Rule Options
@@ -396,7 +400,7 @@ The `payloads-all-the-things.yaml` rule set provides 35 detection rules derived 
 | CSV Injection | 1 | Spreadsheet formula injection |
 | SAML Injection | 1 | Signature stripping and wrapping |
 | JWT Attacks | 1 | Algorithm confusion (alg: none, key confusion) |
-| Prototype Pollution | 1 | __proto__ and constructor.prototype manipulation |
+| Prototype Pollution | 1 | **proto** and constructor.prototype manipulation |
 | Web Cache Deception | 1 | Static extension appended to dynamic paths |
 | HTTP Parameter Pollution | 1 | Duplicate parameter injection |
 | File Upload | 1 | Dangerous extension and null byte injection |
@@ -417,15 +421,15 @@ The `payloads-all-the-things.yaml` rule set provides 35 detection rules derived 
 The rule set also includes 3 **Mnemos correlation rules** that link reconnaissance and exploitation patterns:
 
 - **Recon to Exploitation Campaign** — introspection/actuator probing followed by active injection
-- **Multi-Vector Injection Campaign** — 4+ distinct injection techniques from the same client in 3 minutes
+- **Multi-Vector Injection Campaign** — 4\+ distinct injection techniques from the same client in 3 minutes
 - **Auth Attack Campaign** — JWT, SAML, OAuth, and type juggling attacks correlated within 5 minutes
 
 ### Mnemos OOB SQLi and Exfiltration Rule Set
 
 The `mnemos-oob-sqli-and-exfil.yaml` rule set provides detection chains for:
 
-- **Out-of-Band SQL Injection** — OOB function primitives + DNS/UNC exfil, correlated by Mnemos
-- **Data Exfiltration Campaigns** — sensitive endpoint access + bulk extraction + schema recon, correlated by Mnemos
+- **Out-of-Band SQL Injection** — OOB function primitives \+ DNS/UNC exfil, correlated by Mnemos
+- **Data Exfiltration Campaigns** — sensitive endpoint access \+ bulk extraction \+ schema recon, correlated by Mnemos
 
 ### Importing a Rule Set
 

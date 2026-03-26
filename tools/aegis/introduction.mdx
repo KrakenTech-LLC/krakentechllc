@@ -4,11 +4,7 @@ description: "Aegis — Production-grade Web Application Firewall & Reverse Prox
 ---
 
 <Frame>
-  <img
-    src="/tools/aegis/aegis.svg"
-    alt="Aegis"
-    className="mx-auto"
-  />
+  ![Aegis](/tools/aegis/aegis.png)
 </Frame>
 
 # Aegis — Web Application Firewall & Reverse Proxy Manager
@@ -18,6 +14,10 @@ Aegis is a production-grade Web Application Firewall (WAF) and Reverse Proxy Man
 **Single binary. SQLite storage. Zero dependencies.**
 
 Aegis ships as a single static binary with an embedded admin UI, uses SQLite (WAL mode) for all persistent storage, and binds the admin dashboard to `127.0.0.1:9443` by default for security. No Nginx, no Docker, no external database required — just run the binary and start adding hosts.
+
+<Frame>
+  ![Image](/images/image-33.png)
+</Frame>
 
 ---
 
@@ -70,7 +70,7 @@ This is useful for:
 
 ### Configuration
 
-- **Location:** Admin UI -> Settings -> WAF Paranoia Level
+- **Location:** Admin UI -\> Settings -\> WAF Paranoia Level
 - **Setting key:** `waf_paranoia_level`
 - **Default:** `2`
 - **Range:** 1–4
@@ -122,6 +122,7 @@ Changing the paranoia level takes effect immediately — Aegis updates all inher
   <Card title="Protocol Streams" icon="diagram-project" href="/tools/aegis/streams">
     TCP/UDP streaming proxy with TLS termination, bandwidth limits, and access control
   </Card>
+
   <Card title="CLI & Operations" icon="terminal" href="/tools/aegis/cli-reference">
     CLI reference, configuration, service management, environment variables
   </Card>
@@ -298,7 +299,7 @@ Aegis stores traffic request logs and admin audit logs in SQLite. A background r
 | **Archive enabled** | `logging.traffic_archive_enabled` | `false` | Archive expired traffic logs to ZIP files instead of deleting directly |
 | **Archive retention** | `logging.traffic_archive_retention_days` | `90` | Days to keep archived ZIP files before deletion |
 
-All settings are configurable in Admin UI -> Settings.
+All settings are configurable in Admin UI -\> Settings.
 
 ### How Log Rotation Works
 

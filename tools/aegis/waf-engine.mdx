@@ -7,6 +7,10 @@ description: "Web Application Firewall engine with OWASP Top 10 coverage"
 
 The Aegis WAF engine evaluates every proxied request against a chain of compiled rules. Each proxy host independently runs in `off`, `detect`, or `enforce` mode.
 
+<Frame>
+  ![Image](/images/image-35.png)
+</Frame>
+
 ---
 
 ## WAF Modes
@@ -29,7 +33,7 @@ The Aegis WAF engine evaluates every proxied request against a chain of compiled
 | **IP blacklists** | Block by IP/CIDR; compiled to `net.IPNet` for fast matching |
 | **IP whitelists** | Bypass all WAF rules for trusted IPs/CIDRs |
 | **CORS enforcement** | Per-host origin, method, header, credential, and max-age policies; optionally block invalid origins |
-| **Input normalization** | URL decoding + double-decode detection before rule evaluation |
+| **Input normalization** | URL decoding \+ double-decode detection before rule evaluation |
 | **Method restriction** | Per-host allowed HTTP methods |
 | **Response filtering** | Strip `Server`, `X-Powered-By`, `X-AspNet-Version` headers |
 | **Security header injection** | Auto-inject `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy` |
@@ -52,7 +56,7 @@ The built-in rule library covers the following attack classes:
 | **Server-Side Template Injection** | SSTI | `{{7*7}}`, `${T(java.lang.Runtime)}`, `<%`, `{%` |
 | **SSRF** | Core, Extended | `127.0.0.1`, `169.254.169.254`, `file://`, decimal/octal IPs |
 | **Command Injection** | Core, PowerShell | Shell metacharacters, `Invoke-Expression` |
-| **Path Traversal** | Traversal + Null Bytes | `../`, `%2e%2e%2f`, double-encoded variants |
+| **Path Traversal** | Traversal \+ Null Bytes | `../`, `%2e%2e%2f`, double-encoded variants |
 | **LDAP Injection** | LDAP Filter Manipulation | `)(`, `*)(cn=*`, filter injection |
 | **XPath Injection** | XPath Function Abuse | `string()`, `count()`, `contains()` |
 | **CRLF Header Injection** | HTTP Response Splitting | `%0d%0a`, `\r\n` in header values |
@@ -131,7 +135,7 @@ Four settings control auto blocking behavior:
 | **Scope** | `waf.auto_blacklist_scope` | `host` | `host` (per-host) or `global` (all hosts) |
 | **Timeout Duration** | `waf.auto_blacklist_timeout_seconds` | `3600` | Duration in seconds for timeout blocks (only used when action is `timeout`) |
 
-All settings are configurable in Admin UI -> Settings.
+All settings are configurable in Admin UI -\> Settings.
 
 ### Severity Threshold
 
@@ -176,11 +180,13 @@ When auto blocking uses timeout mode:
 Aegis enriches traffic analytics with city and country geolocation using the embedded GeoLite2 city database.
 
 Used for:
+
 - Dashboard Traffic Origins
 - Analytics geographic distribution
 - City and country enrichment on traffic and top-IP views
 
 Setup:
+
 1. Start Aegis normally
 2. Open Aegis Settings
 3. Confirm the Geolocation panel shows the embedded GeoLite2 database status
