@@ -9,6 +9,7 @@ Hook is a distributed phishing infrastructure platform designed for security tes
 The **Helm** is the central command and control server that manages the entire Hook infrastructure. It serves as the primary database server and coordination point for all operations.
 
 **Key Responsibilities:**
+
 - Hosts the PostgreSQL database for persistent storage
 - Manages the WireGuard mesh network server
 - Runs the NATS message broker for event-driven communication
@@ -35,6 +36,7 @@ type Service struct {
 The **Corsair** is a worker node that manages multiple Deckhands. It acts as the intermediary between Helm and the actual attack infrastructure.
 
 **Key Responsibilities:**
+
 - Manages multiple Deckhand workers
 - Handles HTTP/HTTPS proxy operations
 - Routes traffic to appropriate Deckhands based on virtual hosts
@@ -58,6 +60,7 @@ type Service struct {
 The **Deckhand** is the actual worker that serves content and performs man-in-the-middle attacks. Each Deckhand handles a specific raid (campaign).
 
 **Key Responsibilities:**
+
 - Serves static phishing content (forward proxy mode)
 - Performs MITM attacks on target sites (reverse proxy mode)
 - Captures credentials, cookies, and session data
@@ -85,20 +88,20 @@ type DeckHand struct {
 Hook uses gRPC for all inter-service communication with the following main services:
 
 | Service | Port | Description |
-|---------|------|-------------|
+| --- | --- | --- |
 | Helm gRPC | 61443 | Main control plane and attack plane APIs |
 | Shell Service | 61022 | Remote command execution on nodes |
 | Mesh Peer | 9443 | Peer-to-peer mesh communication |
 
 ### Message Flow
 
-```
+```text
 ┌─────────┐     gRPC/mTLS      ┌─────────┐     gRPC      ┌──────────┐
-│  Helm   │◄──────────────────►│ Corsair │◄─────────────►│ Deckhand │
+│  Helm         │◄──────────►│ Corsair      │◄───────►│ Deckhand       │
 └─────────┘                    └─────────┘               └──────────┘
-     │                              │                          │
-     │         WireGuard Mesh       │                          │
-     └──────────────────────────────┴──────────────────────────┘
+        │                                    │                      	     │
+        │               WireGuard Mesh       │                              │
+        └──────────────────────┴───────────────────┘
 ```
 
 ## Data Planes
@@ -106,6 +109,7 @@ Hook uses gRPC for all inter-service communication with the following main servi
 ### Control Plane
 
 The Control Plane manages configuration and setup data:
+
 - Clients and Tags
 - Raids (campaigns)
 - Targets and Target Lists
@@ -117,6 +121,7 @@ The Control Plane manages configuration and setup data:
 ### Attack Plane
 
 The Attack Plane manages captured runtime data:
+
 - Sessions
 - Credentials
 - Clicks and Opens
@@ -138,6 +143,7 @@ Internal services (database, NATS, shell) are only accessible over the WireGuard
 ### ACL System
 
 Fine-grained access control with permissions for:
+
 - Read/Write operations on each resource type
 - SSH/Shell execution permissions
 - Infrastructure management permissions
@@ -151,6 +157,7 @@ Single Helm instance with embedded database and services for testing.
 ### Distributed Mode
 
 Full deployment with:
+
 - Helm server (central control)
 - Multiple Corsair workers
 - Dedicated Nameservers
@@ -161,4 +168,3 @@ Full deployment with:
 - [Mesh Network](/docs/mesh-network) - Learn about the WireGuard mesh
 - [Raids](/docs/raids) - Creating forward and reverse proxy attacks
 - [Nameservers](/docs/nameservers) - DNS infrastructure management
-
