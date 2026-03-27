@@ -1,0 +1,227 @@
+# DNS Management
+
+Hook provides comprehensive DNS management through integration with multiple DNS providers. You can manage DNS records centrally in Helm and synchronize them to your nameservers.
+
+## Overview
+
+The DNS system includes:
+- **DNS Providers** - Integration with external DNS services
+- **Domains** - Domain configuration
+- **DNS Records** - A, AAAA, CNAME, MX, TXT, etc.
+- **Synchronization** - Push records to Hook nameservers
+
+## Supported DNS Providers
+
+Hook integrates with major DNS providers:
+
+| Provider | Type | Configuration |
+|----------|------|---------------|
+| Cloudflare | API | API Token, Zone ID |
+| Route53 | API | AWS Access Key, Secret Key |
+| GoDaddy | API | API Key, Secret |
+| Namecheap | API | API User, API Key, Username |
+| DNS Made Easy | API | API Key, Secret Key |
+| DNSimple | API | Account ID, API Token |
+| deSEC | API | API Token |
+| Scaleway | API | Access Key, Secret Key |
+| No-IP | API | Username, Password |
+| ClouDNS | API | Auth ID, Password |
+| Google DNS | API | Project ID, Service Account |
+
+## DNS Providers
+
+### Create DNS Provider
+
+```bash
+# Cloudflare example
+grpcurl -d '{
+  "name": "cloudflare-primary",
+  "provider_type": "CLOUDFLARE",
+  "cloudflare": {
+    "api_token": "your-api-token",
+    "zone_id": "your-zone-id"
+  }
+}' helm:61443 hook.ctrl_svc.ControlPlaneService/NewDNSProvider
+
+# Route53 example
+grpcurl -d '{
+  "name": "aws-route53",
+  "provider_type": "ROUTE53",
+  "route53": {
+    "access_key": "AKIAIOSFODNN7EXAMPLE",
+    "secret_key": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+    "hosted_zone_id": "Z3M3LMPEXAMPLE"
+  }
+}' helm:61443 hook.ctrl_svc.ControlPlaneService/NewDNSProvider
+```
+
+### Provider Interface
+
+All providers implement a common interface:
+
+```go
+type Provider interface {
+    Provision() error
+    AddRecord(dns.Zone, dns.Record) error
+    ListRecords(dns.Zone) ([]dns.Record, error)
+    UpdateRecord(dns.Zone, dns.Record, dns.RecordType) error
+    DeleteRecord(dns.Zone, dns.Record) error
+    ListZones() []dns.Zone
+    GetZoneForDomain(domain string) (dns.Zone, error)
+    ProviderString() ProviderName
+    Test() error
+    GetDomain() string
+    Sync() error
+}
+```
+
+### Provider Operations
+
+```bash
+# Get provider by ID
+grpcurl -d '{"id": 1}' helm:61443 hook.ctrl_svc.ControlPlaneService/GetDNSProviderByID
+
+# Get provider by name
+grpcurl -d '{"name": "cloudflare-primary"}' \
+  helm:61443 hook.ctrl_svc.ControlPlaneService/GetDNSProviderByName
+
+# Get providers by type
+grpcurl -d '{"provider_type": "CLOUDFLARE"}' \
+  helm:61443 hook.ctrl_svc.ControlPlaneService/GetDNSProvidersByType
+
+# Delete provider
+grpcurl -d '{"id": 1}' helm:61443 hook.ctrl_svc.ControlPlaneService/DeleteDNSProvider
+```
+
+## Domains
+
+### Create Domain
+
+```bash
+grpcurl -d '{
+  "domain": "phish.example.com",
+  "dns_provider_id": 1
+}' helm:61443 hook.ctrl_svc.ControlPlaneService/NewDomain
+```
+
+### Domain Operations
+
+```bash
+# Get domain by ID
+grpcurl -d '{"id": 1}' helm:61443 hook.ctrl_svc.ControlPlaneService/GetDomainByID
+
+# Get domain by name
+grpcurl -d '{"name": "phish.example.com"}' \
+  helm:61443 hook.ctrl_svc.ControlPlaneService/GetDomainByName
+
+# Update domain
+grpcurl -d '{"id": 1, "domain": "new.example.com", "dns_provider_id": 2}' \
+  helm:61443 hook.ctrl_svc.ControlPlaneService/UpdateDomain
+
+# Delete domain
+grpcurl -d '{"id": 1}' helm:61443 hook.ctrl_svc.ControlPlaneService/DeleteDomain
+```
+
+## DNS Records
+
+### Create DNS Record
+
+```bash
+# A Record
+grpcurl -d '{
+  "domain": "phish.example.com",
+  "name": "www",
+  "type": "A",
+  "value": "1.2.3.4",
+  "ttl": 300
+}' helm:61443 hook.ctrl_svc.ControlPlaneService/NewDNSRecord
+
+# MX Record
+grpcurl -d '{
+  "domain": "phish.example.com",
+  "name": "@",
+  "type": "MX",
+  "value": "mail.phish.example.com",
+  "ttl": 300,
+  "priority": 10
+}' helm:61443 hook.ctrl_svc.ControlPlaneService/NewDNSRecord
+
+# TXT Record (SPF)
+grpcurl -d '{
+  "domain": "phish.example.com",
+  "name": "@",
+  "type": "TXT",
+  "value": "v=spf1 ip4:1.2.3.4 -all",
+  "ttl": 300
+}' helm:61443 hook.ctrl_svc.ControlPlaneService/NewDNSRecord
+```
+
+### Record Operations
+
+```bash
+# Get record by ID
+grpcurl -d '{"id": 1}' helm:61443 hook.ctrl_svc.ControlPlaneService/GetDNSRecordByID
+
+# Get records by domain
+grpcurl -d '{"name": "phish.example.com"}' \
+  helm:61443 hook.ctrl_svc.ControlPlaneService/GetDNSRecordsByDomain
+
+# List all records
+grpcurl helm:61443 hook.ctrl_svc.ControlPlaneService/ListDNSRecords
+
+# Update record
+grpcurl -d '{"id": 1, "value": "5.6.7.8", "ttl": 600}' \
+  helm:61443 hook.ctrl_svc.ControlPlaneService/UpdateDNSRecord
+
+# Delete record
+grpcurl -d '{"id": 1}' helm:61443 hook.ctrl_svc.ControlPlaneService/DeleteDNSRecord
+```
+
+## Synchronization with Nameservers
+
+### Push to External Provider
+
+Sync records from Helm to external DNS provider:
+
+```go
+provider := provider.DBProviderToProvider(dbProvider)
+err := provider.Sync()
+```
+
+### Pull to Hook Nameservers
+
+Nameservers pull records from Helm:
+
+```bash
+# Trigger sync on nameserver
+grpcurl nameserver:9443 hook.nssvc.NameServerService/Sync
+```
+
+## Common DNS Configurations
+
+### Phishing Domain Setup
+
+```bash
+# NS records (at registrar)
+ns1.phish.example.com -> 1.2.3.4
+ns2.phish.example.com -> 5.6.7.8
+
+# A records
+@ -> Corsair IP
+www -> Corsair IP
+login -> Corsair IP
+
+# MX records
+@ -> mail.phish.example.com (priority 10)
+
+# TXT records (SPF, DKIM, DMARC)
+@ -> v=spf1 ip4:1.2.3.4 -all
+_dmarc -> v=DMARC1; p=none
+```
+
+## Next Steps
+
+- [Nameservers](/docs/nameservers) - Hook DNS servers
+- [Lures & Emails](/docs/lures-emails) - Email configuration
+- [Overview](/docs/overview) - Back to architecture
+

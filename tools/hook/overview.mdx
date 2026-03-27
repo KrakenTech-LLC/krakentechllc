@@ -1,0 +1,164 @@
+# Hook Architecture Overview
+
+Hook is a distributed phishing infrastructure platform designed for security testing and red team operations. The system uses a hierarchical architecture with specialized components that communicate over a secure WireGuard mesh network.
+
+## Core Components
+
+### Helm (Command & Control)
+
+The **Helm** is the central command and control server that manages the entire Hook infrastructure. It serves as the primary database server and coordination point for all operations.
+
+**Key Responsibilities:**
+- Hosts the PostgreSQL database for persistent storage
+- Manages the WireGuard mesh network server
+- Runs the NATS message broker for event-driven communication
+- Provides gRPC APIs for all control plane and attack plane operations
+- Handles TLS certificate authority management
+- Coordinates email scheduling and delivery
+- Manages infrastructure deployment (Corsairs, Nameservers, Payload Servers)
+
+```go
+// Helm service structure
+type Service struct {
+    cfg           Config
+    logger        *zap.Logger
+    dockerClient  *client.Client
+    wgServer      *WireGuardServer
+    meshNotifier  *MeshNotifier
+    healthMonitor *nanny.MeshHealthMonitor
+    natsServer    *NATSServer
+}
+```
+
+### Corsair (Worker Manager)
+
+The **Corsair** is a worker node that manages multiple Deckhands. It acts as the intermediary between Helm and the actual attack infrastructure.
+
+**Key Responsibilities:**
+- Manages multiple Deckhand workers
+- Handles HTTP/HTTPS proxy operations
+- Routes traffic to appropriate Deckhands based on virtual hosts
+- Reports status back to Helm via heartbeat
+- Connects to the mesh network for secure communication
+
+```go
+type Service struct {
+    ctx           context.Context
+    conf          *kache.CorsairConfig
+    workerChannel chan Interaction.Interaction
+    deckhands     map[string]kache.Raid
+    httpProxy     *proxy.HttpProxy
+    httpsProxy    *proxy.HttpsProxy
+    kache         *kache.Kache
+}
+```
+
+### Deckhand (Attack Worker)
+
+The **Deckhand** is the actual worker that serves content and performs man-in-the-middle attacks. Each Deckhand handles a specific raid (campaign).
+
+**Key Responsibilities:**
+- Serves static phishing content (forward proxy mode)
+- Performs MITM attacks on target sites (reverse proxy mode)
+- Captures credentials, cookies, and session data
+- Reports interactions back to Corsair
+
+```go
+type DeckHand struct {
+    Ctx              context.Context
+    Port             int
+    BindAddress      string
+    InteractChan     chan Interaction.Interaction
+    Upstream         proxxy.Upstream
+    ContentDirectory string
+    reverseProxy     bool
+    ReverseProxyServer *reverseProxy.ReverseProxyServer
+    PhishDomain        string
+    TargetDomain       string
+}
+```
+
+## Communication Architecture
+
+### gRPC Services
+
+Hook uses gRPC for all inter-service communication with the following main services:
+
+| Service | Port | Description |
+|---------|------|-------------|
+| Helm gRPC | 61443 | Main control plane and attack plane APIs |
+| Shell Service | 61022 | Remote command execution on nodes |
+| Mesh Peer | 9443 | Peer-to-peer mesh communication |
+
+### Message Flow
+
+```
+┌─────────┐     gRPC/mTLS      ┌─────────┐     gRPC      ┌──────────┐
+│  Helm   │◄──────────────────►│ Corsair │◄─────────────►│ Deckhand │
+└─────────┘                    └─────────┘               └──────────┘
+     │                              │                          │
+     │         WireGuard Mesh       │                          │
+     └──────────────────────────────┴──────────────────────────┘
+```
+
+## Data Planes
+
+### Control Plane
+
+The Control Plane manages configuration and setup data:
+- Clients and Tags
+- Raids (campaigns)
+- Targets and Target Lists
+- Lures (email templates)
+- Portal Flows
+- DNS Providers and Records
+- Mail Senders
+
+### Attack Plane
+
+The Attack Plane manages captured runtime data:
+- Sessions
+- Credentials
+- Clicks and Opens
+- Session Hijacks
+- Captured Cookies
+- Captured Local Storage
+- Captured URL Parameters
+
+## Security Model
+
+### mTLS Authentication
+
+All gRPC communication uses mutual TLS (mTLS) with certificates managed by Helm's built-in Certificate Authority.
+
+### Mesh Network Isolation
+
+Internal services (database, NATS, shell) are only accessible over the WireGuard mesh network, providing network-level isolation.
+
+### ACL System
+
+Fine-grained access control with permissions for:
+- Read/Write operations on each resource type
+- SSH/Shell execution permissions
+- Infrastructure management permissions
+
+## Deployment Modes
+
+### Standalone Mode
+
+Single Helm instance with embedded database and services for testing.
+
+### Distributed Mode
+
+Full deployment with:
+- Helm server (central control)
+- Multiple Corsair workers
+- Dedicated Nameservers
+- Payload Servers
+
+## Next Steps
+
+- [Mesh Network](/docs/mesh-network) - Learn about the WireGuard mesh
+- [Raids](/docs/raids) - Creating forward and reverse proxy attacks
+- [Nameservers](/docs/nameservers) - DNS infrastructure management
+

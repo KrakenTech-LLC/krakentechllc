@@ -1,0 +1,241 @@
+# Shell Service
+
+Hook provides a remote shell service that enables command execution, file upload, and file download on infrastructure nodes. The shell service runs on all Hook nodes and is accessible over the mesh network.
+
+## Overview
+
+The Shell Service provides:
+- **Remote Command Execution** - Execute shell commands on nodes
+- **File Upload** - Upload files to remote nodes
+- **File Download** - Download files from remote nodes
+- **ACL Protection** - Permission-based access control
+
+## Architecture
+
+### Service Definition
+
+```protobuf
+service ShellService {
+  // Execute a shell command and return stdout/stderr
+  rpc ExecuteCommand(CommandRequest) returns (CommandResponse);
+
+  // Upload a file to the remote server
+  rpc UploadFile(UploadFileRequest) returns (UploadFileResponse);
+
+  // Download a file from the remote server
+  rpc DownloadFile(DownloadFileRequest) returns (DownloadFileResponse);
+
+  // Get service status
+  rpc Status(hook.common.Auth) returns (hook.common.StandardResponse);
+}
+```
+
+### Default Port
+
+The shell service runs on port **61022** across all Hook services:
+- Helm
+- Corsair
+- Nameserver
+- Payload Server
+
+## Command Execution
+
+### Execute Command
+
+```bash
+grpcurl -d '{
+  "command": "ls",
+  "args": ["-la", "/var/log"],
+  "timeout_seconds": 30
+}' node:61022 hook.shell.ShellService/ExecuteCommand
+```
+
+### Command Request
+
+```protobuf
+message CommandRequest {
+  string command = 1;           // The shell command to execute
+  repeated string args = 2;     // Command arguments
+  map<string, string> env = 3;  // Additional environment variables
+  string working_dir = 4;       // Working directory (optional)
+  int64 timeout_seconds = 5;    // Execution timeout (0 = no timeout)
+}
+```
+
+### Command Response
+
+```protobuf
+message CommandResponse {
+  hook.common.Error error = 1;  // Error if command failed
+  string stdout = 2;             // Standard output
+  string stderr = 3;             // Standard error
+  int64 exit_code = 4;           // Exit code of the command
+  bool timed_out = 5;            // Whether the command timed out
+}
+```
+
+### Examples
+
+```bash
+# List files
+grpcurl -d '{"command":"ls","args":["-la"]}' node:61022 hook.shell.ShellService/ExecuteCommand
+
+# Check disk space
+grpcurl -d '{"command":"df","args":["-h"]}' node:61022 hook.shell.ShellService/ExecuteCommand
+
+# Run with working directory
+grpcurl -d '{"command":"pwd","working_dir":"/var/log"}' node:61022 hook.shell.ShellService/ExecuteCommand
+
+# Run with timeout
+grpcurl -d '{"command":"sleep","args":["10"],"timeout_seconds":5}' node:61022 hook.shell.ShellService/ExecuteCommand
+
+# Run complex command with bash
+grpcurl -d '{"command":"bash","args":["-c","ps aux | grep hook"]}' node:61022 hook.shell.ShellService/ExecuteCommand
+```
+
+## File Upload
+
+### Upload Request
+
+```protobuf
+message UploadFileRequest {
+  string path = 1;               // Destination path on the server
+  bytes content = 2;             // File content
+  int64 mode = 3;                // File permissions (e.g., 0644, 0755)
+  bool overwrite = 4;            // Whether to overwrite existing file
+  bool create_dirs = 5;          // Whether to create parent directories
+}
+```
+
+### Upload Examples
+
+```bash
+# Upload a file
+grpcurl -d '{
+  "path": "/tmp/script.sh",
+  "content": "IyEvYmluL2Jhc2gKZWNobyAiSGVsbG8i",
+  "mode": 493,
+  "overwrite": true,
+  "create_dirs": true
+}' node:61022 hook.shell.ShellService/UploadFile
+
+# Response
+{
+  "message": "file uploaded successfully to /tmp/script.sh",
+  "bytes_written": 24
+}
+```
+
+### Upload Response
+
+```protobuf
+message UploadFileResponse {
+  hook.common.Error error = 1;  // Error if upload failed
+  string message = 2;            // Success message
+  int64 bytes_written = 3;       // Number of bytes written
+}
+```
+
+## File Download
+
+### Download Request
+
+```protobuf
+message DownloadFileRequest {
+  string path = 1;               // Path to the file on the server
+}
+```
+
+### Download Examples
+
+```bash
+# Download a file
+grpcurl -d '{"path":"/etc/hostname"}' node:61022 hook.shell.ShellService/DownloadFile
+
+# Response
+{
+  "content": "bXktaG9zdG5hbWUK",
+  "size": 12,
+  "mode": 420,
+  "modified_time": 1702800000
+}
+```
+
+### Download Response
+
+```protobuf
+message DownloadFileResponse {
+  hook.common.Error error = 1;  // Error if download failed
+  bytes content = 2;             // File content
+  int64 size = 3;                // File size in bytes
+  int64 mode = 4;                // File permissions
+  int64 modified_time = 5;       // Last modified time (Unix timestamp)
+}
+```
+
+## Access Control
+
+### Required Permissions
+
+Shell operations require SSH permissions:
+
+```go
+var methodPermissions = map[string]acl.Permission{
+    "/hook.shell.ShellService/ExecuteCommand": acl.PermissionSSHExecute,
+    "/hook.shell.ShellService/UploadFile":     acl.PermissionSSHExecute,
+    "/hook.shell.ShellService/DownloadFile":   acl.PermissionSSHExecute,
+    "/hook.shell.ShellService/Status":         acl.PermissionSSHView,
+}
+```
+
+### Network Isolation
+
+The shell service is restricted to the mesh network:
+
+```go
+// Shell gRPC only accessible from mesh network
+fw.AddPortForIP(meshNetwork, "tcp:61022")
+```
+
+## Service Startup
+
+The shell service starts automatically on all Hook nodes:
+
+```go
+shellGrpcServer, shellLis, started, err := shell.StartShellServiceIfNotRunning(
+    ctx,
+    logger,
+    shellAddr,
+    tlsCreds,
+    grpc.ChainUnaryInterceptor(shellinterceptors.ACLInterceptor(permissionChecker)),
+)
+```
+
+### Port Conflict Handling
+
+If the port is already in use, the service skips startup:
+
+```go
+func StartShellServiceIfNotRunning(...) (*grpc.Server, net.Listener, bool, error) {
+    if isPortInUse(listenAddr) {
+        logger.Info("shell service already running, skipping startup")
+        return nil, nil, false, nil
+    }
+    // Start service...
+}
+```
+
+## Over Mesh Network
+
+Access shell service on mesh-connected nodes:
+
+```bash
+# From another mesh host, use mesh IP
+grpcurl -d '{"command":"hostname"}' 10.100.0.5:61022 hook.shell.ShellService/ExecuteCommand
+```
+
+## Next Steps
+
+- [Mesh Network](/docs/mesh-network) - Secure communication
+- [Overview](/docs/overview) - Back to architecture
+

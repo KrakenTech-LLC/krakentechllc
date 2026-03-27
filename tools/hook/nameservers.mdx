@@ -1,0 +1,212 @@
+# Nameservers
+
+Hook includes a built-in authoritative DNS nameserver that can be deployed to handle DNS resolution for phishing domains. Nameservers synchronize their records with Helm and can be used as real nameservers for your domains.
+
+## Overview
+
+The nameserver system provides:
+- **Authoritative DNS** for your phishing domains
+- **Record synchronization** with Helm database
+- **Multiple DNS record types** (A, AAAA, CNAME, MX, TXT, etc.)
+- **Mesh network integration** for secure management
+- **Local caching** via Kache for resilience
+
+## Architecture
+
+### Nameserver Service
+
+```go
+type Service struct {
+    logger          *zap.Logger
+    ns              *kns.Nameserver       // DNS server
+    records         map[string]*dnspb.DNSRecord
+    kache           *kache.Kache          // Local cache
+    nsName          string
+    meshIntegration *mesh.ServiceMeshIntegration
+}
+```
+
+### Registration
+
+Each nameserver registers with Helm and stores its configuration:
+
+```go
+type Registration struct {
+    Name            string
+    FQDN            string
+    PublicIP        string
+    InternalIP      string
+    PublicPort      int      // DNS port (usually 53)
+    InternalPort    int
+    Domain          string
+    GRPCListenAddr  string
+    ShellListenAddr string
+    MeshEnabled     bool
+    MeshIP          string
+}
+```
+
+## Deploying a Nameserver
+
+### Via Helm gRPC
+
+```bash
+grpcurl -d '{
+  "name": "ns1",
+  "domain": "example.com",
+  "public_ip": "1.2.3.4",
+  "port": 53
+}' helm:61443 hook.ctrl_svc.ControlPlaneService/DeployNameServer
+```
+
+### Standalone
+
+```bash
+nameserver \
+  --domain example.com \
+  --bind 0.0.0.0 \
+  --port 53 \
+  --external-ip 1.2.3.4 \
+  --mesh-enabled \
+  --mesh-database-addr helm.example.com:61443
+```
+
+## DNS Record Management
+
+### Adding Records via Helm
+
+Records are managed centrally in Helm and synchronized to nameservers:
+
+```bash
+# Add an A record
+grpcurl -d '{
+  "domain": "example.com",
+  "name": "www",
+  "type": "A",
+  "value": "1.2.3.4",
+  "ttl": 300
+}' helm:61443 hook.ctrl_svc.ControlPlaneService/NewDNSRecord
+```
+
+### Supported Record Types
+
+| Type | Description | Example Value |
+|------|-------------|---------------|
+| A | IPv4 address | `1.2.3.4` |
+| AAAA | IPv6 address | `2001:db8::1` |
+| CNAME | Canonical name | `target.example.com` |
+| MX | Mail exchange | `10 mail.example.com` |
+| TXT | Text record | `v=spf1 include:...` |
+| NS | Nameserver | `ns1.example.com` |
+| SRV | Service record | `10 5 443 target.example.com` |
+
+## Synchronization
+
+### Manual Sync
+
+Trigger a sync from the nameserver to pull records from Helm:
+
+```bash
+grpcurl nameserver:9443 hook.nssvc.NameServerService/Sync
+```
+
+### Sync Process
+
+```go
+func (s *Service) Sync(ctx context.Context, req *commonpb.EmptyAuth) (*commonpb.StandardResponse, error) {
+    // Connect to Helm over mesh
+    meshAddr := fmt.Sprintf("%s:9443", globals.MeshHelmIP)
+    helmConn, err := grpc.DialContext(ctx, meshAddr, ...)
+    
+    // Get all DNS records from Helm
+    ctlClient := ctlpb.NewControlPlaneServiceClient(helmConn)
+    records, err := ctlClient.ListDNSRecords(ctx, &commonpb.Lister{...})
+    
+    // Clear and reload local records
+    s.ns.ClearAllRecords()
+    for _, record := range dnsRecords {
+        s.addRecordToNameserver(record)
+        s.saveDNSRecordToKache(record)
+    }
+}
+```
+
+### Local Caching (Kache)
+
+Records are cached locally for resilience:
+
+```go
+func (s *Service) LoadRecordsFromKache() error {
+    records, err := s.kache.GetAllNameserverDNSRecords()
+    for _, record := range records {
+        s.addRecordToNameserver(pbRecord)
+    }
+}
+```
+
+## DNS Status
+
+### Check Record Status
+
+```bash
+grpcurl -d '{"domain": "example.com", "record_type": "A"}' \
+  nameserver:9443 hook.nssvc.NameServerService/GetDNSStatus
+```
+
+### List Records
+
+```bash
+grpcurl -d '{"domain": "example.com"}' \
+  nameserver:9443 hook.nssvc.NameServerService/ListRecords
+```
+
+## Using as Real Nameservers
+
+To use Hook nameservers as authoritative nameservers:
+
+1. **Deploy nameservers** on public IPs
+2. **Register NS records** with your domain registrar pointing to your nameserver IPs
+3. **Add glue records** if nameservers are within the same domain
+4. **Configure DNS records** in Helm
+5. **Sync** to push records to nameservers
+
+### Example Setup
+
+```
+Domain: phish.example.com
+NS1: ns1.phish.example.com -> 1.2.3.4
+NS2: ns2.phish.example.com -> 5.6.7.8
+
+At registrar:
+  NS records: ns1.phish.example.com, ns2.phish.example.com
+  Glue: ns1 -> 1.2.3.4, ns2 -> 5.6.7.8
+```
+
+## Nameserver Management
+
+### List Nameservers
+
+```bash
+grpcurl helm:61443 hook.ctrl_svc.ControlPlaneService/ListNameServers
+```
+
+### Get Status
+
+```bash
+grpcurl -d '{"name": "ns1"}' \
+  helm:61443 hook.ctrl_svc.ControlPlaneService/GetNameServerStatus
+```
+
+### Stop Nameserver
+
+```bash
+grpcurl -d '{"name": "ns1"}' \
+  helm:61443 hook.ctrl_svc.ControlPlaneService/StopNameServer
+```
+
+## Next Steps
+
+- [DNS Management](/docs/dns-management) - DNS providers and records
+- [Mesh Network](/docs/mesh-network) - Secure communication
+- [Overview](/docs/overview) - Back to architecture
+

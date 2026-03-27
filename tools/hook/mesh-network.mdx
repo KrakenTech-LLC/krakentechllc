@@ -1,0 +1,191 @@
+# Mesh Network
+
+Hook uses a WireGuard-based mesh network to provide secure, encrypted communication between all infrastructure nodes. This enables nodes to communicate as if they were on the same local network, regardless of their physical location.
+
+## Overview
+
+The mesh network provides:
+- **Encrypted tunnels** between all nodes using WireGuard
+- **Private IP addressing** (10.100.0.0/24 by default)
+- **Automatic peer discovery** and configuration
+- **Network isolation** for sensitive services
+
+## Architecture
+
+### Mesh Server (Helm)
+
+The Helm server acts as the mesh network coordinator:
+
+```go
+type WireGuardServer struct {
+    interfaceName string      // e.g., "hook0"
+    listenPort    int         // Default: 51820
+    serverIP      string      // Default: 10.100.0.1
+    networkCIDR   string      // Default: 10.100.0.0/24
+    privateKey    wgtypes.Key
+    publicKey     wgtypes.Key
+    peers         map[string]*peerInfo
+}
+```
+
+### Mesh Clients
+
+All other nodes (Corsair, Nameserver, Payload Server) connect as mesh clients:
+
+```go
+type MeshClient struct {
+    nodeID          string
+    nodeName        string
+    nodeType        commonpb.NodeType
+    databaseAddr    string
+    assignedIP      string      // Assigned by Helm (e.g., 10.100.0.5)
+    serverPublicKey string
+    serverEndpoint  string
+}
+```
+
+## Enabling the Mesh Network
+
+### On Helm
+
+The mesh network can be enabled at startup or via gRPC:
+
+```bash
+# Enable at startup
+helm --mesh-enabled --mesh-auto-start
+
+# Or via gRPC
+grpcurl -d '{"network_cidr": "10.100.0.0/24", "listen_port": 51820}' \
+  helm:61443 hook.mesh.MeshService/EnableMesh
+```
+
+### On Corsair/Other Nodes
+
+Nodes connect to the mesh by specifying the Helm address:
+
+```bash
+corsair --mesh-enabled --mesh-database-addr helm.example.com:61443
+```
+
+## Peer Registration
+
+When a node connects to the mesh:
+
+1. **Generate Keys**: Client generates WireGuard keypair
+2. **Register**: Client sends public key to Helm via gRPC
+3. **Assign IP**: Helm assigns a mesh IP from the pool
+4. **Configure**: Both sides configure WireGuard peers
+5. **Connect**: Tunnel is established
+
+```go
+// Registration request
+req := &meshpb.PeerRegistration{
+    NodeId:    m.nodeID,
+    NodeName:  m.nodeName,
+    NodeType:  m.nodeType,
+    PublicKey: m.publicKey.String(),
+    ShellPort: m.shellPort,
+    GrpcPort:  m.grpcPort,
+}
+resp, err := client.RegisterPeer(ctx, req)
+```
+
+## Peer Communication
+
+### Peer Server
+
+Each mesh node runs a peer server for direct communication:
+
+```go
+func (m *MeshClient) StartPeerServer(ctx context.Context) error {
+    meshAddr := fmt.Sprintf("%s:9443", m.assignedIP)
+    lis, err := net.Listen("tcp", meshAddr)
+    // ... start gRPC server on mesh interface
+}
+```
+
+### Ping/Pong
+
+Nodes can ping each other to verify connectivity:
+
+```go
+func (m *MeshClient) PingPeer(ctx context.Context, targetIP string) (*meshpb.PongResponse, error) {
+    meshAddr := fmt.Sprintf("%s:9443", targetIP)
+    conn, err := grpc.DialContext(ctx, meshAddr, ...)
+    client := meshpb.NewMeshServiceClient(conn)
+    return client.Ping(ctx, &meshpb.PingRequest{...})
+}
+```
+
+## Service Access Over Mesh
+
+### Internal Services
+
+These services are only accessible over the mesh network:
+
+| Service | Port | Description |
+|---------|------|-------------|
+| PostgreSQL | 5432 | Database (Helm only) |
+| NATS | 4222 | Message broker (Helm only) |
+| Shell | 61022 | Remote command execution |
+| Peer gRPC | 9443 | Mesh peer communication |
+
+### Firewall Rules
+
+Helm automatically configures firewall rules to restrict internal services:
+
+```go
+// Shell gRPC only accessible from mesh network
+fw.AddPortForIP(meshNetwork, "tcp:61022")
+```
+
+## Mesh Status
+
+### Get Mesh Status
+
+```bash
+grpcurl helm:61443 hook.mesh.MeshService/GetMeshStatus
+```
+
+Response includes:
+- Server configuration
+- Network CIDR
+- Total and active peer count
+- Individual peer status
+
+### List Peers
+
+```bash
+grpcurl helm:61443 hook.mesh.MeshService/ListPeers
+```
+
+## Configuration Persistence
+
+Mesh configuration is saved locally for reconnection:
+
+```go
+configPath := meshsvc.GetDefaultConfigPath(nodeID)
+// Saves to: /var/lib/hook/mesh/<nodeID>/mesh.json
+```
+
+## Interface Naming
+
+Hook uses `hookN` interface names (hook0, hook1, etc.):
+
+```go
+func FindAvailableInterface() (string, int, error) {
+    for i := 0; i < 256; i++ {
+        interfaceName := fmt.Sprintf("hook%d", i)
+        if !interfaceExists(interfaceName) {
+            return interfaceName, i, nil
+        }
+    }
+}
+```
+
+## Next Steps
+
+- [Shell Service](/docs/shell-service) - Remote access over mesh
+- [Nameservers](/docs/nameservers) - DNS servers on mesh
+- [Overview](/docs/overview) - Back to architecture
+

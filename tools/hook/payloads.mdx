@@ -1,0 +1,259 @@
+# Payloads
+
+Hook includes a payload management system for delivering and tracking executable payloads. The payload server receives execution callbacks and tracks successful compromises.
+
+## Overview
+
+The payload system provides:
+- **Payload Storage** - Store and manage payload files
+- **Payload Server** - Receive execution callbacks
+- **Execution Tracking** - Track successful payload executions
+- **Mesh Integration** - Secure communication over mesh network
+
+## Payload Server
+
+### Architecture
+
+```go
+type PayloadServer struct {
+    cfg        Config
+    logger     *zap.Logger
+    httpServer *http.Server
+    db         *sql.DB
+    nats       *natsx.Conn
+    meshClient *mesh.MeshClient
+    
+    // Statistics
+    totalExecutions      int64
+    executionsToday      int64
+    executionsByCampaign map[string]int64
+    executionsByType     map[string]int64
+}
+```
+
+### Deployment
+
+```bash
+payloads \
+  --node-id payload-server-1 \
+  --public-listen-addr 0.0.0.0:8080 \
+  --mesh-enabled \
+  --mesh-database-addr helm.example.com:61443 \
+  --auto-start
+```
+
+### Configuration
+
+```go
+type Config struct {
+    NodeID           string
+    PublicListenAddr string   // Public HTTP endpoint
+    DatabaseDSN      string   // PostgreSQL connection
+    NATSUrl          string   // NATS message broker
+    MeshEnabled      bool
+    MeshAutoConnect  bool
+}
+```
+
+## Payload Management
+
+### Create Payload
+
+```bash
+grpcurl -d '{
+  "filename": "update.exe",
+  "content": "<base64-encoded-bytes>"
+}' helm:61443 hook.ctrl_svc.ControlPlaneService/NewPayload
+```
+
+### Payload Storage
+
+Payloads are stored in PostgreSQL with deduplication:
+
+```sql
+CREATE TABLE payloads.payloads (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    filename TEXT NOT NULL,
+    extension TEXT NOT NULL,
+    raw_bytes BYTEA NOT NULL,
+    sha256_sum TEXT NOT NULL UNIQUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+```
+
+### Payload Operations
+
+```bash
+# List payloads
+grpcurl helm:61443 hook.payload.PayloadService/ListPayloads
+
+# Get payload info
+grpcurl -d '{"id": "uuid-here"}' helm:61443 hook.payload.PayloadService/GetPayloadInfo
+
+# Delete payload
+grpcurl -d '{"id": "uuid-here"}' helm:61443 hook.payload.PayloadService/DeletePayload
+```
+
+## Payload Execution Tracking
+
+### Execution Endpoint
+
+The payload server exposes an HTTP endpoint for callbacks:
+
+```go
+mux.HandleFunc("/execute", ps.handlePayloadExecution)
+```
+
+### Execution Data
+
+```go
+type PayloadExecutionData struct {
+    SessionID     string
+    RaidID        string
+    TargetID      string
+    PayloadType   string
+    VictimIP      string
+    UserAgent     string
+    Username      string
+    Password      string
+    Authenticated bool
+    MFACompleted  bool
+}
+```
+
+### Execution Storage
+
+```sql
+CREATE TABLE payloads.payload_executions (
+    id                  BIGSERIAL PRIMARY KEY,
+    execution_id        TEXT NOT NULL UNIQUE,
+    session_id          TEXT,
+    raid_id             TEXT,
+    target_id           TEXT,
+    payload_type        TEXT,
+    victim_ip           TEXT NOT NULL,
+    user_agent          TEXT,
+    username            TEXT,
+    password            TEXT,
+    authenticated       BOOLEAN DEFAULT false,
+    mfa_completed       BOOLEAN DEFAULT false,
+    raw_data_json       JSONB,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+```
+
+## Payload Lifecycle
+
+### Start Payload
+
+```protobuf
+message StartPayloadReq {
+  hook.common.Id task_id = 1;
+  string payload_path = 2;
+  int64 ttl_seconds = 3;
+}
+
+message StartPayloadResp {
+  string listen_addr = 1;    // Where Corsairs can fetch it
+  string payload_id = 2;
+}
+```
+
+### Stop Payload
+
+```protobuf
+message StopPayloadReq {
+  string payload_id = 1;
+}
+
+message StopPayloadResp {
+  bool stopped = 1;
+}
+```
+
+### Heartbeat
+
+Payload servers report status to Helm:
+
+```protobuf
+message PayloadHeartbeat {
+  string payload_id = 1;
+  string status = 2;
+  int64 executions = 3;
+}
+```
+
+## Server Control
+
+### Pause/Resume
+
+```bash
+# Pause server
+grpcurl helm:61443 hook.ctrl_svc.ControlPlaneService/PausePayloadServer
+
+# Resume server
+grpcurl helm:61443 hook.ctrl_svc.ControlPlaneService/ResumePayloadServer
+```
+
+### Get Status
+
+```bash
+grpcurl helm:61443 hook.ctrl_svc.ControlPlaneService/GetPayloadServerStatus
+```
+
+Response:
+
+```go
+type PayloadServerStatus struct {
+    State           string  // "running", "paused", "stopped"
+    NodeId          string
+    PublicAddress   string
+    MeshAddress     string
+    UptimeSeconds   int64
+    TotalExecutions int64
+    ExecutionsToday int64
+}
+```
+
+### Stop Server
+
+```bash
+grpcurl helm:61443 hook.ctrl_svc.ControlPlaneService/StopPayloadServer
+```
+
+## Event Publishing
+
+Payload executions are published to NATS for real-time processing:
+
+```go
+func (ps *PayloadServer) publishPwnEvent(ctx context.Context, executionID string, execData *PayloadExecutionData) error {
+    // Publish to NATS JetStream
+    _, err := ps.nats.JS.Publish("pwn.execution", eventData)
+    return err
+}
+```
+
+## Payload Sessions
+
+Track active payload serving sessions:
+
+```sql
+CREATE TABLE payloads.payload_sessions (
+    id           UUID PRIMARY KEY,
+    task_id      UUID NOT NULL,
+    helm_id      TEXT NOT NULL,
+    listen_addr  TEXT NOT NULL,
+    ttl_seconds  INTEGER NOT NULL,
+    last_beat_at TIMESTAMPTZ NOT NULL,
+    started_at   TIMESTAMPTZ NOT NULL,
+    stopped_at   TIMESTAMPTZ
+);
+```
+
+## Next Steps
+
+- [Raids](/docs/raids) - Campaign management
+- [Session Capture](/docs/session-capture) - Captured data
+- [Mesh Network](/docs/mesh-network) - Secure communication
+

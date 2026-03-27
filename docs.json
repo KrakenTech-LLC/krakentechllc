@@ -41,7 +41,18 @@
           {
             "tab": "Hook",
             "pages": [
-              "tools/hook/introduction"
+              "tools/hook/introduction",
+              "tools/hook/overview",
+              "tools/hook/quickstart",
+              "tools/hook/mesh-network",
+              "tools/hook/dns-management",
+              "tools/hook/nameservers",
+              "tools/hook/lures-emails",
+              "tools/hook/payloads",
+              "tools/hook/raids",
+              "tools/hook/clients-tags-targets",
+              "tools/hook/session-capture",
+              "tools/hook/shell-service"
             ]
           },
           {

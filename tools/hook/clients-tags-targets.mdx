@@ -1,0 +1,229 @@
+# Clients, Tags, and Targets
+
+Hook uses a hierarchical organization system to manage phishing campaigns. **Clients** represent organizations, **Tags** group related campaigns, and **Targets** are the individuals being tested.
+
+## Hierarchy
+
+```
+Client (Organization)
+  └── Tag (Campaign Group)
+       └── Raid (Campaign)
+            └── Target List
+                 └── Targets (Individuals)
+```
+
+## Clients
+
+Clients represent the organizations you're conducting security testing for.
+
+### Create Client
+
+```bash
+grpcurl -d '{
+  "client": {
+    "name": "Acme Corporation"
+  }
+}' helm:61443 hook.ctrl_svc.ControlPlaneService/NewClient
+```
+
+### Client Operations
+
+```bash
+# Get client by ID
+grpcurl -d '{"id": 1}' helm:61443 hook.ctrl_svc.ControlPlaneService/GetClientByID
+
+# Get client by name
+grpcurl -d '{"name": "Acme Corporation"}' helm:61443 hook.ctrl_svc.ControlPlaneService/GetClientByName
+
+# List all clients
+grpcurl helm:61443 hook.ctrl_svc.ControlPlaneService/ListClients
+
+# Update client
+grpcurl -d '{"client": {"id": 1, "name": "Acme Corp"}}' \
+  helm:61443 hook.ctrl_svc.ControlPlaneService/UpdateClient
+
+# Delete client
+grpcurl -d '{"id": 1}' helm:61443 hook.ctrl_svc.ControlPlaneService/DeleteClient
+```
+
+### Client Data Model
+
+```protobuf
+message Client {
+  int64 id = 1;
+  google.protobuf.Timestamp created_at = 2;
+  google.protobuf.Timestamp updated_at = 3;
+  google.protobuf.Timestamp deleted_at = 4;
+  string name = 5;
+}
+```
+
+## Tags
+
+Tags group related campaigns within a client. Use tags to organize by department, time period, or campaign type.
+
+### Create Tag
+
+```bash
+grpcurl -d '{
+  "tag": {
+    "name": "Q4-2024-Finance",
+    "client_id": 1
+  }
+}' helm:61443 hook.ctrl_svc.ControlPlaneService/NewTag
+```
+
+### Tag Operations
+
+```bash
+# Get tag by ID
+grpcurl -d '{"id": 1}' helm:61443 hook.ctrl_svc.ControlPlaneService/GetTagByID
+
+# Get tags for client
+grpcurl -d '{"id": 1}' helm:61443 hook.ctrl_svc.ControlPlaneService/GetTagsForClient
+
+# List all tags
+grpcurl helm:61443 hook.ctrl_svc.ControlPlaneService/ListTags
+
+# Update tag
+grpcurl -d '{"tag": {"id": 1, "name": "Q4-2024-HR"}}' \
+  helm:61443 hook.ctrl_svc.ControlPlaneService/UpdateTag
+
+# Delete tag
+grpcurl -d '{"id": 1}' helm:61443 hook.ctrl_svc.ControlPlaneService/DeleteTag
+```
+
+## Target Lists
+
+Target lists are collections of targets for a specific campaign.
+
+### Create Target List
+
+```bash
+grpcurl -d '{
+  "target_list": {
+    "name": "Finance Department",
+    "client_id": 1,
+    "tag_id": 1
+  }
+}' helm:61443 hook.ctrl_svc.ControlPlaneService/NewTargetList
+```
+
+### Target List Operations
+
+```bash
+# Get target list by ID
+grpcurl -d '{"id": 1}' helm:61443 hook.ctrl_svc.ControlPlaneService/GetTargetListByID
+
+# Get target list by client
+grpcurl -d '{"id": 1}' helm:61443 hook.ctrl_svc.ControlPlaneService/GetTargetListByClientID
+
+# Get target list by tag
+grpcurl -d '{"id": 1}' helm:61443 hook.ctrl_svc.ControlPlaneService/GetTargetListByTagID
+
+# Update target list
+grpcurl -d '{"target_list": {"id": 1, "name": "Updated Name"}}' \
+  helm:61443 hook.ctrl_svc.ControlPlaneService/UpdateTargetList
+
+# Delete target list
+grpcurl -d '{"id": 1}' helm:61443 hook.ctrl_svc.ControlPlaneService/DeleteTargetList
+```
+
+## Targets
+
+Targets are the individuals who will receive phishing emails.
+
+### Create Target
+
+```bash
+grpcurl -d '{
+  "target": {
+    "target_list_id": 1,
+    "email": "john.doe@acme.com",
+    "first_name": "John",
+    "last_name": "Doe",
+    "company": "Acme Corporation",
+    "position": "Financial Analyst",
+    "department": "Finance",
+    "phone": "+1-555-0123"
+  }
+}' helm:61443 hook.ctrl_svc.ControlPlaneService/NewTarget
+```
+
+### Target Data Model
+
+```protobuf
+message Target {
+  int64 id = 1;
+  google.protobuf.Timestamp created_at = 2;
+  google.protobuf.Timestamp updated_at = 3;
+  google.protobuf.Timestamp deleted_at = 4;
+  int64 target_list_id = 5;
+  string email = 6;
+  string first_name = 7;
+  string last_name = 8;
+  string alias = 9;
+  string company = 10;
+  string position = 11;
+  string department = 12;
+  string phone = 13;
+  repeated string tags = 14;
+}
+```
+
+### Target Operations
+
+```bash
+# Get target by ID
+grpcurl -d '{"id": 1}' helm:61443 hook.ctrl_svc.ControlPlaneService/GetTargetByID
+
+# Get target by email
+grpcurl -d '{"email": "john.doe@acme.com"}' \
+  helm:61443 hook.ctrl_svc.ControlPlaneService/GetTargetByEmail
+
+# Get targets for target list
+grpcurl -d '{"id": 1}' helm:61443 hook.ctrl_svc.ControlPlaneService/GetTargetsForTargetList
+
+# Get targets for raid
+grpcurl -d '{"id": 1}' helm:61443 hook.ctrl_svc.ControlPlaneService/GetTargetsForRaid
+
+# Update target
+grpcurl -d '{"target": {"id": 1, "position": "Senior Analyst"}}' \
+  helm:61443 hook.ctrl_svc.ControlPlaneService/UpdateTarget
+
+# Delete target
+grpcurl -d '{"id": 1}' helm:61443 hook.ctrl_svc.ControlPlaneService/DeleteTarget
+```
+
+## Template Variables
+
+Target fields can be used in lures (email templates):
+
+| Variable | Description |
+|----------|-------------|
+| `{{.FirstName}}` | Target's first name |
+| `{{.LastName}}` | Target's last name |
+| `{{.Email}}` | Target's email address |
+| `{{.Company}}` | Target's company |
+| `{{.Position}}` | Target's job position |
+| `{{.Department}}` | Target's department |
+
+## Signatures
+
+Signatures are email signatures associated with clients:
+
+```bash
+grpcurl -d '{
+  "signature": {
+    "client_id": 1,
+    "signature": "<p>Best regards,<br>IT Security Team</p>"
+  }
+}' helm:61443 hook.ctrl_svc.ControlPlaneService/NewSignature
+```
+
+## Next Steps
+
+- [Raids](/docs/raids) - Creating campaigns
+- [Lures & Emails](/docs/lures-emails) - Email templates
+- [Session Capture](/docs/session-capture) - Captured data
+
