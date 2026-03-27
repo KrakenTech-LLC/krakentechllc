@@ -5,7 +5,7 @@ description: "Bounty system architecture — desktop app, database service, secu
 
 # Architecture
 
-Bounty uses a two-process architecture: a Wails desktop application (Go backend + React-TS frontend) and a Windows service that manages encrypted database operations.
+Bounty uses a two-process architecture: a Wails desktop application (Go backend \+ React-TS frontend) and a Windows service that manages encrypted database operations.
 
 ---
 
@@ -17,9 +17,9 @@ The main Bounty application provides the user interface and all AD interaction l
 
 | Component | Technology | Purpose |
 | --- | --- | --- |
-| **Frontend** | React + TypeScript | Dashboard, scan management, affected users tables, policy configuration |
-| **Backend** | Go (Wails runtime) | AD authentication, LDAP/RPC queries, scan execution, analysis, SIEM forwarding |
-| **AD Library** | el-dap | LDAP connection management and query abstraction |
+| **Frontend** | React \+ TypeScript | Dashboard, scan management, affected users tables, policy configuration |
+| **Backend** | Go | AD authentication, LDAP/RPC queries, scan execution, analysis, SIEM forwarding |
+| **AD Library** | Proprietary | LDAP connection management and query abstraction |
 
 ### Database Service
 
@@ -27,7 +27,7 @@ A standalone Windows service that provides encrypted storage for all Bounty data
 
 | Component | Technology | Purpose |
 | --- | --- | --- |
-| **Database** | BadgerDB | Embedded key-value store with encryption at rest |
+| **Database** | Proprietary | Embedded key-value store with encryption at rest |
 | **Communication** | gRPC over mTLS | Secure inter-process communication between the app and service |
 | **Encryption** | Windows DPAPI | Machine-bound encryption key for database operations |
 | **Certificates** | Auto-generated TLS | mTLS key pair for gRPC authentication |
