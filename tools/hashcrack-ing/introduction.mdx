@@ -1,6 +1,101 @@
 ---
-title: "introduction"
-description: "Hash Cracking Platform"
+title: "Hashcrack.ing"
+description: "Invitation-only hash cracking platform for security professionals"
 ---
 
 ![Logo Full](/logo_full.png)
+
+# Hashcrack.ing — Hash Cracking Platform
+
+Hashcrack.ing is an invitation-only platform for sharing cracked and uncracked password hashes, wordlists, optimized rulesets, and hash cracking tools. Built for cybersecurity professionals, researchers, and offensive security practitioners.
+
+---
+
+## What Hashcrack.ing Does
+
+| Feature | Description |
+| --- | --- |
+| **Hash Database** | Structured hash storage by format, type, and target with plaintext lookups |
+| **Hash Search** | Single, bulk, and file-based hash lookups against the shared database |
+| **Hash Submission** | Upload cracked hashes to contribute to the community database |
+| **Wordlists** | Upload, download, and share password wordlists |
+| **Rulesets** | Share optimized Hashcat rule files |
+| **Hash Lists** | Upload and monitor hash lists for collaborative cracking |
+| **Hash Identification** | Automatic hash type detection (500+ Hashcat format definitions) |
+| **Secrets Dump Parser** | Parse Windows `secretsdump.py` output (SAM, DCC2, LSA, DPAPI, Kerberos) |
+| **Leaderboard** | Track contributor rankings by submissions |
+| **Discord Integration** | Bot commands, alerts, approval workflows, real-time crack notifications |
+
+---
+
+## Feature Overview
+
+<Columns cols={2}>
+  <Card title="Search & Submit" icon="magnifying-glass" href="/tools/hashcrack-ing/search-submit">
+    Hash lookup, bulk search, file upload, cracked hash submission
+  </Card>
+  <Card title="Resources" icon="database" href="/tools/hashcrack-ing/resources">
+    Wordlists, rulesets, hash lists, and monitoring
+  </Card>
+  <Card title="Tools" icon="wrench" href="/tools/hashcrack-ing/tools">
+    Hash identification, secretsdump parser, potfile processing
+  </Card>
+  <Card title="Architecture" icon="server" href="/tools/hashcrack-ing/architecture">
+    Go + Fiber backend, Next.js frontend, PostgreSQL, Backblaze B2
+  </Card>
+</Columns>
+
+---
+
+## Platform Overview
+
+Hashcrack.ing operates as a community-driven hash intelligence platform:
+
+1. **Invitation-only access** — new users must receive a registration token from an admin or existing member
+2. **Quality control** — uploads are processed asynchronously with format validation and deduplication
+3. **Structured storage** — hashes are stored with Hashcat type codes, metadata tags, and plaintext associations
+4. **Collaborative cracking** — upload uncracked hash lists, monitor progress, and receive notifications when hashes are cracked
+5. **Contributor tracking** — leaderboard ranks users by submission volume and quality
+
+---
+
+## Security Model
+
+| Layer | Protection |
+| --- | --- |
+| **Registration** | Invitation-only with expiring registration tokens |
+| **Password** | Minimum 20 characters |
+| **MFA** | TOTP-based multi-factor authentication (enforced) |
+| **Passkeys** | WebAuthn/FIDO2 passwordless authentication support |
+| **Sessions** | Token-based with MFA verification state tracking |
+| **API Keys** | Separate keys for CLI, API, and Discord integration |
+| **Access Control** | Role-based ACL (admin, member, contributor) |
+| **Account Lockout** | Automatic lockout after failed authentication attempts |
+| **Email Verification** | Required for account activation |
+
+---
+
+## Tech Stack
+
+### Backend
+
+| Component | Technology |
+| --- | --- |
+| Language | Go 1.24 |
+| HTTP Framework | Fiber v2 |
+| Database | PostgreSQL (via GORM + SQLC) |
+| Cloud Storage | Backblaze B2 |
+| Email | Mailgun |
+| Discord | discordgo |
+| Logging | Zap |
+| Cryptography | bcrypt, NTLM, AES, TOTP |
+
+### Frontend
+
+| Component | Technology |
+| --- | --- |
+| Framework | Next.js 15 (App Router) |
+| UI | React 19 + Radix UI |
+| Styling | Tailwind CSS |
+| Forms | React Hook Form + Zod |
+| Charts | Recharts |

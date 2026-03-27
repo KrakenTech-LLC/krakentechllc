@@ -1,0 +1,119 @@
+---
+title: "Tools"
+description: "Hash identification, secretsdump parsing, and potfile processing"
+---
+
+# Tools
+
+Hashcrack.ing provides built-in tools for hash analysis, format identification, and credential dump parsing.
+
+---
+
+## Hash Identification
+
+Automatically detect the Hashcat format type of an unknown hash. Hashcrack.ing maintains a database of 500+ Hashcat format definitions with regex patterns for format detection.
+
+### API
+
+```text
+POST /api/v1/tools/hashid
+```
+
+Submit one or more hashes and receive the detected Hashcat type code, format name, and confidence level.
+
+### Supported Formats
+
+Hashcrack.ing identifies all major hash families:
+
+| Family | Examples |
+| --- | --- |
+| **MD** | MD4, MD5, HMAC-MD5 |
+| **SHA** | SHA1, SHA-224, SHA-256, SHA-384, SHA-512, SHA3 |
+| **bcrypt** | bcrypt, bcrypt-sha256 |
+| **Windows** | NTLM, LM, NTLMv1, NTLMv2, DCC, DCC2, mscash |
+| **Unix** | descrypt, md5crypt, sha256crypt, sha512crypt, yescrypt |
+| **Kerberos** | AS-REP, TGS-REP, AS-REQ (etype 17/18/23) |
+| **Database** | Oracle, MySQL, MSSQL, PostgreSQL |
+| **Network** | WPA/WPA2/WPA3, RADIUS, SNMP, IKE |
+| **Application** | Office, PDF, ZIP, 7-Zip, RAR, KeePass, 1Password, LastPass |
+| **Cryptocurrency** | Bitcoin, Ethereum, Monero wallets |
+| **Web** | WordPress, Drupal, Joomla, Django, phpBB |
+| **Cloud** | AWS, Azure, GCP credential formats |
+
+Each format definition includes:
+
+- Hashcat mode number
+- Regex pattern for detection
+- Example hash
+- Category and description
+
+---
+
+## Secrets Dump Parser
+
+Parse output from Impacket's `secretsdump.py` into structured, searchable data. The parser extracts credentials from all sections of a secretsdump output file.
+
+### API
+
+```text
+POST /api/v1/tools/secrets
+```
+
+Upload a raw secretsdump output file and receive structured extractions.
+
+### Extracted Credential Types
+
+| Type | Source | Format |
+| --- | --- | --- |
+| **SAM Hashes** | Local SAM database | `username:RID:LM:NTLM:::` |
+| **DCC2 Hashes** | Domain Cached Credentials v2 | `$DCC2$10240#user#hash` |
+| **LSA Secrets** | Local Security Authority | Kerberos tickets, plaintext passwords, service credentials |
+| **DPAPI Entries** | Data Protection API | Master key backups, credential blobs |
+| **Plaintext Credentials** | Cleartext passwords found in LSA memory | `domain\user:password` |
+| **Kerberos Keys** | Kerberos key material | AES-256, AES-128, DES, RC4 keys |
+
+### Processing
+
+The parser runs multi-threaded extraction using Go channels:
+
+1. Read the secretsdump file line by line
+2. Classify each line into the appropriate credential type
+3. Extract structured fields (username, domain, hash/key, RID)
+4. Return all extractions grouped by type
+
+---
+
+## Potfile Processing
+
+Parse Hashcat potfile output (`.pot` files) into structured hash-to-plaintext mappings for batch submission.
+
+### Format
+
+Standard Hashcat potfile format:
+
+```text
+hash:plaintext
+```
+
+### Features
+
+- Automatic hex-encoded password decoding (`$HEX[...]`)
+- UTF-8 validation on plaintext values
+- Chunked processing (10,000 entries per chunk) for large potfiles
+- Deduplication against the existing database
+
+---
+
+## Password Mask Analysis
+
+Analyze password patterns and generate Hashcat mask files for targeted cracking campaigns.
+
+| Mask Character | Description |
+| --- | --- |
+| `?l` | Lowercase letter (a-z) |
+| `?u` | Uppercase letter (A-Z) |
+| `?d` | Digit (0-9) |
+| `?s` | Special character |
+| `?a` | Any character |
+
+Masks are stored in B2 alongside wordlists and rules for community access.

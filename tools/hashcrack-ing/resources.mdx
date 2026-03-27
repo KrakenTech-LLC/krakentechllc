@@ -1,0 +1,126 @@
+---
+title: "Resources"
+description: "Wordlists, rulesets, and hash lists on Hashcrack.ing"
+---
+
+# Resources
+
+Hashcrack.ing hosts shared resources for hash cracking — wordlists, Hashcat rule files, and hash lists. All resources support chunked upload for large files and are stored in Backblaze B2 cloud storage.
+
+---
+
+## Wordlists
+
+Upload and share password wordlists with the community. Wordlists are organized by category, tagged with metadata, and stored in cloud storage for reliable download.
+
+### Upload
+
+```text
+POST /api/v1/wordlist/
+```
+
+Supports direct upload and chunked upload for large files. Uploaded wordlists are processed asynchronously — validated, deduplicated, and indexed.
+
+### Browse & Download
+
+```text
+GET /api/v1/wordlist/
+GET /api/v1/wordlist/:id
+```
+
+Browse all available wordlists with filtering by size, format, and contributor. Each wordlist includes download links and metadata.
+
+---
+
+## Hashcat Rules
+
+Share optimized Hashcat rule files (`.rule`) for password mutation and generation.
+
+### Upload
+
+```text
+POST /api/v1/rules/
+```
+
+Supports direct and chunked upload. Rules are stored in B2 and associated with contributor metadata.
+
+### Browse & Download
+
+```text
+GET /api/v1/rules/
+GET /api/v1/rules/:id
+```
+
+---
+
+## Hash Lists
+
+Upload collections of hashes for community-driven cracking efforts. Hash lists are the primary unit of collaborative work on the platform.
+
+### Upload
+
+```text
+POST /api/v1/hashlist/
+```
+
+Supports direct and chunked upload. Each hash list is tagged with:
+
+| Field | Description |
+| --- | --- |
+| Name | Human-readable list name |
+| Hash Type | Hashcat type code (auto-detected or specified) |
+| Description | Context about the hash list |
+| Tags | Metadata tags for filtering |
+
+### Processing
+
+When a hash list is uploaded:
+
+1. Each hash is validated against the claimed Hashcat format regex
+2. Hashes are deduplicated against the existing database
+3. New hashes are batch-inserted with automatic digest generation
+4. The hash list is linked to its constituent hashes (many-to-many)
+5. The list becomes available for monitoring and collaborative cracking
+
+### Browse
+
+```text
+GET /api/v1/hashlist/
+GET /api/v1/hashlist/:id
+```
+
+---
+
+## Chunked Upload
+
+All resource types support chunked file upload for large files (up to 1 GB):
+
+1. Client splits the file into chunks
+2. Each chunk is uploaded individually with metadata (chunk index, total chunks, upload ID)
+3. Server stores chunks temporarily
+4. When all chunks are received, the file is automatically reassembled
+5. The reassembled file is processed through the normal upload pipeline
+
+### Chunk Types
+
+| Type | Description |
+| --- | --- |
+| `HASHLIST` | Hash list file |
+| `RULE` | Hashcat rule file |
+| `WORDLIST` | Password wordlist |
+| `SUBMITTED_HASHES` | Cracked hash submission (potfile) |
+
+---
+
+## Cloud Storage
+
+All resources are stored in Backblaze B2 with organized bucket paths:
+
+| Resource | B2 Path |
+| --- | --- |
+| Wordlists | `Wordlists/` |
+| Rules | `Rules/` |
+| Hash Lists | `Hashlists/` |
+| Masks | `Masks/` |
+
+Multi-writer concurrent uploads ensure fast transfer of large files.

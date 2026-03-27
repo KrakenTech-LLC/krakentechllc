@@ -1,0 +1,126 @@
+---
+title: "Search & Submit"
+description: "Hash search, bulk lookup, and cracked hash submission"
+---
+
+# Search & Submit
+
+Hashcrack.ing provides multiple interfaces for looking up hashes against the shared database and contributing cracked hashes back to the community.
+
+---
+
+## Hash Search
+
+### Single Hash Lookup
+
+Search for a single hash and retrieve its plaintext (if cracked) along with metadata.
+
+```text
+POST /api/v1/search/
+```
+
+### Bulk Hash Search
+
+Submit multiple hashes in a single request for batch lookup.
+
+```text
+POST /api/v1/search/bulk
+```
+
+### File-Based Search
+
+Upload a file containing hashes (one per line) for bulk lookup. Supports standard hash list formats.
+
+```text
+POST /api/v1/search/file
+```
+
+### Chunked Search Upload
+
+For large files, use chunked upload to split the file into manageable pieces that are reassembled server-side before processing.
+
+```text
+POST /api/v1/search/chunked/upload
+```
+
+---
+
+## Hash Submission
+
+Contributing cracked hashes back to the platform is the primary way to build the shared database and earn leaderboard ranking.
+
+### Direct Submission
+
+Submit individual cracked hash-to-plaintext pairs.
+
+```text
+POST /api/v1/submit/
+```
+
+### File Submission
+
+Upload a file containing cracked hashes in Hashcat potfile format (`hash:plaintext`).
+
+```text
+POST /api/v1/submit/file
+```
+
+### Chunked Submission
+
+For large potfiles, use chunked upload for reliable transfer.
+
+```text
+POST /api/v1/submit/chunked/upload
+```
+
+---
+
+## Submission Processing
+
+All submissions are processed asynchronously by a pool of background workers:
+
+1. **Validation** — each hash is validated against regex patterns for the claimed Hashcat format
+2. **Deduplication** — duplicate hashes are detected and skipped
+3. **Digest generation** — binary hash representations are computed for efficient storage and lookup
+4. **Batch insertion** — hashes are inserted in batches of 5,000 records with 80 concurrent workers
+5. **Plaintext association** — cracked hashes are linked to their plaintext values
+6. **Leaderboard update** — the submitter's contribution count is incremented
+
+### Potfile Format
+
+Hashcrack.ing supports standard Hashcat potfile format:
+
+```text
+hash:plaintext
+5f4dcc3b5aa765d61d8327deb882cf99:password
+e99a18c428cb38d5f260853678922e03:abc123
+```
+
+Hex-encoded passwords (`$HEX[...]`) are automatically decoded and validated as UTF-8.
+
+---
+
+## Hash Monitoring
+
+Upload an uncracked hash list to monitor and receive notifications when community members crack hashes from your list.
+
+```text
+POST /api/v1/monitor/
+GET /api/v1/monitor/
+```
+
+When a hash from a monitored list is submitted as cracked, the list owner is notified through the platform notification system and optionally via Discord.
+
+---
+
+## Search Results
+
+Each search result includes:
+
+| Field | Description |
+| --- | --- |
+| Hash | The original hash value |
+| Plaintext | Cracked plaintext (if available) |
+| Hash Type | Hashcat type code and human-readable name |
+| Source | Which hash list the hash originated from |
+| Cracked | Whether the hash has been cracked |

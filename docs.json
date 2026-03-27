@@ -29,7 +29,11 @@
           {
             "tab": "Hashcrack.ing",
             "pages": [
-              "tools/hashcrack-ing/introduction"
+              "tools/hashcrack-ing/introduction",
+              "tools/hashcrack-ing/search-submit",
+              "tools/hashcrack-ing/resources",
+              "tools/hashcrack-ing/tools",
+              "tools/hashcrack-ing/architecture"
             ]
           },
           {
