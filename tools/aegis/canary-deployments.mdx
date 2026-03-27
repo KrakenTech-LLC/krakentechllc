@@ -13,16 +13,16 @@ Aegis supports canary traffic splitting — a deployment strategy where a percen
 
 ```text
                      ┌─────────────────────┐
-                     │       Aegis         │
-       Clients ────► │                     │
-                     │   Traffic Split     │
+                     │       Aegis                     │
+   Clients ────► │                                 │
+                     │   Traffic Split                 │
                      │   ┌──── 90% ────►  Primary (v2.3)
-                     │   │                 │
+                     │   │                             │
                      │   └──── 10% ────►  Canary  (v2.4)
-                     │                     │
-                     │   Error Monitoring  │
-                     │   Latency Tracking  │
-                     │   Auto-Rollback     │
+                     │                                 │
+                     │   Error Monitoring              │
+                     │   Latency Tracking              │
+                     │   Auto-Rollback                 │
                      └─────────────────────┘
 ```
 
@@ -178,7 +178,7 @@ If all primary upstreams become unhealthy, Aegis routes to canary upstreams as a
 
 ## Difference from Load Balancing
 
-| | Load Balancing | Canary |
+|  | Load Balancing | Canary |
 | --- | --- | --- |
 | **Purpose** | Distribute load for capacity | Compare versions for safety |
 | **Upstreams** | All run the same code | Primary and canary run different code |

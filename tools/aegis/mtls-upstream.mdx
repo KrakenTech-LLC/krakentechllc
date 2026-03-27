@@ -56,7 +56,7 @@ To set up mTLS between Aegis and an upstream, you need certificates from both si
 
 | Certificate | Who Creates It | Where It Goes |
 | --- | --- | --- |
-| **Client cert + key** | Your CA (or Aegis's local CA) | Aegis — configured in the host's Upstream TLS settings |
+| **Client cert \+ key** | Your CA (or Aegis's local CA) | Aegis — configured in the host's Upstream TLS settings |
 | **CA cert that signed the client cert** | Your CA | Upstream server — installed as a trusted client CA |
 | **Upstream's server cert** | Upstream's CA | Already on the upstream server |
 | **CA cert that signed the upstream server cert** | Upstream's CA | Aegis — configured as the Upstream CA Certificate |
@@ -136,6 +136,7 @@ WebSocket upgrades to mTLS-enabled upstreams use the same TLS configuration. The
 | `remote error: tls: certificate required` | The upstream requires a client cert but Aegis isn't sending one | Enable mTLS and configure the client cert and key |
 | `tls: private key does not match public key` | The client key doesn't match the client certificate | Regenerate the key pair or upload the matching key |
 | `x509: certificate has expired` | Either the client or server cert is expired | Renew the expired certificate |
+| `in the event of other errors` | Ensure that "Preserve Host Header" is disabled in the hosts settings |  |
 
 ---
 
