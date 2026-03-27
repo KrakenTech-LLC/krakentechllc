@@ -35,7 +35,17 @@
           {
             "tab": "Bounty",
             "pages": [
-              "tools/bounty/introduction"
+              "tools/bounty/introduction",
+              "tools/bounty/scans",
+              "tools/bounty/architecture"
+            ]
+          },
+          {
+            "tab": "Bulwark",
+            "pages": [
+              "tools/bulwark/introduction",
+              "tools/bulwark/health-checks",
+              "tools/bulwark/supplemental-rules"
             ]
           },
           {

@@ -1,12 +1,169 @@
 ---
-title: "introduction"
-description: "Active Directory Hardening"
+title: "Bounty"
+description: "Active Directory Password Security & Compliance Platform"
 ---
 
 <img
   src="/bounty_transparent_large.png"
-  alt="Bounty Transparent Large"
-  title="Bounty Transparent Large"
+  alt="Bounty"
+  title="Bounty"
   className="mx-auto"
   style={{ width:"75%" }}
 />
+
+# Bounty — Active Directory Password Security & Compliance
+
+Bounty is a Windows-native Active Directory password security and compliance platform. It continuously scans AD environments for weak, breached, reused, and policy-violating passwords, then provides automated remediation through forced resets, alerting, and SIEM integration.
+
+Built with Go and Wails (React-TS frontend), Bounty runs as a desktop application with a companion Windows service that handles encrypted database operations via gRPC.
+
+---
+
+## What Bounty Does
+
+Bounty covers the full lifecycle of AD password security:
+
+| Capability | Description |
+| --- | --- |
+| **Breached Password Detection** | Compares AD password hashes against known breach databases to identify compromised credentials |
+| **Password Reuse Detection** | Identifies accounts sharing the same password hash across the domain |
+| **AS-REP Roasting Detection** | Finds accounts with Kerberos pre-authentication disabled (vulnerable to offline cracking) |
+| **Kerberoasting Detection** | Identifies service accounts with SPNs that can be targeted for offline ticket cracking |
+| **Pre-Windows 2000 Account Detection** | Finds legacy accounts with predictable default passwords |
+| **SPN Management** | Enumerates and manages Service Principal Names across the domain |
+| **ADCS Assessment** | Evaluates Active Directory Certificate Services for misconfigurations |
+| **Password Policy Enforcement** | Configurable policies per domain, group, OU, and SPN type |
+| **Automated Remediation** | Force password resets, disable accounts, or alert administrators |
+| **SIEM Integration** | Real-time event forwarding to Splunk, Elastic, Sentinel, QRadar, Wazuh, ArcSight, Huntress |
+
+---
+
+## Feature Overview
+
+<Columns cols={2}>
+  <Card title="Security Scans" icon="magnifying-glass" href="/tools/bounty/scans">
+    Breached passwords, reuse detection, AS-REP roasting, Kerberoasting, Pre-2K accounts
+  </Card>
+  <Card title="Architecture" icon="server" href="/tools/bounty/architecture">
+    Wails desktop app, encrypted gRPC database service, DPAPI key management
+  </Card>
+</Columns>
+
+---
+
+## Quick Start
+
+### Requirements
+
+- Windows 10/11 or Windows Server 2016+
+- Domain-joined machine or credentials with read access to AD
+- Local administrator (for service installation)
+
+### Installation
+
+```powershell
+# Run the Bounty installer
+.\Bounty-Setup.exe
+```
+
+On first launch, Bounty:
+
+1. Creates the secure data directory at `%LOCALAPPDATA%\Bounty`
+2. Generates an encryption key protected by Windows DPAPI
+3. Installs the Bounty database service (gRPC over mTLS)
+4. Generates a TLS key pair for service communication
+5. Prompts for AD credentials to begin scanning
+
+### First Scan
+
+1. Authenticate with domain credentials (username, password, domain FQDN)
+2. Select the scan types to run from the dashboard
+3. Review findings in the affected users tables
+4. Configure policies and automated remediation
+
+---
+
+## Architecture Overview
+
+```text
++--------------------------------------------------+
+|              Bounty Desktop (Wails)               |
+|                                                   |
+|  +-------------+  +---------------------------+   |
+|  |  React-TS   |  |     Go Backend            |   |
+|  |  Frontend   |◄-|  (AD scans, analysis,     |   |
+|  |             |  |   policy enforcement)      |   |
+|  +-------------+  +---------------------------+   |
+|                         |                         |
+|                    gRPC (mTLS)                     |
+|                         |                         |
+|  +--------------------------------------------------+
+|  |          Bounty Database Service                  |
+|  |  (BadgerDB, DPAPI-encrypted, Windows Service)     |
+|  +--------------------------------------------------+
+|                         |
+|                    LDAP / ADWS                     |
+|                         |
+|  +--------------------------------------------------+
+|  |           Active Directory                        |
+|  |  (Domain Controllers, Users, Groups, SPNs)        |
+|  +--------------------------------------------------+
+```
+
+---
+
+## Scan Types
+
+| Scan | Detection | Remediation |
+| --- | --- | --- |
+| **Breached Passwords** | Compare NT hashes against breach databases (NTDS.dit extraction via DCSync or RPC) | Force password reset, alert, notify user |
+| **Password Reuse** | Group accounts by identical password hash | Alert, force unique passwords |
+| **AS-REP Roasting** | Find accounts with `DONT_REQUIRE_PREAUTH` flag | Remove flag or alert with privileged user distinction |
+| **Kerberoasting** | Find accounts with SPNs (request TGS tickets for offline cracking) | Alert, rotate SPN credentials |
+| **Pre-Windows 2000** | Find accounts in the Pre-Windows 2000 Compatible Access group | Change password, alert |
+| **SPN Enumeration** | List all Service Principal Names in the domain | Filter, manage, notify |
+| **ADCS Assessment** | Evaluate certificate templates for ESC1–ESC16 vulnerabilities | Alert, report |
+
+---
+
+## Group and OU Management
+
+Bounty supports a three-tier targeting system for groups and OUs:
+
+| State | Behavior |
+| --- | --- |
+| **Targeted** (1 click) | Group/OU is included in breach scans and remediation |
+| **Alert Only** (2 clicks) | Group/OU is excluded from breach scans but alerts are sent |
+| **Excluded** (3 clicks) | Group/OU is excluded from all scans entirely |
+
+This allows granular control over which parts of the directory are actively scanned and which are monitored passively.
+
+---
+
+## SIEM Integration
+
+Bounty forwards scan events and findings to SIEM platforms in real-time:
+
+| Platform | Status |
+| --- | --- |
+| **Splunk** | Supported |
+| **Elastic** | Supported |
+| **Microsoft Sentinel** | Supported |
+| **IBM QRadar** | Supported |
+| **Wazuh** | Supported |
+| **ArcSight** | Supported |
+| **Huntress** | Supported |
+| **Custom** | Configurable webhook/syslog endpoint |
+
+---
+
+## Security Model
+
+| Layer | Protection |
+| --- | --- |
+| **Encryption key** | Windows DPAPI — key is bound to the machine and user, stored in `%PROGRAMDATA%\Bounty\svc.enc` |
+| **Database** | BadgerDB with encryption at rest, accessed only through the Windows service |
+| **Service communication** | gRPC over mTLS with auto-generated certificates |
+| **Credential handling** | AD credentials used for LDAP/RPC only, never stored in the database |
+| **Tracking** | Accounts tracked by SID (not name) to survive renames |
+| **Licensing** | HWID-bound license validation via KrakenTech API |

@@ -1,0 +1,141 @@
+---
+title: "Security Scans"
+description: "Bounty AD security scans — breached passwords, reuse, Kerberoasting, AS-REP roasting, Pre-2K"
+---
+
+# Security Scans
+
+Bounty provides continuous and on-demand security scans across an Active Directory domain. Each scan targets a specific class of password or account vulnerability.
+
+---
+
+## Breached Password Detection
+
+Bounty extracts NT password hashes from Active Directory and compares them against known breach databases to identify accounts with compromised credentials.
+
+### Hash Extraction Methods
+
+| Method | Protocol | Requirements |
+| --- | --- | --- |
+| **DCSync** | MS-DRSR (DRS replication) | Replicating Directory Changes + Replicating Directory Changes All |
+| **RPC** | MS-SAMR | Domain admin or delegated access |
+| **SMB** | NTDS.dit extraction | Domain admin |
+
+### Detection Flow
+
+1. Extract NT hashes from domain controller
+2. Compare each hash against the breach database
+3. Flag matching accounts as breached
+4. Distinguish between privileged and standard user accounts
+5. Record first-detection timestamp for each finding
+6. Generate alerts and optional automated remediation
+
+### Affected Users Table
+
+Each breached account record includes:
+
+- Account name and SID
+- Whether the account is privileged (member of admin groups)
+- First detected timestamp
+- Current scan status
+- Remediation status (pending, reset, alerted)
+
+---
+
+## Password Reuse Detection
+
+Identifies groups of accounts that share identical password hashes — a critical risk because compromising one account compromises all accounts with the same password.
+
+### How It Works
+
+1. Collect NT hashes for all enabled accounts
+2. Group accounts by hash value
+3. Flag all groups with 2+ members as password reuse
+4. Track reuse count and affected accounts over time
+
+---
+
+## AS-REP Roasting Detection
+
+Finds accounts with the `DONT_REQUIRE_PREAUTH` (0x400000) UserAccountControl flag set. These accounts are vulnerable to offline cracking because an attacker can request an AS-REP ticket without knowing the password.
+
+### Detection
+
+- Query AD for all user accounts with the AS-REP roastable UAC flag
+- Separate results into privileged users (admin group members) and standard users
+- Track scan history and first-detection dates
+
+### Remediation Options
+
+| Action | Description |
+| --- | --- |
+| **Remove flag** | Clear the `DONT_REQUIRE_PREAUTH` flag (requires password reset) |
+| **Alert** | Notify administrators without modifying the account |
+
+---
+
+## Kerberoasting Detection
+
+Identifies service accounts with Service Principal Names (SPNs) that can be targeted for TGS ticket requests and offline password cracking.
+
+### Detection
+
+- Enumerate all accounts with registered SPNs
+- Flag accounts that are members of privileged groups
+- Track SPN-to-account mappings
+
+### Risk Factors
+
+- Service accounts in Domain Admins or other privileged groups
+- Accounts with weak or never-rotated passwords
+- Accounts with DES encryption enabled
+
+---
+
+## Pre-Windows 2000 Account Detection
+
+Finds accounts in the Pre-Windows 2000 Compatible Access group. These accounts often have predictable default passwords (typically the sAMAccountName lowercased, truncated to 14 characters).
+
+### Remediation Options
+
+| Action | Description |
+| --- | --- |
+| **Change password** | Force a password reset to a strong random value |
+| **Alert** | Notify administrators |
+
+---
+
+## SPN Management
+
+Enumerates all Service Principal Names registered in the domain and provides filtering, search, and management capabilities.
+
+- View all SPNs with associated account details
+- Refresh SPN data on demand
+- Filter by SPN type, account, or status
+- Identify orphaned or misconfigured SPNs
+
+---
+
+## ADCS Assessment
+
+Evaluates Active Directory Certificate Services for common misconfigurations including ESC1 through ESC16 escalation paths.
+
+- Certificate template analysis
+- Enrollment permission auditing
+- CA configuration review
+
+---
+
+## Scan Job System
+
+All scans run asynchronously with a job tracking system:
+
+| Field | Description |
+| --- | --- |
+| `job_id` | Unique job identifier |
+| `status` | `running`, `completed`, `failed` |
+| `start_time` | When the scan started |
+| `elapsed` | Running time |
+| `error` | Error message if the scan failed |
+
+Scan progress is visible in real-time from the dashboard. Multiple scans can run concurrently.

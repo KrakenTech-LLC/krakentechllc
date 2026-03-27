@@ -1,0 +1,139 @@
+---
+title: "Health Checks"
+description: "Built-in Active Directory health check rules and scoring"
+---
+
+# Health Check Rules
+
+Bulwark evaluates over 100 built-in security rules against collected AD data. Each rule checks for a specific misconfiguration, vulnerability, or hygiene issue and produces a finding with a severity level and affected objects.
+
+---
+
+## Rule Categories
+
+### Functional Level
+
+Checks whether the domain and forest functional levels are current. Outdated levels miss security features available in newer AD versions.
+
+### Domain Controller Health
+
+- OS version currency (end-of-life detection)
+- FSMO role holder identification
+- Reachability and SMB/Kerberos settings
+- Print spooler exposure
+- LDAP signing and channel binding
+
+### Account Hygiene (Stale Objects)
+
+| Check | Description |
+| --- | --- |
+| Inactive users | Enabled accounts with no logon in 6+ months |
+| Password never expires | Accounts with the password-never-expires flag |
+| Password not required | Accounts where a password is not mandatory |
+| Reversible encryption | Accounts storing passwords with reversible encryption |
+| DES encryption | Accounts with DES Kerberos encryption enabled |
+| No pre-authentication | AS-REP roastable accounts |
+| Bad primary group | Accounts with a non-standard primary group (not 513) |
+| No AES encryption | Accounts not configured for AES Kerberos encryption |
+| SID history | Accounts carrying SID history entries |
+| LAPS coverage | Computers without LAPS (legacy or Windows LAPS) |
+
+### Privileged Account Hygiene
+
+| Check | Description |
+| --- | --- |
+| Service accounts in admin groups | SPNs that are members of Domain Admins or equivalent |
+| AdminSDHolder orphans | Accounts with `adminCount=1` not in any privileged group |
+| Delegation risks | Unconstrained delegation, protocol transition delegation |
+| Privileged group size | Excessive membership in high-privilege groups |
+| Email on admin accounts | Admin accounts with email addresses (phishing risk) |
+| Smart card configuration | Accounts requiring smart card without valid certificates |
+
+### Trust Relationships
+
+- Trust type and transitivity analysis
+- SID filtering status
+- Cross-forest trust risks
+- Reachable domain enumeration
+
+### Anomalies
+
+| Check | Description |
+| --- | --- |
+| AD Recycle Bin | Whether the Recycle Bin optional feature is enabled |
+| KDS root key | Whether gMSA can be used (requires KDS root key) |
+| NTFRS for SYSVOL | Whether legacy NTFRS is used instead of DFSR |
+| Guest account | Whether the built-in Guest account is enabled |
+| Machine account quota | Whether unprivileged users can join machines (MAQ > 0) |
+| Pre-Windows 2000 group | Whether Everyone or Authenticated Users is in the legacy group |
+| Exchange risks | Exchange privilege escalation vulnerabilities |
+| GPP passwords | Group Policy Preferences storing credentials |
+| Weak PKI certificates | RSA key size and signature algorithm checks |
+| NTLMv1 | Whether NTLMv1 is allowed via GPO |
+
+### GPO Analysis
+
+- Audit policy settings (simple and advanced)
+- LSA policy configuration
+- WSUS settings
+- Defender ASR rules
+- Screen saver lock-out policies
+- Firewall rules
+- Event forwarding subscriptions
+- UNC path hardening
+- Terminal Services configuration
+
+### DNS
+
+- AD-integrated DNS zone enumeration
+- Zone configuration analysis
+
+---
+
+## Rule Evaluation
+
+Rules are evaluated in sequence after data collection completes:
+
+```text
+Data Collection (LDAP/ADWS)
+  |
+  v
+Rule Evaluation (100+ built-in rules)
+  |
+  v
+Supplemental Rule Evaluation (user-defined)
+  |
+  v
+Score Calculation (global + category scores)
+  |
+  v
+Export (JSON, XML, YAML, HTML)
+```
+
+Each triggered rule produces a `RuleAnalysisResult` containing:
+
+| Field | Description |
+| --- | --- |
+| `risk_id` | Rule identifier (e.g., `S-PrimaryGroup`, `P-ServiceDomainAdmin`) |
+| `name` | Human-readable rule name |
+| `category` | `StaleObjects`, `PrivilegedAccounts`, `Trusts`, `Anomalies` |
+| `severity` | `critical`, `high`, `medium`, `low`, `info` |
+| `points` | Risk score contribution |
+| `summary` | Description of the finding |
+| `affected_objects` | List of affected account names, hostnames, or DNs |
+| `solution` | Recommended remediation |
+
+---
+
+## Scoring Algorithm
+
+The global score is calculated from four category scores, each representing a dimension of AD security:
+
+| Category | Measures |
+| --- | --- |
+| **Stale Objects** | Account hygiene, password age, inactive accounts, LAPS, functional level |
+| **Privileged Accounts** | Admin group composition, delegation, service accounts, AdminSDHolder |
+| **Trusts** | Trust relationships, SID filtering, cross-domain risks |
+| **Anomalies** | Feature flags, misconfigurations, Exchange, PKI, GPO settings |
+
+Each triggered rule contributes its `points` value to the appropriate category. The global score is derived from the weighted combination of category scores, normalized to 0–100.

@@ -1,0 +1,133 @@
+---
+title: "Architecture"
+description: "Bounty system architecture — desktop app, database service, security model"
+---
+
+# Architecture
+
+Bounty uses a two-process architecture: a Wails desktop application (Go backend + React-TS frontend) and a Windows service that manages encrypted database operations.
+
+---
+
+## Components
+
+### Desktop Application (Wails)
+
+The main Bounty application provides the user interface and all AD interaction logic:
+
+| Component | Technology | Purpose |
+| --- | --- | --- |
+| **Frontend** | React + TypeScript | Dashboard, scan management, affected users tables, policy configuration |
+| **Backend** | Go (Wails runtime) | AD authentication, LDAP/RPC queries, scan execution, analysis, SIEM forwarding |
+| **AD Library** | el-dap | LDAP connection management and query abstraction |
+
+### Database Service
+
+A standalone Windows service that provides encrypted storage for all Bounty data:
+
+| Component | Technology | Purpose |
+| --- | --- | --- |
+| **Database** | BadgerDB | Embedded key-value store with encryption at rest |
+| **Communication** | gRPC over mTLS | Secure inter-process communication between the app and service |
+| **Encryption** | Windows DPAPI | Machine-bound encryption key for database operations |
+| **Certificates** | Auto-generated TLS | mTLS key pair for gRPC authentication |
+
+---
+
+## Data Flow
+
+```text
+User
+  |
+  v
+Bounty Desktop (Wails)
+  |
+  ├──► Active Directory (LDAP/ADWS/RPC/SMB)
+  |     - User enumeration
+  |     - Hash extraction (DCSync/RPC)
+  |     - Group/OU/SPN queries
+  |     - Policy reads
+  |
+  ├──► Bounty Database Service (gRPC/mTLS)
+  |     - Store scan results
+  |     - Track affected accounts (by SID)
+  |     - Persist policies and settings
+  |
+  ├──► SIEM Platforms
+  |     - Forward findings and events
+  |     - Splunk, Elastic, Sentinel, QRadar, etc.
+  |
+  └──► KrakenTech API
+        - License validation (HWID-bound)
+```
+
+---
+
+## Security Model
+
+### Encryption Key Lifecycle
+
+1. On first launch, Bounty generates a random AES encryption key
+2. The key is encrypted using Windows DPAPI (`CryptProtectData`) — binding it to the current machine and user
+3. The encrypted key is stored at `%PROGRAMDATA%\Bounty\svc.enc`
+4. The database service decrypts the key at startup using DPAPI
+5. All database operations use the decrypted key for BadgerDB encryption
+
+### Service Communication
+
+1. On first launch, Bounty generates a TLS certificate and key pair
+2. Both are stored in the secure certificates directory
+3. The desktop app and database service authenticate each other via mTLS
+4. All gRPC calls are encrypted in transit
+
+### Account Tracking
+
+Bounty tracks all affected accounts by their **Security Identifier (SID)** rather than sAMAccountName. This ensures findings remain valid even if accounts are renamed.
+
+---
+
+## Directory Structure
+
+```text
+%LOCALAPPDATA%\Bounty\           # User-specific data
+%PROGRAMDATA%\Bounty\            # Shared service data
+  ├── svc.enc                    # DPAPI-encrypted database key
+  ├── certs/
+  │   ├── bounty.crt             # mTLS certificate
+  │   └── bounty.key             # mTLS private key
+  └── db/                        # Encrypted BadgerDB data
+```
+
+---
+
+## Protocols
+
+Bounty communicates with Active Directory using multiple protocols depending on the scan type:
+
+| Protocol | Use Case |
+| --- | --- |
+| **LDAP** | User/group/OU enumeration, attribute queries, SPN discovery |
+| **ADWS** | Alternative to LDAP for environments where LDAP access is restricted |
+| **MS-DRSR (DCSync)** | NT hash extraction via directory replication |
+| **MS-SAMR (RPC)** | NT hash extraction via SAM remote interface |
+| **SMB** | NTDS.dit extraction, SYSVOL access |
+
+---
+
+## SIEM Event Format
+
+Bounty forwards structured events to configured SIEM platforms. Events include:
+
+| Field | Description |
+| --- | --- |
+| `event_type` | Scan type (breached, reuse, asrep, kerberoast, pre2k) |
+| `severity` | Finding severity level |
+| `account_sid` | Affected account SID |
+| `account_name` | sAMAccountName |
+| `privileged` | Whether the account is a member of a privileged group |
+| `first_detected` | When the finding was first discovered |
+| `scan_id` | Job ID of the scan that produced the finding |
+| `domain` | Domain FQDN |
+| `timestamp` | Event timestamp |
+
+Supported platforms use native integrations — Splunk HEC, Elastic bulk API, Sentinel workspace API, QRadar syslog, Wazuh syslog, ArcSight CEF, Huntress API, and a generic custom webhook endpoint.

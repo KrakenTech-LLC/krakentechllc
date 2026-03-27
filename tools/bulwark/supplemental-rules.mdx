@@ -1,0 +1,295 @@
+---
+title: "Supplemental Rules"
+description: "Custom health check rules for Bulwark — YAML, JSON, and XML with LDAP fallback"
+---
+
+# Supplemental Rules
+
+Supplemental rules extend Bulwark's built-in health checks with custom detections — no code required. Rules are plain-text files (YAML, JSON, or XML) that describe conditions to evaluate against the data Bulwark collects from an AD environment. Triggered rules appear in the `supplemental_rule_results` list in the output alongside built-in findings.
+
+---
+
+## How It Works
+
+When Bulwark completes data collection, it loads all supplemental rules from the path you specify. Each rule's conditions are evaluated against the collected `HealthCheckData`. If a rule's conditions are satisfied, it is added to the results. Rules that do not trigger are silently skipped.
+
+If a field referenced by a criterion is not present in the collected data, Bulwark attempts a **live LDAP query** to retrieve it (see [LDAP Fallback](#ldap-fallback)).
+
+---
+
+## Supplying Rules
+
+### CLI
+
+```bash
+# Single file
+bulwark healthcheck --rules /path/to/my-rules.yaml ...
+
+# Directory (loads all .yaml, .yml, .json, .xml files)
+bulwark healthcheck --rules /path/to/rules-dir/ ...
+```
+
+### TUI
+
+From the main menu, select **Rules -- Ingest and manage supplemental rules**, then type the path to a file or directory and press **Apply**.
+
+---
+
+## Rule File Format
+
+Each file must contain a top-level `rules` list. A single file may contain multiple rules.
+
+### YAML
+
+```yaml
+rules:
+  - id: SUPP-001
+    name: Too Many Inactive Users
+    severity: high
+    conditions:
+      match: all
+      criteria:
+        - field: user_account_data.number_inactive
+          operator: gt
+          value: "50"
+```
+
+### JSON
+
+```json
+{
+  "rules": [
+    {
+      "id": "SUPP-001",
+      "name": "Too Many Inactive Users",
+      "severity": "high",
+      "conditions": {
+        "match": "all",
+        "criteria": [
+          { "field": "user_account_data.number_inactive", "operator": "gt", "value": "50" }
+        ]
+      }
+    }
+  ]
+}
+```
+
+### XML
+
+```xml
+<rules>
+  <rule>
+    <id>SUPP-001</id>
+    <name>Too Many Inactive Users</name>
+    <severity>high</severity>
+    <conditions>
+      <match>all</match>
+      <criteria>
+        <criterion>
+          <field>user_account_data.number_inactive</field>
+          <operator>gt</operator>
+          <value>50</value>
+        </criterion>
+      </criteria>
+    </conditions>
+  </rule>
+</rules>
+```
+
+---
+
+## Rule Fields
+
+| Field | Required | Description |
+| --- | --- | --- |
+| `id` | yes | Unique identifier (e.g., `SUPP-001`) |
+| `name` | yes | Short human-readable name shown in output |
+| `description` | no | Longer explanation of what the rule checks |
+| `category` | no | Grouping label (e.g., `accounts`, `gpo`, `pki`) |
+| `severity` | no | `critical`, `high`, `medium`, `low`, `info` |
+| `solution` | no | Recommended remediation text |
+| `conditions` | yes | Evaluation logic (see below) |
+
+---
+
+## Conditions
+
+```yaml
+conditions:
+  match: all        # "all" (AND) or "any" (OR)
+  criteria:
+    - field: <field-path>
+      operator: <operator>
+      value: <comparison-value>
+```
+
+| Field | Values | Default | Description |
+| --- | --- | --- | --- |
+| `match` | `all` / `any` | `all` | `all` = every criterion must be true (AND). `any` = at least one (OR) |
+| `criteria` | list | -- | One or more criterion objects |
+
+---
+
+## Operators
+
+| Operator | Description | Example value |
+| --- | --- | --- |
+| `eq` | Equal to | `"0"`, `"true"`, `"Windows Server 2019"` |
+| `ne` | Not equal to | `"false"` |
+| `lt` | Less than (numeric) | `"10"` |
+| `gt` | Greater than (numeric) | `"50"` |
+| `lte` | Less than or equal to | `"100"` |
+| `gte` | Greater than or equal to | `"1"` |
+| `contains` | String contains substring (case-insensitive) | `"2012"` |
+| `exists` | Field is present and non-empty/non-zero | (no value needed) |
+| `count_gt` | List length greater than | `"5"` |
+| `count_lt` | List length less than | `"2"` |
+| `count_eq` | List length equals | `"0"` |
+
+All values are strings. Numeric operators convert both sides automatically.
+
+---
+
+## LDAP Fallback
+
+If a field path cannot be resolved from collected data, Bulwark performs a live LDAP query using one of four structured notations — all prefixed with `ldap.`.
+
+### Notation 1 — Attribute Lookup: `ldap.<attr>`
+
+Searches the domain object for the attribute, falls back to subtree scan.
+
+```yaml
+criteria:
+  - field: ldap.ms-DS-MachineAccountQuota
+    operator: gt
+    value: "0"
+  - field: ldap.minPwdLength
+    operator: lt
+    value: "14"
+```
+
+### Notation 2 — Type Attribute Query: `ldap.<type>.self.<attr>`
+
+Searches all objects of `<type>` and returns every value of `<attr>` as a list.
+
+```yaml
+criteria:
+  - field: ldap.user.self.msDS-SupportedEncryptionTypes
+    operator: count_gt
+    value: "0"
+```
+
+### Notation 3 — Type + Filter Query: `ldap.<type>.filter.<ldap-filter>`
+
+Finds objects of `<type>` matching the raw LDAP filter. Returns distinguished names as a list.
+
+```yaml
+criteria:
+  - field: ldap.computer.filter.(operatingSystem=Windows 10*)
+    operator: count_gt
+    value: "0"
+  - field: ldap.user.filter.(adminCount=1)
+    operator: count_gt
+    value: "0"
+```
+
+### Notation 4 — Raw Filter Query: `ldap.filter.<ldap-filter>`
+
+Searches the entire domain with a raw LDAP filter. No type restriction.
+
+```yaml
+criteria:
+  - field: ldap.filter.(&(objectClass=user)(adminCount=1))
+    operator: count_gt
+    value: "0"
+```
+
+### Supported Object Types
+
+| Token | LDAP Filter |
+| --- | --- |
+| `user` | `(&(objectClass=user)(objectCategory=person))` |
+| `computer` | `(objectCategory=computer)` |
+| `group` | `(objectClass=group)` |
+| `gpo` | `(objectClass=groupPolicyContainer)` |
+| `ou` | `(objectClass=organizationalUnit)` |
+| `domain` | `(objectClass=domain)` |
+| `trust` | `(objectClass=trustedDomain)` |
+| `dc` / `domaincontroller` | Domain controllers (UAC bit 8192) |
+| `pki` / `ca` | `(objectClass=certificationAuthority)` |
+| `template` / `certtemplate` | `(objectClass=pKICertificateTemplate)` |
+
+Unrecognized tokens fall back to `(objectClass=<token>)`.
+
+---
+
+## Examples
+
+### Multi-Rule YAML File
+
+```yaml
+rules:
+  - id: SUPP-001
+    name: Excessive Inactive Users
+    description: More than 50 enabled accounts have not logged in for 6 months.
+    category: accounts
+    severity: high
+    solution: Disable or remove stale user accounts.
+    conditions:
+      match: all
+      criteria:
+        - field: user_account_data.number_inactive
+          operator: gt
+          value: "50"
+
+  - id: SUPP-002
+    name: DES Encryption Still In Use
+    category: accounts
+    severity: critical
+    solution: Remove the DES encryption flag from all accounts.
+    conditions:
+      match: all
+      criteria:
+        - field: user_account_data.number_des_enabled
+          operator: gt
+          value: "0"
+
+  - id: SUPP-003
+    name: Domain Functional Level Below 2016
+    category: hygiene
+    severity: medium
+    solution: Raise the domain functional level to 2016 or higher.
+    conditions:
+      match: all
+      criteria:
+        - field: domain_functional_level
+          operator: lt
+          value: "7"
+```
+
+### OR Condition (XML)
+
+```xml
+<rules>
+  <rule>
+    <id>SUPP-020</id>
+    <name>Insecure Delegation Configuration</name>
+    <severity>critical</severity>
+    <conditions>
+      <match>any</match>
+      <criteria>
+        <criterion>
+          <field>user_account_data.number_enabled_trusted_to_authenticate_for_delegation</field>
+          <operator>gt</operator>
+          <value>0</value>
+        </criterion>
+        <criterion>
+          <field>user_account_data.number_not_aes_enabled</field>
+          <operator>gt</operator>
+          <value>0</value>
+        </criterion>
+      </criteria>
+    </conditions>
+  </rule>
+</rules>
+```

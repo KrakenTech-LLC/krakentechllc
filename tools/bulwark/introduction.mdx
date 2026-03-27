@@ -1,0 +1,156 @@
+---
+title: "Bulwark"
+description: "Active Directory Health Check & Compliance Auditing Engine"
+---
+
+# Bulwark — Active Directory Health Check Engine
+
+Bulwark is a standalone Active Directory health check and compliance auditing engine written in Go. It collects data from AD environments via LDAP and ADWS, evaluates over 100 built-in security rules, scores the domain on a 0–100 scale, and exports findings as JSON, XML, YAML, or interactive HTML reports.
+
+Bulwark ships as a single binary with both a TUI (terminal UI) and a full CLI. No installation, no database, no dependencies — just point it at a domain controller and run.
+
+---
+
+## What Bulwark Does
+
+| Capability | Description |
+| --- | --- |
+| **Health Check** | Comprehensive AD security assessment with 100+ built-in rules |
+| **Scoring** | Global health score (0–100) with category sub-scores |
+| **Maturity Level** | Maturity rating derived from the global score |
+| **Supplemental Rules** | User-defined rules in YAML, JSON, or XML with LDAP fallback queries |
+| **Multi-Protocol** | LDAP, LDAPS, StartTLS, and ADWS scanning |
+| **Export** | JSON, XML, YAML, HTML, or all formats simultaneously |
+| **TUI** | Interactive terminal UI for guided operation |
+| **CLI** | Full command-line interface for automation and scripting |
+| **Entra ID** | Azure AD / Microsoft Entra ID tenant assessment |
+| **Cartography** | AD object relationship mapping |
+| **Visualization** | AD trust and topology visualization |
+
+---
+
+## Quick Start
+
+### CLI
+
+```bash
+# Basic health check
+bulwark healthcheck -u admin@corp.example.com -p 'P@ssw0rd' -d corp.example.com -t dc01.corp.example.com
+
+# Export as HTML report
+bulwark healthcheck -u admin@corp.example.com -p 'P@ssw0rd' -d corp.example.com -t dc01.corp.example.com --export html
+
+# Export all formats
+bulwark healthcheck -u admin@corp.example.com -p 'P@ssw0rd' -d corp.example.com -t dc01.corp.example.com --export all
+
+# With supplemental rules
+bulwark healthcheck -u admin@corp.example.com -p 'P@ssw0rd' -d corp.example.com -t dc01.corp.example.com --rules /path/to/rules/
+
+# TLS options
+bulwark healthcheck -u admin@corp.example.com -p 'P@ssw0rd' -d corp.example.com -t dc01.corp.example.com --ldaps
+bulwark healthcheck -u admin@corp.example.com -p 'P@ssw0rd' -d corp.example.com -t dc01.corp.example.com --starttls
+```
+
+### TUI
+
+```bash
+# Launch interactive terminal UI
+bulwark
+```
+
+The TUI provides guided menus for configuration, scan execution, rule management, and result viewing.
+
+---
+
+## Scan Modes
+
+| Mode | Command | Description |
+| --- | --- | --- |
+| **Health Check** | `healthcheck` | Full AD security assessment with rule evaluation and scoring |
+| **Scanner** | `scanner` | Data collection only (no rule evaluation) |
+| **Cartographer** | `carto` | AD object relationship mapping |
+| **Visualizer** | `visualize` | Trust and topology visualization |
+| **Exporter** | `export` | Re-export previously collected data in different formats |
+| **Entra ID** | `entraid` | Azure AD / Microsoft Entra ID tenant assessment |
+
+---
+
+## Scoring
+
+Bulwark calculates a global health score (0–100) from four weighted category scores:
+
+| Category | Description |
+| --- | --- |
+| **Stale Objects** | Inactive accounts, expired passwords, legacy encryption, functional level |
+| **Privileged Accounts** | Admin group hygiene, service accounts in admin groups, delegation risks |
+| **Trust Relationships** | Cross-domain trusts, SID filtering, trust configuration |
+| **Anomalies** | Misconfigurations, missing security features, exposed services |
+
+### Maturity Level
+
+The maturity level is derived from the global score and indicates the overall AD security posture.
+
+---
+
+## Authentication
+
+| Option | Description |
+| --- | --- |
+| `-u` / `--user` | Username in UPN format (`user@domain.com`) |
+| `-p` / `--password` | Password |
+| `-d` / `--domain` | Domain FQDN |
+| `-t` / `--target` | Domain controller IP or hostname |
+
+### TLS Options
+
+| Flag | Description |
+| --- | --- |
+| `--ldaps` | Use LDAPS (port 636) |
+| `--starttls` | Use StartTLS on standard LDAP (port 389) |
+| `--insecure` | Skip TLS certificate verification |
+
+### Protocol Selection
+
+| Mode | Behavior |
+| --- | --- |
+| **LDAP then ADWS** (default) | Try LDAP first, fall back to ADWS if it fails |
+| **ADWS then LDAP** | Try ADWS first, fall back to LDAP |
+| **LDAP only** | Only use LDAP |
+| **ADWS only** | Only use ADWS |
+
+---
+
+## Export Formats
+
+| Format | Flag | Description |
+| --- | --- | --- |
+| **JSON** | `--export json` | Machine-readable JSON with all collected data and findings |
+| **XML** | `--export xml` | XML export |
+| **YAML** | `--export yaml` | YAML export |
+| **HTML** | `--export html` | Interactive HTML report with charts, tables, and drill-down |
+| **All** | `--export all` | Export to every format simultaneously |
+
+Output is written to `./bulwark.out/` by default, or a custom path via `--output`.
+
+---
+
+## Data Collection
+
+Bulwark collects comprehensive AD state data including:
+
+| Category | Data Points |
+| --- | --- |
+| **Domain** | FQDN, NetBIOS, SID, creation date, functional levels, schema version |
+| **Users** | Total, enabled, disabled, active, inactive, locked, password flags (never expires, not required, reversible encryption, DES, no pre-auth), SID history, delegation, LAPS |
+| **Computers** | Same metrics as users, plus OS distribution and LAPS coverage |
+| **Groups** | Privileged group membership, service accounts, nested membership |
+| **Trusts** | Trust relationships, types, SID filtering, transitivity |
+| **Domain Controllers** | FSMO roles, OS versions, reachability, SMB/Kerberos settings |
+| **GPOs** | Audit policies, LSA settings, WSUS, Defender ASR, screen saver, firewall rules, hardened paths |
+| **PKI** | Certificate authorities, templates, enrollment services, trusted certificates |
+| **Exchange** | Install date, schema version, privilege escalation risks |
+| **DNS** | AD-integrated DNS zones |
+| **Azure AD** | SSO account, AD Connect, tenant info, Kerberos trust |
+| **Password Distribution** | Age distribution histograms for passwords and LAPS |
+| **Control Paths** | ACL-based attack paths and dangerous permissions |
+| **Delegation** | Unconstrained, constrained, and protocol transition delegation |
