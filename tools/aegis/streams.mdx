@@ -7,6 +7,10 @@ description: "TCP/UDP protocol streaming with bidirectional relay, TLS terminati
 
 Aegis includes a full protocol streaming engine alongside its HTTP reverse proxy. Streams handle raw TCP and UDP traffic — database connections, game servers, mail relays, SSH tunnels, DNS forwarding, VPN endpoints, or any non-HTTP protocol that needs port-level proxying with access control.
 
+<Frame>
+  ![Image](/images/image-34.png)
+</Frame>
+
 ---
 
 ## Overview
@@ -28,7 +32,7 @@ Unlike HTTP proxy hosts (which route by `Host` header), streams route by **liste
 | --- | --- |
 | **TCP** | Reliable connection-oriented streaming with bidirectional relay |
 | **UDP** | Connectionless datagram forwarding with stateful NAT table |
-| **TCP+UDP** | Both protocols on the same port (separate listeners) |
+| **TCP\+UDP** | Both protocols on the same port (separate listeners) |
 
 ---
 
@@ -114,7 +118,7 @@ Stale NAT entries (no activity within the configured idle timeout) are periodica
 Streams support TLS termination on the listener side, using certificates from the Aegis certificate store (the same certificates used for HTTP proxy hosts).
 
 - Set `ssl_enabled: true` and provide an `ssl_cert_id` referencing a stored certificate
-- TLS is only supported on TCP (and the TCP portion of TCP+UDP)
+- TLS is only supported on TCP (and the TCP portion of TCP\+UDP)
 - The upstream connection is plain TCP — TLS is terminated at Aegis
 
 This enables Aegis to secure raw TCP protocols (databases, MQTT, custom protocols) with centrally managed certificates.

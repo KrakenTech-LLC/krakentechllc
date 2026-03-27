@@ -7,7 +7,11 @@ description: "Bot detection, AI crawler blocking, and robots.txt management"
 
 Aegis provides per-host bot and AI protection that combines WAF-based scanner detection, AI crawler blocking, dynamic robots.txt generation, and the [Aegis Shield](/tools/aegis/aegis-shield) challenge system.
 
-All bot protection settings are configured per proxy host: **Admin UI -> Hosts -> edit a proxy host -> Bot Protection**.
+All bot protection settings are configured per proxy host: **Admin UI -\> Hosts -\> edit a proxy host -\> Bot Protection**.
+
+<Frame>
+  ![Image](/images/image-45.png)
+</Frame>
 
 ---
 
@@ -18,7 +22,7 @@ All bot protection settings are configured per proxy host: **Admin UI -> Hosts -
 | **Block Known Bots** | WAF-based scanner detection (sqlmap, Nikto, Nmap, Burp Suite, Nuclei, WPScan, etc.) |
 | **Block AI Crawlers** | User-Agent filtering for known AI training and scraping bots |
 | **Robots.txt** | Dynamic robots.txt generation with EU Directive 2019/790 compliance and content-signal directives |
-| **Aegis Shield** | Proof-of-work + browser verification challenge (see [Aegis Shield](/tools/aegis/aegis-shield)) |
+| **Aegis Shield** | Proof-of-work \+ browser verification challenge (see [Aegis Shield](/tools/aegis/aegis-shield)) |
 
 ---
 
@@ -116,5 +120,5 @@ Each proxy host has its own independent bot protection configuration stored as J
 
 ## Configuration Locations
 
-- **Per-host bot settings:** Admin UI -> Hosts -> edit host -> Bot Protection
-- **Global bot config:** Admin UI -> Config -> Bots
+- **Per-host bot settings:** Admin UI -\> Hosts -\> edit host -\> Bot Protection
+- **Global bot config:** Admin UI -\> Config -\> Bots

@@ -7,6 +7,10 @@ description: "SSL/TLS certificate management, Let's Encrypt automation, and Clou
 
 Aegis manages SSL/TLS certificates for all proxy hosts. It supports three certificate sources: **Let's Encrypt** (automatic ACME), **Cloudflare Origin CA** (API-integrated), and **Custom** (manual PEM upload). Private keys are encrypted at rest using AES-256-GCM.
 
+<Frame>
+  ![Image](/images/image-39.png)
+</Frame>
+
 ---
 
 ## Certificate Sources
@@ -280,7 +284,7 @@ sudo update-ca-trust
 
 **Browser (Firefox — uses its own trust store):**
 
-1. Open Settings -> Privacy & Security -> Certificates -> View Certificates
+1. Open Settings -\> Privacy & Security -\> Certificates -\> View Certificates
 2. Import `aegis-local-ca.crt` under the Authorities tab
 3. Check "Trust this CA to identify websites"
 
@@ -357,7 +361,7 @@ Each proxy host supports these SSL-related settings:
 | Method | Path | Description |
 | --- | --- | --- |
 | `GET` | `/api/v1/certificates` | List all stored certificates (domains, source, issuer, expiry) |
-| `POST` | `/api/v1/certificates` | Upload a custom certificate (PEM cert + key) |
+| `POST` | `/api/v1/certificates` | Upload a custom certificate (PEM cert \+ key) |
 | `DELETE` | `/api/v1/certificates/{id}` | Delete a certificate (fails if assigned to a host) |
 | `POST` | `/api/v1/certificates/cloudflare-origin` | Request a Cloudflare Origin CA certificate |
 | `POST` | `/api/v1/certificates/cloudflare-edge` | Order a Cloudflare Edge certificate |

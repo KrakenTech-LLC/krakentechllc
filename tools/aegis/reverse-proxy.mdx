@@ -7,6 +7,10 @@ description: "NPM-equivalent reverse proxy capabilities in Aegis"
 
 Aegis provides a full-featured reverse proxy engine as a drop-in replacement for Nginx Proxy Manager. All proxy configuration is managed through the admin UI and stored in SQLite.
 
+<Frame>
+  ![Image](/images/image-43.png)
+</Frame>
+
 ---
 
 ## Capabilities
@@ -17,10 +21,10 @@ Aegis provides a full-featured reverse proxy engine as a drop-in replacement for
 | **Load balancing** | Round-robin, least-connections, IP-hash policies per host |
 | **Health checks** | Active HTTP health checks per upstream with configurable path and interval |
 | **WebSocket proxying** | Transparent `Upgrade`/`Connection` header passthrough |
-| **SSL/TLS termination** | Let's Encrypt (ACME HTTP-01 via `autocert`) + custom certificate upload |
+| **SSL/TLS termination** | Let's Encrypt (ACME HTTP-01 via `autocert`) \+ custom certificate upload |
 | **Force HTTPS** | Per-host 301 redirect from HTTP to HTTPS |
 | **HSTS** | Configurable `max-age`, `includeSubDomains`, `preload` per host |
-| **SNI routing** | TLS certificate selection based on SNI with custom + autocert fallback |
+| **SNI routing** | TLS certificate selection based on SNI with custom \+ autocert fallback |
 | **Custom headers** | Per-host request and response header injection/removal |
 | **Proxy timeouts** | Configurable connect, read, write, idle timeouts |
 | **Host preservation** | Preserve or rewrite the upstream `Host` header |
@@ -61,6 +65,7 @@ Aegis supports two certificate sources:
 ### HSTS Configuration
 
 Per-host HSTS headers with configurable:
+
 - `max-age` duration
 - `includeSubDomains` directive
 - `preload` directive
