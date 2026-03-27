@@ -1,0 +1,163 @@
+---
+title: "mTLS Upstream"
+description: "Mutual TLS for upstream connections — present client certificates to backends that require certificate-based authentication"
+---
+
+# mTLS Upstream
+
+Aegis supports mutual TLS (mTLS) for connections between Aegis and upstream backends. When configured, Aegis presents a client certificate during the TLS handshake with the upstream server, proving its identity. This is required in zero-trust backend networks, PCI-compliant environments, service mesh deployments, and any upstream that refuses connections without a valid client certificate.
+
+---
+
+## How It Works
+
+Standard TLS only verifies the server's identity — the client (Aegis) trusts the upstream's certificate, but the upstream doesn't know who is connecting. With mTLS, both sides verify each other:
+
+```text
+Client ──► Aegis ──[mTLS]──► Upstream
+
+1. Aegis connects to upstream over TLS
+2. Upstream presents its server certificate → Aegis verifies it
+3. Upstream requests a client certificate → Aegis presents its client cert
+4. Upstream verifies Aegis's client cert against its trusted CA
+5. Handshake complete — both sides are authenticated
+```
+
+This applies to all traffic Aegis forwards to that host: HTTP requests, WebSocket connections, and health checks.
+
+---
+
+## Configuration
+
+mTLS is configured per proxy host. All upstreams for a given host share the same client certificate identity.
+
+### Settings
+
+| Setting | Description |
+| --- | --- |
+| **Enable mTLS** | Master toggle for upstream mTLS on this host |
+| **Client Certificate** | PEM-encoded certificate that Aegis presents to the upstream |
+| **Client Key** | PEM-encoded private key for the client certificate (encrypted at rest) |
+| **CA Certificate** | PEM-encoded CA cert for verifying the upstream's server certificate. Leave empty to use the system CA trust store |
+| **Skip TLS Verification** | Disable upstream certificate verification (development only) |
+| **Server Name Override** | Override the TLS SNI server name sent to the upstream |
+
+### Where to Configure
+
+- Admin UI → Hosts → edit a proxy host → **Upstream TLS** section
+
+---
+
+## Certificate Setup
+
+### What You Need
+
+To set up mTLS between Aegis and an upstream, you need certificates from both sides:
+
+| Certificate | Who Creates It | Where It Goes |
+| --- | --- | --- |
+| **Client cert + key** | Your CA (or Aegis's local CA) | Aegis — configured in the host's Upstream TLS settings |
+| **CA cert that signed the client cert** | Your CA | Upstream server — installed as a trusted client CA |
+| **Upstream's server cert** | Upstream's CA | Already on the upstream server |
+| **CA cert that signed the upstream server cert** | Upstream's CA | Aegis — configured as the Upstream CA Certificate |
+
+Both sides must trust each other's CA. This is the "mutual" in mTLS.
+
+### Using Aegis's Local CA
+
+Aegis generates a local Certificate Authority on first run. You can use this CA to create client certificates for mTLS:
+
+1. Download the Aegis trust bundle from Settings (contains `aegis-local-ca.crt`)
+2. Generate a client certificate signed by the Aegis CA
+3. Install `aegis-local-ca.crt` on the upstream server as a trusted client CA
+4. Configure the client cert and key in Aegis's Upstream TLS settings
+5. Configure the upstream's CA cert in Aegis so Aegis trusts the upstream's server certificate
+
+### Using a Third-Party CA
+
+If your organization has its own PKI:
+
+1. Request a client certificate from your CA for Aegis
+2. Upload the client cert and key to Aegis
+3. Install your CA's root certificate on the upstream server
+4. Upload the upstream's CA certificate to Aegis (if it's a private CA)
+
+---
+
+## Test Connection
+
+The host editor includes a **Test Connection** button that:
+
+1. Attempts a TLS handshake with the first upstream using the configured mTLS settings
+2. Reports whether the handshake succeeded
+3. Shows the upstream's certificate chain details
+4. Times out after 5 seconds
+
+Use this to verify your certificate configuration before saving.
+
+---
+
+## Security
+
+### Private Key Encryption
+
+Client certificate private keys are encrypted at rest in SQLite using AES-256-GCM, the same encryption used for SSL certificate keys and SMTP passwords. The encryption key is derived from `AEGIS_SSL_KEY`.
+
+### Skip TLS Verification
+
+The **Skip TLS Verification** option disables certificate verification for the upstream connection. This means Aegis will connect to any server regardless of its certificate validity.
+
+This should only be used in development environments. When enabled, the admin UI shows a warning badge on the host.
+
+### Server Name Override
+
+When the upstream is accessed by IP address but its TLS certificate contains a hostname (CN/SAN), the TLS handshake will fail because the SNI doesn't match. The Server Name Override lets you specify the expected hostname so the certificate verification succeeds.
+
+---
+
+## Health Checks
+
+When mTLS is enabled, health checks to the upstream also use the configured client certificate and CA. This ensures health check requests are authenticated the same way as proxied traffic.
+
+---
+
+## WebSocket Connections
+
+WebSocket upgrades to mTLS-enabled upstreams use the same TLS configuration. The initial TCP dial uses `tls.Dialer` with the host's compiled TLS config, so WebSocket traffic is authenticated identically to HTTP traffic.
+
+---
+
+## Troubleshooting
+
+| Error | Cause | Fix |
+| --- | --- | --- |
+| `certificate signed by unknown authority` | Aegis doesn't trust the upstream's server certificate | Add the upstream's CA cert to the **CA Certificate** field in Aegis |
+| `remote error: tls: bad certificate` | The upstream doesn't trust Aegis's client certificate | Install Aegis's CA cert on the upstream server as a trusted client CA |
+| `remote error: tls: certificate required` | The upstream requires a client cert but Aegis isn't sending one | Enable mTLS and configure the client cert and key |
+| `tls: private key does not match public key` | The client key doesn't match the client certificate | Regenerate the key pair or upload the matching key |
+| `x509: certificate has expired` | Either the client or server cert is expired | Renew the expired certificate |
+
+---
+
+## API Reference
+
+mTLS settings are part of the proxy host configuration:
+
+```json
+{
+  "domain": "api.example.com",
+  "upstream_tls": {
+    "enabled": true,
+    "ca_cert_pem": "-----BEGIN CERTIFICATE-----\n...",
+    "insecure_skip_verify": false,
+    "server_name": ""
+  }
+}
+```
+
+Client certificates can be referenced by ID from the existing SSL certificates table or provided inline (encrypted at rest).
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `PUT` | `/api/v1/hosts/{id}` | Update host with `upstream_tls` config |
+| `POST` | `/api/v1/hosts/{id}/test-upstream-tls` | Test the mTLS handshake with the upstream |

@@ -69,6 +69,8 @@
               "tools/aegis/custom-rules",
               "tools/aegis/allow-lists",
               "tools/aegis/certificates",
+              "tools/aegis/mtls-upstream",
+              "tools/aegis/canary-deployments",
               "tools/aegis/streams",
               "tools/aegis/cli-reference",
               "tools/aegis/api-reference"

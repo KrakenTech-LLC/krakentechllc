@@ -1,0 +1,241 @@
+---
+title: "Canary Deployments"
+description: "Gradual traffic splitting between primary and canary upstream versions with automatic rollback"
+---
+
+# Canary Deployments
+
+Aegis supports canary traffic splitting — a deployment strategy where a percentage of live traffic is routed to a new upstream version (the "canary") while the rest continues to the current primary. Aegis monitors error rates and latency for both groups independently and can automatically roll back to the primary if the canary starts failing.
+
+---
+
+## How It Works
+
+```text
+                     ┌─────────────────────┐
+                     │       Aegis         │
+       Clients ────► │                     │
+                     │   Traffic Split     │
+                     │   ┌──── 90% ────►  Primary (v2.3)
+                     │   │                 │
+                     │   └──── 10% ────►  Canary  (v2.4)
+                     │                     │
+                     │   Error Monitoring  │
+                     │   Latency Tracking  │
+                     │   Auto-Rollback     │
+                     └─────────────────────┘
+```
+
+1. You deploy a new version of your backend alongside the current version
+2. Mark the new upstream as **canary** in Aegis
+3. Set a traffic percentage (e.g., 10% to canary)
+4. Aegis routes traffic according to the split and tracks metrics for both groups
+5. If the canary is healthy, gradually increase the percentage
+6. If the canary fails, Aegis automatically rolls back to 100% primary
+
+---
+
+## Upstream Roles
+
+Each upstream for a proxy host has a **role**:
+
+| Role | Description |
+| --- | --- |
+| **Primary** | The current stable version. Receives the majority of traffic. Default role for all upstreams. |
+| **Canary** | The new version under evaluation. Receives the configured traffic percentage. |
+
+Roles are assigned per upstream in the host editor. A host can have multiple primary upstreams (load balanced normally) and one or more canary upstreams (also load balanced among themselves).
+
+---
+
+## Configuration
+
+| Setting | Default | Description |
+| --- | --- | --- |
+| **Enable Canary** | `false` | Master toggle for canary routing |
+| **Traffic Percentage** | `0` | Percentage of requests routed to canary upstreams (0-100) |
+| **Sticky Routing** | `false` | Route the same client IP consistently to the same group |
+| **Auto-Rollback** | `true` | Automatically set traffic to 0% when error threshold is exceeded |
+| **Error Threshold** | `10%` | Canary error rate (5xx responses) that triggers rollback |
+| **Latency Threshold** | `0` (disabled) | Canary P95 latency in ms that triggers rollback |
+| **Evaluation Window** | `300` seconds | Sliding window for computing metrics |
+| **Min Sample Size** | `20` | Minimum canary requests before evaluating thresholds |
+
+### Where to Configure
+
+- Admin UI → Hosts → edit a proxy host → Upstream section → set upstream roles → **Canary Deployment** card
+
+---
+
+## Sticky Canary Routing
+
+Without sticky routing, each request independently rolls the dice — a user might hit primary on one request and canary on the next. This can cause inconsistent behavior for stateful applications.
+
+With **sticky routing** enabled, routing is deterministic per client IP:
+
+```text
+hash("1.2.3.4") % 100 = 7    →  7 < 10% threshold  →  always canary
+hash("5.6.7.8") % 100 = 43   →  43 >= 10% threshold →  always primary
+```
+
+The same client IP always gets the same routing decision for a given traffic percentage. No cookies, no session state — just a hash of the IP.
+
+| Scenario | Recommended |
+| --- | --- |
+| User-facing web apps, SPAs | Sticky on |
+| Stateless APIs, webhooks | Sticky off |
+| Microservice-to-microservice | Sticky off |
+
+---
+
+## Metrics and Monitoring
+
+Aegis tracks metrics independently for primary and canary groups:
+
+| Metric | Description |
+| --- | --- |
+| **Request count** | Total requests routed to each group |
+| **Error rate** | Percentage of 5xx responses |
+| **P95 latency** | 95th percentile response time |
+| **Health status** | Upstream health check results |
+
+These metrics are computed over the configured evaluation window (default 5 minutes) and are available in real-time through the admin UI and API.
+
+### Live Dashboard
+
+The canary dashboard shows a side-by-side comparison:
+
+```text
+  ┌──────────────┐    ┌──────────────┐
+  │  Primary     │    │  Canary      │
+  │  8,432 req   │    │  947 req     │
+  │  0.2% errors │    │  1.1% errors │
+  │  145ms p95   │    │  203ms p95   │
+  │  ✅ Healthy  │    │  ✅ Healthy  │
+  └──────────────┘    └──────────────┘
+```
+
+---
+
+## Auto-Rollback
+
+When auto-rollback is enabled, Aegis continuously evaluates canary metrics:
+
+1. Wait until the canary has received at least `min_sample_size` requests
+2. Compute the canary error rate over the evaluation window
+3. If the error rate exceeds the threshold → **rollback**
+4. Compute the canary P95 latency (if latency threshold is set)
+5. If P95 exceeds the threshold → **rollback**
+
+Rollback sets the traffic percentage to 0% immediately. All subsequent requests go to primary upstreams. The rollback is persisted to the database so it survives restarts.
+
+### Rollback Alert
+
+When auto-rollback triggers:
+
+- A warning banner appears in the admin UI
+- The event is logged at WARN level
+- If notifications are configured, an alert is sent
+
+```text
+⚠️ Canary auto-rollback triggered at 14:23:15
+Reason: Error rate 12.3% exceeds threshold 10.0%
+Traffic automatically routed 100% to primary upstreams.
+```
+
+---
+
+## Canary Lifecycle
+
+### Typical Workflow
+
+1. **Deploy** the new version to a separate server
+2. **Add** it as an upstream with role `canary`
+3. **Enable** canary routing at 5%
+4. **Monitor** for 10-30 minutes
+5. **Increase** to 25%, then 50%, then 100%
+6. **Promote** the canary to primary (swap roles)
+7. **Remove** the old primary upstream
+
+### Manual Actions
+
+| Action | Description |
+| --- | --- |
+| **Increase / Decrease** | Adjust traffic percentage |
+| **Promote** | Swap canary and primary roles — the canary becomes the new primary |
+| **Rollback** | Set traffic to 0% — all traffic goes to primary |
+| **Reset Metrics** | Clear counters and start fresh |
+
+---
+
+## Graceful Degradation
+
+If all canary upstreams become unhealthy (health checks fail), Aegis automatically routes 100% of traffic to primary upstreams. This is transparent — no rollback is triggered, and when canary upstreams recover, traffic splitting resumes.
+
+If all primary upstreams become unhealthy, Aegis routes to canary upstreams as a fallback (same behavior as standard load balancing failover).
+
+---
+
+## Difference from Load Balancing
+
+| | Load Balancing | Canary |
+| --- | --- | --- |
+| **Purpose** | Distribute load for capacity | Compare versions for safety |
+| **Upstreams** | All run the same code | Primary and canary run different code |
+| **Metrics** | Aggregate across all upstreams | Tracked separately per group |
+| **Rollback** | Not applicable | Automatic based on error/latency thresholds |
+| **Traffic split** | Based on policy (round-robin, etc.) | Based on configured percentage |
+
+Both systems coexist. Within the primary group, load balancing distributes traffic normally. Within the canary group, the same load balancing applies. The canary split happens first, then load balancing routes within the selected group.
+
+---
+
+## API Reference
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `GET` | `/api/v1/hosts/{id}/canary` | Get canary config and live metrics |
+| `PUT` | `/api/v1/hosts/{id}/canary` | Update canary config (traffic percent, thresholds) |
+| `POST` | `/api/v1/hosts/{id}/canary/promote` | Promote canary to primary (swap roles) |
+| `POST` | `/api/v1/hosts/{id}/canary/rollback` | Manual rollback to 0% canary traffic |
+| `POST` | `/api/v1/hosts/{id}/canary/reset` | Reset metrics counters |
+
+### Canary Status Response
+
+```json
+{
+  "config": {
+    "enabled": true,
+    "traffic_percent": 10,
+    "auto_rollback": true,
+    "error_threshold": 5.0,
+    "latency_threshold_ms": 2000,
+    "eval_window_seconds": 300,
+    "min_sample_size": 20,
+    "sticky_canary": true
+  },
+  "metrics": {
+    "primary_requests": 8432,
+    "primary_error_rate": 0.2,
+    "primary_p95_latency_ms": 145,
+    "canary_requests": 947,
+    "canary_error_rate": 1.1,
+    "canary_p95_latency_ms": 203,
+    "rolled_back": false,
+    "traffic_percent": 10
+  }
+}
+```
+
+### Upstream Role
+
+Upstream role is set in the proxy host configuration:
+
+```json
+{
+  "upstreams": [
+    { "target_url": "http://10.0.1.50:8080", "weight": 1, "role": "primary" },
+    { "target_url": "http://10.0.1.51:8080", "weight": 1, "role": "canary" }
+  ]
+}
+```
