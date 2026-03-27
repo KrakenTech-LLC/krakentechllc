@@ -24,6 +24,22 @@
     },
     "anchors": [
       {
+        "anchor": "welcome",
+        "tabs": [
+          {
+            "tab": "Guides",
+            "groups": [
+              {
+                "group": "Getting started",
+                "pages": [
+                  "index"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
         "anchor": "tools",
         "tabs": [
           {
@@ -146,22 +162,6 @@
                   "tools/r4t/commands/visualizer",
                   "tools/r4t/commands/winrm",
                   "tools/r4t/commands/wmi"
-                ]
-              }
-            ]
-          }
-        ]
-      },
-      {
-        "anchor": "welcome",
-        "tabs": [
-          {
-            "tab": "Guides",
-            "groups": [
-              {
-                "group": "Getting started",
-                "pages": [
-                  "index"
                 ]
               }
             ]
