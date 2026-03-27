@@ -21,7 +21,7 @@ Hashcrack.ing is an invitation-only platform for sharing cracked and uncracked p
 | **Wordlists** | Upload, download, and share password wordlists |
 | **Rulesets** | Share optimized Hashcat rule files |
 | **Hash Lists** | Upload and monitor hash lists for collaborative cracking |
-| **Hash Identification** | Automatic hash type detection (500+ Hashcat format definitions) |
+| **Hash Identification** | Automatic hash type detection (500\+ Hashcat format definitions) |
 | **Secrets Dump Parser** | Parse Windows `secretsdump.py` output (SAM, DCC2, LSA, DPAPI, Kerberos) |
 | **Leaderboard** | Track contributor rankings by submissions |
 | **Discord Integration** | Bot commands, alerts, approval workflows, real-time crack notifications |
@@ -34,14 +34,17 @@ Hashcrack.ing is an invitation-only platform for sharing cracked and uncracked p
   <Card title="Search & Submit" icon="magnifying-glass" href="/tools/hashcrack-ing/search-submit">
     Hash lookup, bulk search, file upload, cracked hash submission
   </Card>
+
   <Card title="Resources" icon="database" href="/tools/hashcrack-ing/resources">
     Wordlists, rulesets, hash lists, and monitoring
   </Card>
+
   <Card title="Tools" icon="wrench" href="/tools/hashcrack-ing/tools">
     Hash identification, secretsdump parser, potfile processing
   </Card>
+
   <Card title="Architecture" icon="server" href="/tools/hashcrack-ing/architecture">
-    Go + Fiber backend, Next.js frontend, PostgreSQL, Backblaze B2
+    Go \+ Fiber backend, Next.js frontend, PostgreSQL, Backblaze B2
   </Card>
 </Columns>
 
@@ -74,28 +77,3 @@ Hashcrack.ing operates as a community-driven hash intelligence platform:
 | **Email Verification** | Required for account activation |
 
 ---
-
-## Tech Stack
-
-### Backend
-
-| Component | Technology |
-| --- | --- |
-| Language | Go 1.24 |
-| HTTP Framework | Fiber v2 |
-| Database | PostgreSQL (via GORM + SQLC) |
-| Cloud Storage | Backblaze B2 |
-| Email | Mailgun |
-| Discord | discordgo |
-| Logging | Zap |
-| Cryptography | bcrypt, NTLM, AES, TOTP |
-
-### Frontend
-
-| Component | Technology |
-| --- | --- |
-| Framework | Next.js 15 (App Router) |
-| UI | React 19 + Radix UI |
-| Styling | Tailwind CSS |
-| Forms | React Hook Form + Zod |
-| Charts | Recharts |
