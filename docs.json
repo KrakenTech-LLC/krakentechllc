@@ -101,6 +101,8 @@
             "pages": [
               "tools/aegis/introduction",
               "tools/aegis/reverse-proxy",
+              "tools/aegis/transforms",
+              "tools/aegis/custom-error-pages",
               "tools/aegis/waf-engine",
               "tools/aegis/ddos-protection",
               "tools/aegis/bot-ai-protection",

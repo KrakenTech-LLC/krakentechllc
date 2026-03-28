@@ -1,0 +1,201 @@
+---
+title: "Request & Response Transforms"
+description: "Conditional request and response transformations in Aegis"
+---
+
+# Request & Response Transforms
+
+Aegis supports ordered, conditional transform rules that modify requests before they reach the upstream and responses before they are returned to the client. Transforms are configured per proxy host and executed in a user-defined sort order.
+
+---
+
+## Capabilities
+
+| Capability | Details |
+| --- | --- |
+| **Request header manipulation** | Set, add, or remove request headers before proxying |
+| **Response header manipulation** | Set, add, or remove response headers before delivery |
+| **Path rewriting** | Literal string replacement or RE2 regex with capture groups |
+| **Query parameter manipulation** | Set or remove URL query parameters |
+| **Host rewriting** | Override the `Host` header sent to the upstream |
+| **Conditional redirects** | Short-circuit the proxy chain with a redirect response |
+| **Conditional execution** | Attach WAF-style conditions to any transform rule |
+| **Variable expansion** | Inject dynamic values (client IP, JWT claims, request ID, etc.) into header values and URLs |
+| **Ordered execution** | Drag-to-reorder in the UI; sort order determines execution sequence |
+| **Enable/disable** | Toggle individual rules without deletion |
+
+---
+
+## Transform Phases
+
+Each rule targets either the **request** or **response** phase:
+
+| Phase | When it runs | Available actions |
+| --- | --- | --- |
+| **Request** | Before the request is forwarded to the upstream | Header set/add/remove, path rewrite, host rewrite, query param set/remove, redirect |
+| **Response** | After the upstream response is received, before delivery to the client | Header set/add/remove |
+
+---
+
+## Request Actions
+
+| Action | Description | Config fields |
+| --- | --- | --- |
+| `set_request_header` | Set a request header (overwrites existing) | `header_name`, `header_value` |
+| `add_request_header` | Add a request header (appends) | `header_name`, `header_value` |
+| `remove_request_header` | Remove a request header | `header_name` |
+| `rewrite_path` | Rewrite the URL path (literal or regex) | `path_match`, `path_replace`, `path_regex` |
+| `rewrite_host` | Override the `Host` header | `header_value` |
+| `set_query_param` | Set or add a query parameter | `query_param`, `query_value` |
+| `remove_query_param` | Remove a query parameter | `query_param` |
+| `redirect` | Return a redirect response (short-circuits proxy) | `redirect_url`, `redirect_status` |
+
+---
+
+## Response Actions
+
+| Action | Description | Config fields |
+| --- | --- | --- |
+| `set_response_header` | Set a response header (overwrites existing) | `header_name`, `header_value` |
+| `add_response_header` | Add a response header (appends) | `header_name`, `header_value` |
+| `remove_response_header` | Remove a response header | `header_name` |
+
+---
+
+## Variable Expansion
+
+Header values and URLs support `${variable}` placeholders that are substituted at runtime:
+
+| Variable | Description |
+| --- | --- |
+| `${request.path}` | Original request path (before any rewrites) |
+| `${request.host}` | Incoming `Host` header |
+| `${request.ip}` | Client IP address |
+| `${request.method}` | HTTP method |
+| `${request.id}` | Aegis request ID |
+| `${upstream.host}` | Selected upstream hostname |
+| `${token.sub}` | JWT/OAuth subject claim |
+| `${token.claim.email}` | JWT email claim |
+| `${token.claim.username}` | JWT username claim |
+| `${token.claim.groups}` | JWT groups claim (comma-separated) |
+| `${token.claim.organizations}` | JWT organizations claim (comma-separated) |
+
+---
+
+## Conditional Execution
+
+Every transform rule can optionally include one or more conditions using the same condition engine as [Custom WAF Rules](./custom-rules). Conditions use AND logic — all conditions must match for the transform to execute.
+
+This enables patterns like:
+
+- Set `X-Forwarded-User` only when a valid OAuth session is present
+- Rewrite paths only for specific User-Agent strings
+- Add CORS headers only for requests from allowed origins
+- Redirect HTTP to HTTPS only for non-API paths
+
+Response-phase transforms can also condition on response properties:
+
+- Remove `Server` header only when the response status is 2xx
+- Add `Cache-Control` only when `Content-Type` matches a specific pattern
+
+---
+
+## Path Rewriting
+
+Path rewriting supports two modes:
+
+### Literal Replacement
+
+Replace the first occurrence of `path_match` with `path_replace`:
+
+| Config | Value |
+| --- | --- |
+| `path_match` | `/api/v1` |
+| `path_replace` | `/api/v2` |
+| `path_regex` | `false` |
+
+`/api/v1/users` becomes `/api/v2/users`.
+
+### Regex Replacement
+
+Enable `path_regex` to use RE2 regex with capture groups:
+
+| Config | Value |
+| --- | --- |
+| `path_match` | `^/app/(.*)` |
+| `path_replace` | `/dashboard/$1` |
+| `path_regex` | `true` |
+
+`/app/settings/profile` becomes `/dashboard/settings/profile`.
+
+---
+
+## Built-in Templates
+
+The admin UI provides preset templates for common transform patterns:
+
+| Template | Action | Description |
+| --- | --- | --- |
+| **Strip Server Header** | `remove_response_header` | Removes the `Server` header from upstream responses |
+| **Forward Client IP** | `set_request_header` | Sets `X-Forwarded-For` to `${request.ip}` |
+| **Rewrite Path Prefix** | `rewrite_path` | Replaces a path prefix with a new one |
+| **Add Request ID** | `set_request_header` | Sets `X-Request-ID` to `${request.id}` |
+
+---
+
+## Execution Order
+
+Transforms execute in sort-order sequence within each phase. The UI supports drag-to-reorder, and the API accepts an ordered list of rule IDs:
+
+```text
+PUT /api/v1/hosts/{id}/transforms/order
+```
+
+```json
+{
+  "ordered_ids": [3, 1, 5, 2]
+}
+```
+
+Request transforms run before the request is forwarded. If a `redirect` action fires, it short-circuits the chain — no further transforms or proxying occurs.
+
+---
+
+## API Reference
+
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| `GET` | `/api/v1/hosts/{id}/transforms` | List all transforms for a host |
+| `POST` | `/api/v1/hosts/{id}/transforms` | Create a new transform rule |
+| `PUT` | `/api/v1/hosts/{id}/transforms/order` | Reorder transform rules |
+| `GET` | `/api/v1/transforms/{id}` | Get a transform rule by ID |
+| `PUT` | `/api/v1/transforms/{id}` | Update a transform rule |
+| `DELETE` | `/api/v1/transforms/{id}` | Delete a transform rule |
+
+### Transform Rule Schema
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `id` | integer | Rule ID (auto-generated) |
+| `host_id` | integer | Associated proxy host |
+| `name` | string | Display name |
+| `phase` | string | `request` or `response` |
+| `action` | string | Transform action (see tables above) |
+| `enabled` | boolean | Whether the rule is active |
+| `sort_order` | integer | Execution order |
+| `config` | object | Action-specific configuration |
+| `conditions` | array | Optional conditions for execution |
+
+### Transform Config Schema
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `header_name` | string | Target header name |
+| `header_value` | string | Header value (supports variable expansion) |
+| `path_match` | string | Path string or regex pattern |
+| `path_replace` | string | Replacement string (supports `$1` capture groups) |
+| `path_regex` | boolean | Enable RE2 regex mode for path rewriting |
+| `redirect_url` | string | Redirect target URL (supports variable expansion) |
+| `redirect_status` | integer | HTTP redirect status code (301, 302, 307, 308) |
+| `query_param` | string | Query parameter name |
+| `query_value` | string | Query parameter value (supports variable expansion) |
