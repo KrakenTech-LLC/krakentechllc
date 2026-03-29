@@ -113,6 +113,7 @@
               "tools/aegis/certificates",
               "tools/aegis/mtls-upstream",
               "tools/aegis/canary-deployments",
+              "tools/aegis/defense-schemas",
               "tools/aegis/streams",
               "tools/aegis/cli-reference",
               "tools/aegis/api-reference"
