@@ -9,29 +9,33 @@ Defense Schemas let you ingest an OpenAPI 3.x or Swagger 2.0 specification for a
 
 Defense schema rules are separate from WAF rules. WAF rules detect malicious payloads within requests. Defense schema rules define what a valid request looks like in the first place. Both systems run — defense schemas enforce structure, WAF rules enforce content.
 
+<Frame>
+  ![Image](/images/image-50.png)
+</Frame>
+
 ---
 
 ## How It Works
 
 ```text
-                  ┌──────────────────────────────────────────┐
-  Upload spec     │                 Aegis                    │
-  (file or URL)   │                                          │
-       │          │  ┌────────────┐    ┌──────────────────┐  │
-       └─────────►│  │  Ingestion │───►│  Defense Schema   │  │
-                  │  │  (once)    │    │  Rules (stored)   │  │
-                  │  └────────────┘    └────────┬─────────┘  │
-                  │                             │ Reload      │
-                  │                    ┌────────▼─────────┐  │
-                  │                    │  Compiled Map     │  │
-   Requests ─────►│                    │  path → method →  │  │
-                  │                    │  endpoint rule    │  │
-                  │                    └──────────────────┘  │
-                  └──────────────────────────────────────────┘
+                  ┌─────────────────────────────┐
+  Upload spec     │                 Aegis                        │
+  (file or URL)   │                                              │
+       │          │  ┌───────┐    ┌───────────┐     │
+      ──────►│  │  Ingestion │─►│  Defense Schema   │    │
+                  │  │  (once)    │    │  Rules (stored)   │    │
+                  │  └───────┘     └─┬─────────┘    │
+                  │                             │ Reload          │
+                  │                    ┌────────▼────┐   │
+                  │                    │  Compiled Map        │   │
+   Requests ──►│                     │  path → method →  │   │
+                  │                    │  endpoint rule       │   │
+                  │                    └──────────────┘   │
+                  └──────────────────────────────┘
 ```
 
 1. You upload an OpenAPI or Swagger spec (file or URL)
-2. Aegis parses the spec, walks every endpoint, and generates a defense rule per path+method
+2. Aegis parses the spec, walks every endpoint, and generates a defense rule per path\+method
 3. Rules are stored in SQLite and compiled into a fast lookup map during reload
 4. At request time, Aegis looks up the path in the map and validates the request against the matched rule
 
@@ -52,15 +56,20 @@ Both JSON and YAML files are supported. Format is auto-detected by content.
 
 ## Ingestion
 
+<Frame>
+  ![Image](/images/image-53.png)
+</Frame>
+
 ### From File
 
-Upload a `.json` or `.yaml` spec file through the admin UI. Drag-and-drop or click-to-browse.
+Upload a `.json` or `.yaml` spec file through the admin UI. Drag-and-drop or click-to-browse
 
 ### From URL
 
 Provide an HTTP/HTTPS URL to the spec. Aegis fetches, parses, and stores the spec. The URL is saved so you can refresh the schema later to pick up spec changes.
 
 Common spec URLs:
+
 - `/openapi.json`
 - `/swagger.json`
 - `/api-docs`
@@ -69,7 +78,7 @@ Common spec URLs:
 
 ### What Gets Extracted
 
-For each endpoint (path + method) in the spec, Aegis generates a defense rule containing:
+For each endpoint (path \+ method) in the spec, Aegis generates a defense rule containing:
 
 | Component | Source | Example |
 | --- | --- | --- |
@@ -177,7 +186,7 @@ Defense schemas and WAF rules are independent. A request that passes defense sch
 ### Creation
 
 1. Navigate to the Defense Schemas page
-2. Click **+ New Schema**
+2. Click **\+ New Schema**
 3. Choose **From URL** or **From File**
 4. Select the target host and set the enforcement mode
 5. Upload or enter the URL — Aegis parses the spec and shows the generated rules
@@ -197,12 +206,12 @@ Deleting a defense schema removes all its rules. This is immediate — no confir
 
 ## Relationship to WAF Rules
 
-| | Defense Schema Rules | WAF Rules |
+|  | Defense Schema Rules | WAF Rules |
 | --- | --- | --- |
 | **Purpose** | Define valid request structure | Detect malicious payloads |
-| **Source** | Auto-generated from OpenAPI/Swagger spec | Built-in OWASP rules + custom authored rules |
+| **Source** | Auto-generated from OpenAPI/Swagger spec | Built-in OWASP rules \+ custom authored rules |
 | **Storage** | `defense_schemas` table | `waf_rules` table |
-| **Scope** | Per endpoint (path + method) | Per host or global |
+| **Scope** | Per endpoint (path \+ method) | Per host or global |
 | **Evaluation** | Before WAF rule chain | After defense schema check |
 | **Management** | Defense Schemas page | Rules page |
 | **Cascade** | Deleted with schema or host | Independent lifecycle |
