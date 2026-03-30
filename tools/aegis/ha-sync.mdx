@@ -20,11 +20,11 @@ This is a premium feature requiring an Aegis Unleashed license. Linux only.
      Virtual IP: 10.0.0.100
             │
    ┌────────┴────────┐
-   │                  │
-Aegis A (primary)  Aegis B (secondary)
- 10.0.0.1           10.0.0.2
- eth0 + VIP         eth0
-   │                  │
+   │                           │
+Aegis A (primary)          Aegis B (secondary)
+ 10.0.0.1                   10.0.0.2
+ eth0 + VIP                 eth0
+   │                          │
    └───── gRPC ───────┘
      heartbeat +
      replication
@@ -75,6 +75,7 @@ Aegis creates, holds, and releases the VIP itself using the Linux netlink API. N
 ### VIP Verification
 
 After claiming the VIP, the primary verifies it's working:
+
 - Checks the address exists on the interface via netlink
 - Binds a temporary TCP listener on the VIP to confirm kernel routing
 - The secondary periodically dials the VIP to confirm reachability
@@ -174,7 +175,7 @@ Every config mutation on the primary is sent to the secondary as a typed event. 
 
 ### Full sync
 
-When a secondary joins or falls too far behind (>10,000 events or >1 hour), a full sync runs:
+When a secondary joins or falls too far behind (\>10,000 events or \>1 hour), a full sync runs:
 
 1. Primary serializes all config tables as JSON
 2. Streams to secondary in batches (500 rows per chunk)
@@ -243,7 +244,7 @@ The secondary is read-only for config mutations:
 | --- | --- |
 | **Platform** | Linux only (netlink API for VIP, raw sockets for ARP) |
 | **License** | Aegis Unleashed |
-| **Network** | Both nodes must be on the same L2 network segment (for VIP + ARP to work) |
+| **Network** | Both nodes must be on the same L2 network segment (for VIP \+ ARP to work) |
 | **Ports** | `:9444` (or configured) open between the two nodes for gRPC |
 | **Kernel** | Standard Linux kernel — no special modules required |
 
