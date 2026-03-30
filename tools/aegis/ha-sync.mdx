@@ -1,0 +1,280 @@
+---
+title: "HA Sync"
+description: "High-availability synchronization — automatic failover between two Aegis instances with virtual IP management and real-time config replication"
+---
+
+# HA Sync
+
+HA Sync pairs two Aegis instances for automatic failover. One instance runs as primary (serving traffic via a virtual IP), the other runs as a replicated secondary (standby). If the primary fails, the secondary promotes itself, claims the virtual IP, and begins serving traffic — typically within 3 seconds. When the failed node recovers, it rejoins as secondary and syncs from the new primary.
+
+This is a premium feature requiring an Aegis Unleashed license. Linux only.
+
+---
+
+## How It Works
+
+```text
+         Clients
+            │
+            ▼
+     Virtual IP: 10.0.0.100
+            │
+   ┌────────┴────────┐
+   │                  │
+Aegis A (primary)  Aegis B (secondary)
+ 10.0.0.1           10.0.0.2
+ eth0 + VIP         eth0
+   │                  │
+   └───── gRPC ───────┘
+     heartbeat +
+     replication
+     (PSK authenticated)
+```
+
+1. Two separate Aegis installations on two separate machines
+2. Each has its own binary, its own SQLite database, its own config
+3. They peer over gRPC, authenticated with a pre-shared key
+4. The primary holds a virtual IP and serves all client traffic
+5. Config changes replicate from primary to secondary in real-time
+6. If the primary's heartbeat stops, the secondary promotes and claims the VIP
+
+---
+
+## Deployment Model
+
+Each Aegis node is an independent installation. There is no forking, no shared process, and no shared database file.
+
+| Component | Node A | Node B |
+| --- | --- | --- |
+| **Binary** | `./aegis` | `./aegis` |
+| **Database** | `Aegis.db` (local) | `Aegis.db` (local) |
+| **License** | `aegis.lic` | `aegis.lic` |
+| **Proxy listeners** | `:80`, `:443` | `:80`, `:443` |
+| **Admin UI** | `10.0.0.1:9443` | `10.0.0.2:9443` |
+| **Sync gRPC** | `:9444` | `:9444` |
+
+Replication works at the application level: when the primary writes to its local SQLite, it publishes the change as a typed event over the gRPC stream. The secondary receives it and writes to its own local SQLite. Two completely independent databases, zero locking conflicts.
+
+Clients connect to the virtual IP (e.g., `10.0.0.100`), which exists on exactly one machine's network interface at any time. The admin UI is always accessible on each node's real IP — it's not behind the VIP.
+
+---
+
+## Virtual IP Management
+
+Aegis creates, holds, and releases the VIP itself using the Linux netlink API. No external tools (keepalived, etc.) are needed.
+
+### Lifecycle
+
+1. User configures VIP address and interface in Settings → Sync
+2. On primary promotion, Aegis calls `netlink.AddrAdd` to add the VIP to the interface
+3. Aegis sends a gratuitous ARP so network switches learn the new MAC
+4. The kernel routes packets addressed to the VIP to the proxy listeners
+5. On failover, the new primary adds the VIP to its own interface and sends ARP
+6. The old primary (if recovered) removes the VIP
+
+### VIP Verification
+
+After claiming the VIP, the primary verifies it's working:
+- Checks the address exists on the interface via netlink
+- Binds a temporary TCP listener on the VIP to confirm kernel routing
+- The secondary periodically dials the VIP to confirm reachability
+
+---
+
+## Pairing and Configuration
+
+Configuration is done in each node's own admin UI at Settings → Sync.
+
+### Setup Steps
+
+1. Open **Node A** at `https://10.0.0.1:9443` → Settings → Sync
+2. Click **Generate Pre-Shared Key** — copy the PSK
+3. Open **Node B** at `https://10.0.0.2:9443` → Settings → Sync
+4. Paste the PSK, enter Node A's sync address (`10.0.0.1:9444`)
+5. Back on Node A, enter Node B's sync address (`10.0.0.2:9444`)
+6. Configure the interface and VIP on both nodes
+7. Click **Enable Sync** on both
+
+The first node to successfully connect back to the other becomes secondary. The node that receives the connection is primary.
+
+### Settings
+
+| Setting | Default | Description |
+| --- | --- | --- |
+| **Peer Address** | (required) | Other node's gRPC address, e.g. `10.0.0.2:9444` |
+| **Listen Address** | `:9444` | This node's gRPC bind address |
+| **Pre-Shared Key** | (required) | Shared secret for mutual authentication (encrypted at rest) |
+| **Interface** | (required) | Network interface for the VIP, e.g. `eth0` |
+| **Virtual IP** | (required) | VIP with CIDR, e.g. `10.0.0.100/32` |
+| **Heartbeat Interval** | `1000` ms | How often the primary sends heartbeats |
+| **Failover Timeout** | `3000` ms | Promote after this many ms without a heartbeat |
+| **Sync Logs** | `false` | Whether to replicate request logs (high bandwidth) |
+
+---
+
+## Role Negotiation
+
+### On startup
+
+```text
+Node starts with sync enabled
+  │
+  ├─ Peer unreachable → become PRIMARY, claim VIP
+  │   (keep retrying peer in background)
+  │
+  ├─ Peer is PRIMARY → become SECONDARY, request full sync
+  │
+  └─ Peer is also UNDECIDED → ELECTION
+      (longer uptime wins, tie broken by node ID)
+```
+
+### State transitions
+
+| From | To | Trigger |
+| --- | --- | --- |
+| Undecided | Primary | No peer, or won election |
+| Undecided | Secondary | Peer is primary, or lost election |
+| Secondary | Primary | Heartbeat timeout (failover) |
+| Primary | Secondary | Recovered, peer is already primary |
+
+---
+
+## Replication
+
+### What gets replicated
+
+Every config mutation on the primary is sent to the secondary as a typed event. Each entity type has its own handler — no generic blob application.
+
+| Entity | Replicated | Triggers Reload |
+| --- | --- | --- |
+| Proxy hosts | Yes | Yes |
+| Upstreams | Yes | Yes |
+| WAF rules | Yes | Yes |
+| WAF exceptions | Yes | Yes |
+| Defense schemas | Yes | Yes |
+| Access lists | Yes | Yes |
+| SSL certificates | Yes | Yes |
+| Settings | Yes | Depends on key |
+| SMTP profiles | Yes | No |
+| Admin users | Yes | No |
+| Rule sets | Yes | Yes |
+| Transform rules | Yes | Yes |
+| Request logs | Optional | No |
+| Audit logs | Optional | No |
+
+### What does NOT replicate
+
+| Data | Reason |
+| --- | --- |
+| IP timeouts | Ephemeral, per-node |
+| Correlation state (Mnemos) | In-memory ring buffers |
+| Rate limiter buckets | In-memory per-node |
+| Sensitive endpoint abuse state | In-memory per-node |
+| Sync config | Each node points at the other — circular if replicated |
+
+### Full sync
+
+When a secondary joins or falls too far behind (>10,000 events or >1 hour), a full sync runs:
+
+1. Primary serializes all config tables as JSON
+2. Streams to secondary in batches (500 rows per chunk)
+3. Secondary replaces its local data and triggers a Reload
+4. Switches to live replication stream
+
+### Live replication
+
+During normal operation, events stream in real-time:
+
+1. Primary writes to its local SQLite
+2. Store publishes a typed replication event
+3. Event streams to secondary over gRPC
+4. Secondary's applier dispatches to the correct typed handler
+5. Handler writes to secondary's local SQLite
+6. Batched Reload every 1 second (not per-event)
+
+---
+
+## Failover
+
+### Detection
+
+The secondary monitors heartbeats from the primary. If no heartbeat arrives within the failover timeout (default 3 seconds):
+
+1. Secondary claims the VIP via netlink
+2. Sends gratuitous ARP
+3. Begins serving traffic
+4. Starts accepting replication connections (becomes the source)
+5. Triggers a full Reload
+
+### Recovery
+
+When the failed node comes back:
+
+1. Connects to peer, discovers it's already primary
+2. Releases VIP if held (defensive)
+3. Requests full sync from the new primary
+4. Joins as secondary
+
+### Split-brain protection
+
+If a network partition heals and both nodes think they're primary:
+
+1. They reconnect and discover both claim primary
+2. Compare replication sequence numbers — higher wins
+3. If equal, compare uptime — longer wins
+4. Loser releases VIP, demotes, and does a full sync
+
+---
+
+## Secondary Behavior
+
+The secondary is read-only for config mutations:
+
+- **All GET endpoints work** — monitoring, viewing traffic, checking sync status
+- **Config mutations return 409** — "This node is a secondary replica. Make changes on the primary."
+- **The admin UI shows a banner** — "Secondary — config changes are read-only"
+- **Traffic is not served** — the secondary doesn't hold the VIP, so client traffic never reaches it
+
+---
+
+## Requirements
+
+| Requirement | Details |
+| --- | --- |
+| **Platform** | Linux only (netlink API for VIP, raw sockets for ARP) |
+| **License** | Aegis Unleashed |
+| **Network** | Both nodes must be on the same L2 network segment (for VIP + ARP to work) |
+| **Ports** | `:9444` (or configured) open between the two nodes for gRPC |
+| **Kernel** | Standard Linux kernel — no special modules required |
+
+---
+
+## API Reference
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `GET` | `/api/v1/sync` | Get sync config and current status |
+| `PUT` | `/api/v1/sync` | Update sync configuration |
+| `POST` | `/api/v1/sync/generate-psk` | Generate a new pre-shared key |
+| `POST` | `/api/v1/sync/enable` | Enable sync (starts the sync manager) |
+| `POST` | `/api/v1/sync/disable` | Disable sync (stops sync, releases VIP) |
+| `GET` | `/api/v1/sync/status` | Real-time sync status |
+| `GET` | `/api/v1/sync/interfaces` | List available network interfaces |
+
+### Sync Status Object
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `enabled` | boolean | Whether sync is active |
+| `role` | string | `primary`, `secondary`, or `undecided` |
+| `peer_address` | string | Configured peer address |
+| `peer_connected` | boolean | Whether the peer gRPC connection is alive |
+| `peer_role` | string | Peer's current role |
+| `vip` | string | Configured virtual IP |
+| `vip_active` | boolean | Whether this node currently holds the VIP |
+| `interface` | string | Configured network interface |
+| `last_heartbeat` | string | ISO 8601 timestamp of last heartbeat |
+| `replication_sequence` | integer | This node's replication sequence |
+| `peer_sequence` | integer | Peer's replication sequence |
+| `replication_lag_ms` | integer | Estimated replication lag |
+| `uptime` | string | Node uptime |
