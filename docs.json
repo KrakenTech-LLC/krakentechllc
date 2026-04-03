@@ -169,6 +169,12 @@
                 ]
               }
             ]
+          },
+          {
+            "tab": "Golay",
+            "pages": [
+              "tools/golay/introduction"
+            ]
           }
         ]
       }

