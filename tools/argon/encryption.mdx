@@ -1,0 +1,153 @@
+---
+title: "Encryption"
+description: "How Argon encrypts and decrypts credentials — zero-knowledge envelope encryption"
+---
+
+# Encryption & Decryption
+
+Argon uses a layered encryption scheme where the server never possesses the keys needed to decrypt vault data. Every secret is encrypted client-side before transmission and decrypted client-side after retrieval. The server is a dumb encrypted blob store.
+
+---
+
+## Key Derivation
+
+When a user registers, the desktop app derives cryptographic keys from their master password using **Argon2id** — a memory-hard key derivation function resistant to GPU and ASIC brute-force attacks.
+
+```text
+Master Password
+      |
+      v
+  Argon2id(password, salt, time=3, memory=64MB, threads=4)
+      |
+      v
+  auth_key (256-bit)
+      |
+      +---> SHA-256(auth_key) = auth_verifier   (sent to server for login proof)
+      |
+      +---> HKDF-SHA256(auth_key, "encryption") = encryption_key   (never leaves client)
+```
+
+| Derived Key | Purpose | Leaves Client? |
+| --- | --- | --- |
+| `auth_verifier` | Stored on server, used to verify login challenges | Yes (hash only) |
+| `encryption_key` | Encrypts/decrypts the user's private keys | **Never** |
+
+The master password itself is never transmitted. The `auth_verifier` is a SHA-256 hash of the auth key — the server stores this hash and uses it to verify HMAC challenge-response proofs during login. Even if the server database is stolen, the attacker gets a hash of a hash of an Argon2id derivation — computationally infeasible to reverse.
+
+---
+
+## Key Pairs
+
+Each user has two asymmetric key pairs, generated client-side at registration:
+
+| Key Pair | Algorithm | Purpose |
+| --- | --- | --- |
+| **X25519** | Curve25519 Diffie-Hellman | Key exchange — used to create shared secrets for envelope encryption |
+| **Ed25519** | Edwards-curve Digital Signature | Signing — used to verify entry integrity and authorship |
+
+Both private keys are encrypted with `encryption_key` (derived from the master password) using **XChaCha20-Poly1305** before being uploaded to the server. The server stores:
+
+- `PublicKeyX25519` — plaintext (public keys are meant to be shared)
+- `PublicKeyEd25519` — plaintext
+- `EncryptedPrivateKeyX25519` — ciphertext (encrypted with user's encryption_key)
+- `EncryptedPrivateKeyEd25519` — ciphertext (encrypted with user's encryption_key)
+
+---
+
+## Envelope Encryption
+
+Every vault entry (login, note, card, identity, file) is encrypted with its own random **Data Encryption Key (DEK)**. The DEK is then wrapped (encrypted) to each user who should have access, creating an **envelope** per user.
+
+```text
+Vault Entry Creation:
+  1. Generate random DEK (256-bit)
+  2. Encrypt entry payload:  ciphertext = XChaCha20-Poly1305(DEK, plaintext)
+  3. Sign ciphertext:        signature = Ed25519.Sign(ciphertext)
+  4. For each authorized user:
+       a. X25519 key exchange:  shared_secret = X25519(sender_private, recipient_public)
+       b. Derive wrap key:      wrap_key = HKDF-SHA256(shared_secret, "envelope")
+       c. Wrap DEK:             encrypted_dek = XChaCha20-Poly1305(wrap_key, DEK)
+       d. Store envelope:       { user_id, encrypted_dek, dek_nonce, granter_public_key }
+```
+
+```text
+Vault Entry Retrieval:
+  1. Server returns: ciphertext, nonce, signature, envelope (for requesting user)
+  2. Client reconstructs shared secret:
+       shared_secret = X25519(my_private, granter_public_key)
+  3. Derive wrap key:  wrap_key = HKDF-SHA256(shared_secret, "envelope")
+  4. Unwrap DEK:       DEK = XChaCha20-Poly1305.Decrypt(wrap_key, encrypted_dek)
+  5. Decrypt payload:  plaintext = XChaCha20-Poly1305.Decrypt(DEK, ciphertext)
+  6. Verify signature: Ed25519.Verify(granter_public, ciphertext, signature)
+```
+
+### Why Envelope Encryption?
+
+- **Per-entry keys** — Compromising one DEK exposes one entry, not the entire vault.
+- **Efficient sharing** — To grant access, wrap the existing DEK to the new user's public key. No re-encryption of the (potentially large) payload.
+- **Revocation** — To revoke access, delete the user's envelope. They can no longer unwrap the DEK.
+- **Key rotation** — Rotate a DEK by re-encrypting the payload and issuing new envelopes, without changing any user's key pair.
+
+---
+
+## Cipher Suite
+
+| Operation | Algorithm | Key Size | Nonce Size |
+| --- | --- | --- | --- |
+| Password hashing | Argon2id | 256-bit output | 128-bit salt |
+| Symmetric encryption | XChaCha20-Poly1305 | 256-bit | 192-bit |
+| Key exchange | X25519 (Curve25519) | 256-bit | N/A |
+| Key derivation | HKDF-SHA256 | 256-bit output | Context-dependent |
+| Signatures | Ed25519 | 256-bit | N/A |
+| Auth verification | HMAC-SHA256 | 256-bit | 256-bit nonce |
+| External file shares | AES-256-GCM | 256-bit | 96-bit |
+| Server-side secrets | XChaCha20-Poly1305 | 256-bit (HKDF from CA key) | 192-bit |
+
+**XChaCha20-Poly1305** is used for all vault encryption because:
+- 192-bit nonce eliminates nonce collision risk even with random generation
+- No padding oracle attacks (stream cipher + AEAD)
+- Constant-time implementation in Go's `golang.org/x/crypto`
+- Faster than AES-GCM on platforms without AES-NI hardware acceleration
+
+**AES-256-GCM** is used specifically for external file shares because the download page runs in a browser, and WebCrypto natively supports AES-GCM but not XChaCha20-Poly1305.
+
+---
+
+## Server-Side Encryption
+
+Certain server-managed secrets (SMTP credentials, escrow keys) are encrypted at rest on the server. These use **XChaCha20-Poly1305** with a key derived from the CA private key:
+
+```text
+CA Private Key (EC P-256)
+      |
+      v
+  HKDF-SHA256(ca_key_pem, salt="argon-server-enc", info="server-data-encryption")
+      |
+      v
+  server_enc_key (256-bit)
+      |
+      v
+  XChaCha20-Poly1305(server_enc_key, plaintext_smtp_password)
+```
+
+This means:
+- The encryption key is deterministically derived from the CA key — no separate key storage.
+- If the CA key is compromised, server-side secrets are exposed (but vault data is not — vault encryption keys are derived from user passwords, not the CA key).
+- If the database file is stolen without the CA key, server-side secrets remain encrypted.
+
+---
+
+## What the Server Sees
+
+| Data | Server Visibility |
+| --- | --- |
+| Vault entry payloads | Encrypted blob — **cannot decrypt** |
+| Entry DEKs | Wrapped in user envelopes — **cannot decrypt** |
+| User private keys | Encrypted with password-derived key — **cannot decrypt** |
+| User public keys | Plaintext (by design — public keys are not secret) |
+| Auth verifiers | SHA-256 hash of Argon2id output — **cannot reverse** |
+| SMTP passwords | Encrypted with CA-derived key — **can decrypt** (server needs to send email) |
+| Filenames, tags, metadata | Plaintext (for search/filter — future: encrypted metadata) |
+| Audit logs | Plaintext (operational necessity) |
+
+The server is designed so that a complete database dump — even with full disk access — yields no usable credentials. The only path to plaintext is through a user's master password.

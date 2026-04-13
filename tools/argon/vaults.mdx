@@ -1,0 +1,126 @@
+---
+title: "Vaults"
+description: "Vault management, entry types, folders, tags, and versioning"
+---
+
+# Vaults & Entries
+
+Vaults are the primary containers for secrets in Argon. Each vault holds entries (logins, notes, cards, identities, files) organized by folders and tags.
+
+---
+
+## Vault Types
+
+| Type | Scope | Access |
+| --- | --- | --- |
+| **Personal** | Belongs to a single user | Only the owner can access (no team_id) |
+| **Team** | Belongs to a team | Access controlled by ACLs — granted to users and groups |
+
+A user's first vault is personal and created automatically at registration. Team vaults are created by Managers, Admins, or Owners and shared with team members via ACL grants.
+
+---
+
+## Entry Types
+
+Every vault entry has a type that determines its schema:
+
+| Type | Value | Description |
+| --- | --- | --- |
+| **Login** | `1` | Username, password, URL, TOTP — the standard password entry |
+| **Secure Note** | `2` | Free-form encrypted text |
+| **Card** | `3` | Credit/debit card number, expiry, CVV, cardholder name |
+| **Identity** | `4` | Name, address, phone, email, SSN, passport — personal identity data |
+| **OTP** | `5` | Standalone TOTP/HOTP secret (separate from login-attached TOTP) |
+| **File** | `6` | Encrypted file attachment (used by file sharing) |
+
+All entry payloads are encrypted with a per-entry DEK using XChaCha20-Poly1305. The server sees only the entry type, vault association, tags, and timestamps — never the contents.
+
+---
+
+## Folders
+
+Vaults support a nested folder hierarchy for organization:
+
+```text
+Vault: "Engineering"
+  ├── AWS/
+  │   ├── Production/
+  │   └── Staging/
+  ├── GitHub/
+  └── Internal Tools/
+```
+
+- Folders belong to a vault and can be nested via `parent_id`.
+- Moving an entry between folders is a metadata-only operation — no re-encryption needed.
+- Deleting a folder does not delete its entries (they move to the vault root).
+
+---
+
+## Tags
+
+Entries can be tagged with arbitrary labels for cross-folder organization:
+
+```text
+Entry: "AWS Root Account"
+  Tags: ["critical", "aws", "production"]
+```
+
+- Tags are per-entry, stored as a string array.
+- List all unique tags in a vault via `ListTags`.
+- Filter entries by tag via `ListEntries(tag: "production")`.
+
+---
+
+## Favorites
+
+Users can mark entries as favorites for quick access. Favorites are per-user — marking an entry as a favorite in a shared vault only affects your own view.
+
+---
+
+## Trash & Recovery
+
+Deleted entries go to a per-vault trash with soft-delete:
+
+1. **Trash** — Entry is marked with `deleted_at` and `deleted_by`. It no longer appears in normal listings but can be recovered.
+2. **Restore** — Moves the entry out of trash, clears `deleted_at`.
+3. **Empty Trash** — Permanently deletes all trashed entries in a vault. Unrecoverable.
+
+---
+
+## Entry Versioning
+
+Every update to an entry creates a version snapshot:
+
+```text
+EntryVersion {
+  entry_id        : string
+  version_number  : int64      // Monotonically increasing
+  encrypted_payload : bytes    // Full encrypted payload at this version
+  nonce           : bytes
+  signature       : bytes
+  changed_by      : string     // User who made the change
+  changed_at      : timestamp
+}
+```
+
+- View version history via `GetEntryHistory`.
+- Each version stores the complete encrypted payload — no deltas, no merge conflicts.
+- The current version is always the entry itself; historical versions are in the version store.
+- Useful for auditing ("who changed the AWS root password and when?") and accidental change recovery.
+
+---
+
+## Storage
+
+All vault data is stored in BoltDB (bbolt), an embedded key-value store:
+
+| Bucket | Key Pattern | Value |
+| --- | --- | --- |
+| `vaults` | `v:{vault_id}` | JSON-encoded `VaultRecord` |
+| `entries` | `e:{entry_id}` | JSON-encoded `EntryRecord` |
+| `envelopes` | `env:{entry_id}:{user_id}` | JSON-encoded `EnvelopeRecord` |
+| `folders` | `f:{folder_id}` | JSON-encoded `FolderRecord` |
+| `versions` | `ver:{entry_id}:{version}` | JSON-encoded `EntryVersion` |
+| `favorites` | `fav:{user_id}:{entry_id}` | Empty value (existence = favorited) |
+
+BoltDB provides ACID transactions, file-level locking, and zero-configuration persistence. The entire database is a single file — easy to back up, easy to migrate.

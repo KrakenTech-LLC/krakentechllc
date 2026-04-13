@@ -171,6 +171,21 @@
             ]
           },
           {
+            "tab": "Argon",
+            "pages": [
+              "tools/argon/introduction",
+              "tools/argon/encryption",
+              "tools/argon/access-control",
+              "tools/argon/vaults",
+              "tools/argon/sharing",
+              "tools/argon/browser-extension",
+              "tools/argon/authentication",
+              "tools/argon/emergency-access",
+              "tools/argon/audit",
+              "tools/argon/clients"
+            ]
+          },
+          {
             "tab": "Golay",
             "pages": [
               "tools/golay/introduction"

@@ -1,0 +1,108 @@
+---
+title: "Emergency Access"
+description: "Dead-man switch emergency sharing with escrow key wrapping"
+---
+
+# Emergency Access
+
+Emergency access is a dead-man switch. If a user doesn't log in for a configurable number of days, a designated emergency contact automatically gains access to their vaults.
+
+---
+
+## How It Works
+
+```text
+Day 0:   User configures emergency access
+         → contact email, countdown (7/14/30/60/90 days), vault selection
+         → Server creates dormant escrow account
+         → Client wraps vault keys to escrow account's X25519 public key
+
+Day 1-N: User logs in normally
+         → LastActivity timestamp refreshes on every login
+         → Nothing happens
+
+Day N+1: User stops logging in
+         → Background checker runs hourly
+         → Detects: time.Since(LastActivity) > CountdownDays
+         → Emergency is triggered
+
+Trigger: Server activates escrow account
+         → Creates invite for the emergency contact
+         → Sends invite via email (if SMTP configured) or admin delivers manually
+         → Contact registers using the invite
+         → Escrow envelopes grant read access to the user's designated vaults
+```
+
+---
+
+## Escrow Key Wrapping
+
+The security model ensures the server never has access to vault contents, even during emergency activation.
+
+### Setup (Client-Side)
+
+```text
+1. Server creates escrow account with its own X25519 key pair
+2. Client fetches escrow account's public key
+3. For each designated vault:
+   a. Client retrieves its own copy of the vault DEK
+   b. Client wraps DEK to escrow's X25519 public key:
+      shared_secret = X25519(user_private, escrow_public)
+      wrap_key = HKDF-SHA256(shared_secret, "escrow-envelope")
+      wrapped_dek = XChaCha20-Poly1305(wrap_key, vault_dek)
+   c. Client uploads: EscrowEnvelope { user_id, vault_id, wrapped_key, nonce }
+```
+
+### Activation (Server-Side)
+
+```text
+1. Server marks emergency as triggered
+2. Server creates an invite tied to the contact's email
+3. Contact registers using the invite code
+4. Contact's account receives the escrow envelopes
+5. Contact's client unwraps DEKs using the escrow private key
+6. Contact can now decrypt the designated vaults
+```
+
+The server orchestrates the handoff but never possesses the plaintext vault keys. The escrow private key is encrypted to the contact's credentials during the invite acceptance flow.
+
+---
+
+## Configuration
+
+| Setting | Options | Description |
+| --- | --- | --- |
+| **Contact email** | Any email address | The person who gains access when the emergency triggers |
+| **Countdown days** | 7, 14, 30, 60, 90 | Days of inactivity before triggering |
+| **Vault selection** | Specific vaults or all | Which vaults the contact can access |
+
+### Modify or Disable
+
+- **Modify** — The user can change the contact, countdown, or vault selection at any time. Changing the vault selection requires re-wrapping escrow envelopes.
+- **Disable** — Removes the emergency config, deletes the escrow account and all escrow envelopes.
+- **Manual trigger** — Admins can manually trigger emergency access for testing or urgent situations.
+
+---
+
+## Email Delivery
+
+Emergency invite emails are sent via the server's SMTP configuration:
+
+- SMTP must be configured via `AdminService.SetSMTPConfig` (admin-only).
+- SMTP must be confirmed via `AdminService.TestSMTPConnection`.
+- If SMTP is not configured (airgapped environment), the admin must manually deliver the invite code to the emergency contact.
+
+The `Confirmed` flag resets whenever any SMTP field is changed, forcing re-verification before emails can be sent.
+
+---
+
+## Audit Trail
+
+| Event | Logged |
+| --- | --- |
+| Emergency access configured | Contact email, countdown, vault IDs |
+| Emergency access modified | Changed fields |
+| Emergency access disabled | User ID |
+| Emergency triggered (automatic) | User ID, contact email, inactivity duration |
+| Emergency triggered (manual) | Triggering admin, target user |
+| Emergency invite accepted | Contact registration |

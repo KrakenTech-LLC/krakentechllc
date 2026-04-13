@@ -1,0 +1,150 @@
+---
+title: "Clients"
+description: "Desktop app, browser extension, CLI, and upcoming mobile apps"
+---
+
+# Clients
+
+Argon provides multiple client interfaces — all performing encryption and decryption locally. The server never receives plaintext regardless of which client is used.
+
+---
+
+## Desktop App
+
+The primary Argon client, built with **Wails v2** (Go backend + vanilla JS frontend). Ships as a native binary for macOS, Windows, and Linux.
+
+### Features
+
+- Full vault management — create, edit, delete entries across all types (logins, notes, cards, identities, files)
+- Folder and tag organization with drag-and-drop
+- Password generator with strength analysis, crack time estimation, and customizable character sets
+- Entry version history with diff view
+- Team management — invite members, assign roles, create groups
+- Emergency access configuration
+- File sharing (internal and external magic links)
+- FIDO2/WebAuthn passkey registration and management
+- MFA setup with QR code and backup codes
+- Real-time sync via server-sent events
+- Audit log viewer (admins)
+- Server settings management (SMTP, public URL, share limits)
+
+### Connection
+
+The desktop app connects to the Argon server over **mutual TLS (mTLS)** on port 50051:
+
+1. On first connection, the app downloads the server's CA certificate.
+2. The user registers or logs in.
+3. The server issues a client certificate signed by the CA.
+4. All subsequent connections present the client certificate — the server verifies it against the CA.
+5. Sessions are bound to the client certificate fingerprint.
+
+This means even if a session token is stolen, it cannot be used from a different machine without the corresponding client certificate private key.
+
+### Build
+
+```bash
+cd gui
+wails build
+```
+
+Output: `gui/build/bin/Argon` (or `Argon.exe` on Windows).
+
+---
+
+## Browser Extension
+
+A **Manifest V3** Chrome/Edge/Brave extension for autofill and credential management directly in the browser.
+
+### Features
+
+- Inline autofill with Argon logo injection and credential picker dropdown
+- Login form detection (forms, standalone fields, SPAs)
+- Password generator
+- Full vault search from the popup
+- Passkey/YubiKey authentication
+- Auto-lock after 15 minutes of inactivity
+
+### Connection
+
+The extension connects to the Argon server over **TLS** (not mTLS) on port 50052 via gRPC-Web:
+
+- Browser extensions cannot perform mutual TLS (no client certificate API).
+- Authentication is session-token-based with IP + User-Agent binding.
+- The gRPC-Web endpoint wraps the same gRPC services the desktop app uses.
+
+### Install
+
+Load as an unpacked extension in Chrome/Edge:
+
+1. Navigate to `chrome://extensions/`
+2. Enable "Developer mode"
+3. Click "Load unpacked" and select the `extension/` directory
+
+See [Browser Extension](/tools/argon/browser-extension) for full documentation.
+
+---
+
+## CLI
+
+A Go command-line tool for server administration, scripting, and headless environments.
+
+### Capabilities
+
+- User management (create, delete, list, reset password)
+- Backup and restore (BoltDB snapshot export/import)
+- Certificate management (list, revoke client certificates)
+- Server health checks
+- Audit log export
+
+### Build
+
+```bash
+go build -o argon-cli ./cli/cmd/argon-cli/
+```
+
+### Usage
+
+```bash
+# Connect to server
+argon-cli --server argon.corp.local:50051 --cert client.pem --key client-key.pem
+
+# List users
+argon-cli users list
+
+# Export audit log
+argon-cli audit export --since 2026-01-01 --output audit.json
+
+# Backup database
+argon-cli backup create --output argon-backup.db
+```
+
+---
+
+## Mobile Apps (Coming Soon)
+
+Native mobile apps for iOS and Android are in development. They will provide:
+
+- Full vault access with biometric unlock (Face ID, Touch ID, fingerprint)
+- Autofill integration with the OS credential provider API
+- Push notification support for share notifications and emergency access alerts
+- Passkey authentication via platform authenticators
+- Offline read access to cached vault data (encrypted at rest on device)
+- Camera-based QR code scanning for MFA setup and share link redemption
+
+Mobile apps will connect to the Argon server via gRPC-Web (same as the browser extension) over TLS, with session-token-based authentication.
+
+---
+
+## Client Comparison
+
+| Feature | Desktop App | Browser Extension | CLI | Mobile (planned) |
+| --- | --- | --- | --- | --- |
+| **Transport** | mTLS (gRPC) | TLS (gRPC-Web) | mTLS (gRPC) | TLS (gRPC-Web) |
+| **Vault CRUD** | Full | Read + Fill | Admin ops | Full |
+| **Autofill** | No (use extension) | Yes (inline) | No | Yes (OS integration) |
+| **Passkey auth** | Yes | Yes | No | Yes |
+| **File sharing** | Yes | No | No | Yes |
+| **Admin settings** | Yes | No | Yes | No |
+| **Audit logs** | Yes | No | Yes (export) | No |
+| **Offline access** | No | No | No | Yes (cached) |
+| **Biometric unlock** | No | No | No | Yes |

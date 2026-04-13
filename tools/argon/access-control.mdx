@@ -1,0 +1,171 @@
+---
+title: "Access Control"
+description: "Teams, groups, roles, and granular ACLs in Argon"
+---
+
+# Access Control
+
+Argon provides a layered access control system: **teams** organize users, **roles** define broad authority, **groups** enable bulk permission grants, and **ACLs** provide fine-grained per-resource permissions with optional expiration.
+
+---
+
+## Teams
+
+A team is the top-level organizational unit. Each Argon deployment typically has one team, though multi-team setups are supported.
+
+- Every user belongs to exactly one team.
+- Team vaults are shared among members with appropriate permissions.
+- Personal vaults exist outside team scope — only the owner can access them.
+
+---
+
+## Roles
+
+Each team member has a role that determines their broad authority level:
+
+| Role | Level | Capabilities |
+| --- | --- | --- |
+| **Member** | 1 | Access granted vaults, create personal vaults, manage own entries |
+| **Auditor** | 2 | Everything a Member can do, plus read audit logs |
+| **Manager** | 3 | Everything an Auditor can do, plus manage groups, invite members, manage shared vaults |
+| **Admin** | 4 | Everything a Manager can do, plus configure SMTP, manage server settings, manage emergency access policies |
+| **Owner** | 5 | Full control — transfer ownership, delete team, remove admins |
+
+Roles are hierarchical. A Manager can do everything a Member and Auditor can do. Roles are assigned per team membership and can be changed by Admins or Owners.
+
+---
+
+## Groups
+
+Groups are collections of users used for bulk permission grants. Instead of granting vault access to 15 users individually, create an "Engineering" group and grant access once.
+
+| Property | Description |
+| --- | --- |
+| `group_id` | Unique identifier |
+| `team_id` | Owning team (empty for system-level groups) |
+| `name` | Human-readable label |
+| `system` | System groups are auto-created and cannot be deleted |
+
+### System Groups
+
+Argon creates one system group automatically:
+
+- **`system-admins`** — Contains all users with Admin or Owner roles. Used internally to gate admin-only operations (SMTP configuration, server settings). Membership is managed automatically when roles change.
+
+### Custom Groups
+
+Managers, Admins, and Owners can create custom groups:
+
+```text
+Engineering       → access to "Infrastructure" and "API Keys" vaults
+Finance           → access to "Banking" and "Payment Processors" vaults
+Contractors       → access to "Staging Credentials" vault with READ-only ACL
+```
+
+---
+
+## ACLs (Access Control Lists)
+
+ACLs are the most granular permission layer. Each ACL entry grants a specific set of permissions on a specific resource to a specific target (user or group).
+
+### ACL Structure
+
+```text
+ACLEntry {
+  resource_id   : string       // Vault ID, Folder ID, or Entry ID
+  target_type   : USER | GROUP
+  target_id     : string       // User ID or Group ID
+  permissions   : bitmask      // READ | WRITE | ADMIN
+  granted_by    : string       // Who created this grant
+  granted_at    : timestamp
+  expires_at    : timestamp    // Optional — nil means permanent
+}
+```
+
+### Permission Bitmask
+
+| Permission | Value | Description |
+| --- | --- | --- |
+| **READ** | `1` | View entries in the resource |
+| **WRITE** | `2` | Create, update, and delete entries |
+| **ADMIN** | `4` | Manage ACLs on the resource, delete the resource |
+
+Permissions are combined as a bitmask. A user with `permissions = 3` (READ \| WRITE) can view and edit entries but cannot manage ACLs. A user with `permissions = 7` (READ \| WRITE \| ADMIN) has full control.
+
+### ACL Resolution
+
+When a user accesses a resource, Argon resolves their effective permissions:
+
+```text
+1. Check direct user ACL on the resource
+2. Check group ACLs for all groups the user belongs to
+3. Combine all matching permissions (bitwise OR)
+4. Check expiration — expired ACLs are ignored
+5. If no ACL matches and the user is the resource owner → full access
+6. If no ACL matches and the user is a team Admin/Owner → full access on team resources
+```
+
+### Expiring Grants
+
+ACLs can have an `expires_at` timestamp. This is useful for:
+
+- **Temporary contractor access** — Grant a contractor READ access to a vault for 30 days.
+- **Incident response** — Grant an engineer ADMIN access to production credentials for 4 hours during an outage.
+- **Compliance** — Ensure access reviews happen by forcing re-grants instead of permanent access.
+
+A background job (`DeleteExpiredACLs`) runs periodically to clean up expired entries.
+
+---
+
+## Invites
+
+New team members are added via invites:
+
+```text
+InviteRecord {
+  invite_id    : string
+  team_id      : string
+  email        : string       // Locked — cannot be changed during registration
+  email_locked : bool         // Always true once created
+  invite_code  : string       // URL-safe token for accepting
+  role         : TeamRole     // Role assigned on acceptance
+  vault_ids    : []string     // Initial vault access granted on acceptance
+  invited_by   : string
+  expires_at   : timestamp
+  accepted_at  : timestamp    // Set when the invite is used
+}
+```
+
+### Invite Flow
+
+1. Admin creates an invite specifying the recipient's email, role, and initial vault access.
+2. If SMTP is configured and confirmed, Argon emails the invite code to the recipient.
+3. If SMTP is not available (airgapped environment), the admin copies the invite code manually.
+4. The recipient registers using the invite code. Their email is verified against the invite — it cannot be changed.
+5. On registration, the user is added to the team with the specified role and granted access to the specified vaults.
+
+### Email Immutability
+
+The email address on an invite is **locked at creation time**. This prevents:
+- An attacker intercepting an invite code and registering with a different email.
+- A user changing their email during registration to bypass audit attribution.
+
+The email can only be changed through normal profile settings after registration is complete.
+
+---
+
+## Permission Hierarchy Summary
+
+```text
+Owner
+  └── Admin
+        └── Manager
+              └── Auditor
+                    └── Member
+
+ACLs (per-resource, per-user/group):
+  ADMIN (4) > WRITE (2) > READ (1)
+
+Groups:
+  User → Group → ACL → Resource
+```

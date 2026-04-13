@@ -1,0 +1,175 @@
+---
+title: "File Sharing"
+description: "Share files securely with Argon users or anyone via zero-knowledge magic links"
+---
+
+# File Sharing
+
+Argon supports two sharing modes from a single interface: **internal sharing** with other Argon users (envelope encryption, permanent access) and **external sharing** with anyone via a magic link (split-key AES-256-GCM, time-limited, no account required).
+
+---
+
+## Internal Sharing (Argon User to Argon User)
+
+When sharing a file with another Argon user, the file is encrypted with envelope encryption — the same pattern used for vault entries. The recipient gets the file directly in their Argon account.
+
+### How It Works
+
+```text
+Sender                                Server                              Recipient
+  |                                      |                                    |
+  |  1. Generate random DEK              |                                    |
+  |  2. Encrypt file with DEK            |                                    |
+  |  3. Fetch recipient's X25519 pubkey  |                                    |
+  |  4. Wrap DEK to recipient's key      |                                    |
+  |                                      |                                    |
+  |--- ShareFileWithUser(blob, envelope) -->                                  |
+  |                                      |  Store encrypted blob + envelope   |
+  |                                      |                                    |
+  |                                      |  Notification: "1 new shared file" |
+  |                                      |------------------------------------>|
+  |                                      |                                    |
+  |                                      |<--- AcceptShare(share_id, vault) --|
+  |                                      |  Move to recipient's vault         |
+  |                                      |  as ENTRY_TYPE_FILE                |
+```
+
+### Properties
+
+- **End-to-end encrypted** — The server stores an opaque encrypted blob. It cannot read the file.
+- **Permanent** — Once accepted, the file lives in the recipient's vault like any other entry. It persists until they delete it.
+- **Revocable before acceptance** — The sender can revoke an unaccepted share.
+- **Audited** — Both the share creation and acceptance are logged in the audit trail.
+
+### Recipient Flow
+
+1. A notification badge appears: "N new shared files."
+2. The recipient sees the sender's name, filename, file size, and optional message.
+3. **Accept** — The file is saved into the recipient's chosen vault and folder.
+4. **Decline** — The share and its encrypted data are permanently deleted.
+
+---
+
+## External Sharing (Magic Link for Anyone)
+
+When sharing with someone who doesn't have an Argon account — a client, a contractor, a vendor — Argon generates a magic link that works in any browser. No app install, no registration, no account.
+
+### How It Works
+
+```text
+Sender (Argon app)                     Server                    Recipient (any browser)
+  |                                      |                              |
+  |  1. Generate random file_key (256b)  |                              |
+  |  2. Split: key_server | key_fragment |                              |
+  |  3. Encrypt file with AES-256-GCM   |                              |
+  |                                      |                              |
+  |--- CreateExternalShare(blob, key_server, options) -->               |
+  |                                      |  Store blob + key_server     |
+  |<-- share_url + key_fragment ---------|                              |
+  |                                      |                              |
+  |  Full link: /s/<token>#<key_frag>    |                              |
+  |  (send via email, chat, etc.)        |                              |
+  |--------------------------------------|----------------------------->|
+  |                                      |                              |
+  |                                      |<-- GET /s/<token> ----------|
+  |                                      |--- share.html (self-contained page)
+  |                                      |                              |
+  |                                      |<-- GET /s/<token>/meta -----|
+  |                                      |--- { filename, size, ... } ->|
+  |                                      |                              |
+  |                                      |<-- POST /s/<token>/download |
+  |                                      |--- key_server + blob ------->|
+  |                                      |                              |
+  |                                      |     Reconstruct file_key     |
+  |                                      |     = key_server || key_frag |
+  |                                      |     Decrypt with AES-256-GCM|
+  |                                      |     Download plaintext file  |
+```
+
+### Split-Key Security
+
+The 256-bit encryption key is split in half:
+
+| Half | Location | Sent to Server? |
+| --- | --- | --- |
+| `key_server` (128 bits) | Stored in Argon's database | Yes — the server holds this half |
+| `key_fragment` (128 bits) | In the URL after `#` | **Never** — the browser never sends the `#fragment` in HTTP requests |
+
+**Neither half alone can decrypt the file.** Both are required. This means:
+
+- A stolen database dump doesn't expose shared files (missing `key_fragment`).
+- An intercepted link doesn't expose the file (missing `key_server`).
+- Even Argon server administrators cannot decrypt external shares without the link.
+
+### Share Options
+
+| Option | Default | Description |
+| --- | --- | --- |
+| **Expiry** | 7 days | Auto-delete after this duration. Max 30 days. |
+| **Max downloads** | Unlimited | Set to 1 for burn-after-reading. |
+| **Password** | None | Recipient must enter the password before downloading. Hashed with Argon2id on the server. |
+
+### The Download Page
+
+The magic link serves a **self-contained HTML page** with all CSS and JS inlined. No external resources, no CDN, no fetches for scripts. It runs entirely in the browser using the native WebCrypto API.
+
+The page:
+1. Reads `key_fragment` from the URL `#fragment` (never sent to the server).
+2. Fetches file metadata (filename, size, expiry countdown).
+3. If password-protected, shows a password prompt.
+4. On "Download" click, fetches the encrypted blob + `key_server`.
+5. Reconstructs `file_key = key_server || key_fragment`.
+6. Decrypts using WebCrypto AES-256-GCM.
+7. Triggers a browser download of the plaintext file.
+
+The download page is styled to match Argon's dark purple theme and is embedded in the server binary via Go's `//go:embed` — no static file serving infrastructure needed.
+
+### Why AES-256-GCM for External Shares?
+
+Argon uses XChaCha20-Poly1305 for all vault encryption, but external shares use AES-256-GCM because:
+
+- The browser's WebCrypto API natively supports AES-GCM but **not** XChaCha20-Poly1305.
+- Native WebCrypto means zero bundled crypto libraries — the download page stays small and auditable.
+- Each share has a unique random key, so AES-GCM's smaller nonce (96-bit vs 192-bit) is not a concern.
+
+---
+
+## Airgapped Environments
+
+Both sharing modes work in fully airgapped networks:
+
+- **Internal shares** use the standard gRPC connection the desktop app already has.
+- **External magic links** point to the Argon server's internal address (e.g., `https://10.0.1.5:50052/s/abc123#key`). The recipient just needs browser access to the server on the network — no internet, no DNS, no external services.
+
+The server's public URL is configured via `ARGON_PUBLIC_URL` and is used to construct share links. In airgapped environments, this is the internal IP or hostname.
+
+---
+
+## HTTP Endpoints
+
+External share routes are served on the existing gRPC-Web port (50052) alongside the existing gRPC-Web and `/ca.pem` handlers:
+
+| Route | Method | Auth | Purpose |
+| --- | --- | --- | --- |
+| `/s/<token>` | GET | None | Serve the self-contained download page |
+| `/s/<token>/meta` | GET | None | Return JSON metadata (filename, size, password required, expiry) |
+| `/s/<token>/download` | POST | Optional password | Return `key_server` + encrypted blob as binary |
+
+---
+
+## Lifecycle & Cleanup
+
+A background job runs hourly to clean up:
+
+- **Expired shares** — External shares past their `expires_at` are permanently deleted.
+- **Consumed shares** — Shares where `download_count >= max_downloads` are purged.
+- **Accepted internal shares** — Share records older than 30 days where the file has already been moved to the recipient's vault.
+
+### Storage Limits
+
+| Setting | Default | Description |
+| --- | --- | --- |
+| Max file size per share | 100 MB | Reject uploads over this size |
+| Max total share storage | 1 GB | Combined size of all active encrypted share blobs |
+| Default external expiry | 7 days | Applied when no expiry is specified |
+| Max external expiry | 30 days | Upper bound on sender-specified expiry |

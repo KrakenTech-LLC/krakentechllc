@@ -1,0 +1,173 @@
+---
+title: "Argon"
+description: "Argon — Self-Hosted Zero-Knowledge Team Password Manager"
+---
+
+# Argon — Self-Hosted Zero-Knowledge Team Password Manager
+
+Argon is a self-hosted, end-to-end encrypted password manager built for teams that refuse to trust a third party with their secrets. Every credential is encrypted client-side before it ever touches the wire. The server stores ciphertext it cannot decrypt — not during transit, not at rest, not ever.
+
+**Single binary. BoltDB storage. mTLS transport. Zero knowledge.**
+
+Argon ships as a single Go binary for the server and a native desktop app (Wails v2) for every platform. No Electron, no cloud dependency, no subscription. Install it on your own infrastructure — airgapped, on-prem, or in the cloud — and own your secrets completely.
+
+---
+
+## Why Argon
+
+Most password managers ask you to trust their cloud. Argon asks you to trust math.
+
+- **Zero-knowledge architecture** — The server never sees plaintext credentials. All encryption and decryption happens on the client. The server stores opaque blobs it cannot read.
+- **Self-hosted** — Runs on your hardware, your network, your rules. No phone-home, no telemetry, no vendor lock-in.
+- **Airgap-ready** — Designed to operate in fully disconnected environments. No external DNS, no cloud APIs, no internet access required.
+- **Team-native** — Built from day one for teams: shared vaults, role-based access, groups, audit logging, and granular ACLs.
+- **mTLS everywhere** — Every connection between client and server uses mutual TLS with certificates issued by Argon's built-in Certificate Authority. No anonymous connections.
+- **No browser required** — Native desktop app, browser extension, and CLI. The browser extension works alongside the app, not instead of it.
+
+---
+
+## Feature Overview
+
+<Columns cols={3}>
+  <Card title="Encryption" icon="lock" href="/tools/argon/encryption">
+    Argon2id KDF, X25519 key exchange, XChaCha20-Poly1305 envelope encryption
+  </Card>
+
+  <Card title="Access Control" icon="shield-halved" href="/tools/argon/access-control">
+    Teams, groups, roles, granular ACLs with bitmask permissions and expiring grants
+  </Card>
+
+  <Card title="Vault Management" icon="vault" href="/tools/argon/vaults">
+    Personal and team vaults, folders, tags, favorites, trash with soft-delete, entry versioning
+  </Card>
+
+  <Card title="File Sharing" icon="share-nodes" href="/tools/argon/sharing">
+    Share files with Argon users via envelope encryption or with anyone via zero-knowledge magic links
+  </Card>
+
+  <Card title="Browser Extension" icon="puzzle-piece" href="/tools/argon/browser-extension">
+    Manifest V3 extension with inline autofill, form detection, and in-page credential picker
+  </Card>
+
+  <Card title="Emergency Access" icon="triangle-exclamation" href="/tools/argon/emergency-access">
+    Dead-man switch with configurable countdown, escrow key wrapping, and automatic invite dispatch
+  </Card>
+
+  <Card title="Authentication" icon="fingerprint" href="/tools/argon/authentication">
+    Argon2id challenge-response, FIDO2/WebAuthn passkeys, YubiKey support, MFA with TOTP
+  </Card>
+
+  <Card title="Audit & Compliance" icon="clipboard-list" href="/tools/argon/audit">
+    Tamper-evident audit log with signed entries, category filtering, and full actor attribution
+  </Card>
+
+  <Card title="Mobile & CLI" icon="mobile" href="/tools/argon/clients">
+    Desktop app (macOS, Windows, Linux), browser extension, CLI admin tool, mobile apps (coming soon)
+  </Card>
+</Columns>
+
+---
+
+## Quick Start
+
+### Build the server
+
+```bash
+git clone https://github.com/KrakenTech-LLC/argon.git
+cd argon
+go build -o argon-server ./server/cmd/argon-server/
+```
+
+### Build the desktop app
+
+```bash
+cd gui
+wails build
+```
+
+The compiled binary is in `gui/build/bin/`.
+
+### First run
+
+```bash
+./argon-server --data /var/lib/argon
+```
+
+On first launch, Argon initializes its Certificate Authority, generates the server TLS certificate, and creates the BoltDB database. The first user to register is automatically granted admin privileges.
+
+### Default listeners
+
+| Service | Default Address | Description |
+| --- | --- | --- |
+| gRPC (mTLS) | `:50051` | Primary API — desktop app and CLI connect here with mutual TLS |
+| gRPC-Web (TLS) | `:50052` | Browser extension and share download pages connect here |
+
+### Environment variables
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `ARGON_GRPC_ADDR` | `:50051` | gRPC listen address |
+| `ARGON_DATA_DIR` | `./data` | Database and CA storage directory |
+| `ARGON_TLS_HOSTS` | `localhost` | Comma-separated hostnames/IPs for the server TLS certificate |
+| `ARGON_SESSION_EXPIRY` | `24h` | Session token lifetime |
+| `ARGON_RATE_LIMIT` | `10` | Requests per second per client |
+| `ARGON_RATE_BURST` | `20` | Rate limiter burst allowance |
+| `ARGON_PUBLIC_URL` | (derived) | Public base URL for share links (e.g., `https://argon.corp.local:50052`) |
+
+---
+
+## Architecture
+
+```text
+                Desktop App                    Browser Extension
+                (Wails v2)                     (Manifest V3)
+                    |                               |
+                    | mTLS (port 50051)              | TLS (port 50052)
+                    |                               |
+                    v                               v
+            +----------------------------------------------+
+            |              Argon Server (Go)                |
+            |                                              |
+            |  +-----------+  +----------+  +----------+   |
+            |  |  Auth     |  |  Vault   |  |  Share   |   |
+            |  |  Service  |  |  Service |  |  Service |   |
+            |  +-----------+  +----------+  +----------+   |
+            |  +-----------+  +----------+  +----------+   |
+            |  |  Team     |  |  Admin   |  |  Passkey |   |
+            |  |  Service  |  |  Service |  |  Service |   |
+            |  +-----------+  +----------+  +----------+   |
+            |  +-----------+  +----------+  +----------+   |
+            |  |  Emergency|  |  Sync    |  |  Audit   |   |
+            |  |  Service  |  |  Service |  |  Service |   |
+            |  +-----------+  +----------+  +----------+   |
+            |                                              |
+            |  +------------------------------------------+|
+            |  |        Built-in Certificate Authority     ||
+            |  +------------------------------------------+|
+            |  +------------------------------------------+|
+            |  |           BoltDB (bbolt)                  ||
+            |  +------------------------------------------+|
+            +----------------------------------------------+
+```
+
+### Components
+
+| Component | Technology | Purpose |
+| --- | --- | --- |
+| **Server** | Go, gRPC, BoltDB | All business logic, encrypted storage, certificate management |
+| **Desktop App** | Wails v2 (Go + vanilla JS) | Native app, all crypto operations happen here |
+| **Browser Extension** | Manifest V3, vanilla JS | Autofill, inline credential picker, passkey auth |
+| **CLI** | Go | Server administration, user management, backup/restore |
+| **Transport** | mTLS (gRPC) + TLS (gRPC-Web) | Mutual authentication on desktop, TLS on browser |
+
+### Dependencies
+
+| Module | Purpose |
+| --- | --- |
+| `go.etcd.io/bbolt` | Embedded key-value store (BoltDB) |
+| `google.golang.org/grpc` | RPC framework |
+| `google.golang.org/protobuf` | Protocol buffer serialization |
+| `golang.org/x/crypto` | Argon2id, XChaCha20-Poly1305, HKDF, X25519 |
+| `github.com/oklog/ulid/v2` | Time-sortable unique identifiers |
+| `github.com/improbable-eng/grpc-web` | gRPC-Web wrapper for browser access |
+| `github.com/wailsapp/wails/v2` | Native desktop app framework |

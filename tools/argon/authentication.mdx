@@ -1,0 +1,186 @@
+---
+title: "Authentication"
+description: "Argon2id challenge-response, FIDO2 passkeys, YubiKey, and MFA"
+---
+
+# Authentication
+
+Argon supports multiple authentication methods: password-based challenge-response using Argon2id, FIDO2/WebAuthn passkeys (including YubiKey hardware security keys), and TOTP-based multi-factor authentication.
+
+---
+
+## Password Authentication
+
+Argon never transmits the master password. Instead, it uses a challenge-response protocol where the client proves knowledge of the password without revealing it.
+
+### Login Flow
+
+```text
+Client                                         Server
+  |                                               |
+  |--- GetChallenge(username) ------------------->|
+  |                                               |  Generate random nonce (32 bytes)
+  |                                               |  Store as pending challenge (5 min expiry)
+  |<-- { argon2_salt, challenge_nonce, id } ------|
+  |                                               |
+  |  auth_key = Argon2id(password, salt)          |
+  |  verifier = SHA-256(auth_key)                 |
+  |  proof    = HMAC-SHA256(verifier, nonce)      |
+  |                                               |
+  |--- Login(username, proof, challenge_id) ----->|
+  |                                               |  Retrieve stored verifier for user
+  |                                               |  Compute expected = HMAC-SHA256(stored_verifier, nonce)
+  |                                               |  Compare proof == expected (constant-time)
+  |                                               |  If match: create session
+  |<-- { session_token, user_id } ----------------|
+```
+
+### What the Server Stores
+
+The server stores `auth_verifier = SHA-256(auth_key)`, where `auth_key = Argon2id(password, salt)`. This is a hash of a hash of an Argon2id derivation. To reverse it, an attacker would need to:
+
+1. Brute-force the SHA-256 hash to recover `auth_key`.
+2. Brute-force the Argon2id derivation to recover the password.
+
+With Argon2id parameters (time=3, memory=64MB, threads=4), this is computationally infeasible even with a full database dump.
+
+---
+
+## FIDO2 / WebAuthn Passkeys
+
+Argon supports passwordless authentication using FIDO2-compliant authenticators — platform authenticators (Touch ID, Windows Hello, Android biometrics) and roaming authenticators (YubiKey, Titan Security Key).
+
+### Registration
+
+```text
+Client                                         Server
+  |                                               |
+  |--- BeginRegistration() ---------------------->|
+  |                                               |  Generate challenge (32 random bytes)
+  |                                               |  Build PublicKeyCredentialCreationOptions:
+  |                                               |    rp: { id, name }
+  |                                               |    pubKeyCredParams: ES256, RS256
+  |                                               |    attestation: "none"
+  |                                               |    authenticatorSelection:
+  |                                               |      residentKey: "preferred"
+  |                                               |      userVerification: "preferred"
+  |<-- { challenge_id, options_json } ------------|
+  |                                               |
+  |  credential = navigator.credentials.create()  |
+  |  (YubiKey tap / fingerprint / PIN prompt)     |
+  |                                               |
+  |--- FinishRegistration(challenge_id, cred) --->|
+  |                                               |  Verify challenge match
+  |                                               |  Extract public key from attestation
+  |                                               |  Store PasskeyCredential:
+  |                                               |    credential_id, public_key,
+  |                                               |    sign_count, transport, device_name
+  |<-- { ok } -----------------------------------|
+```
+
+### Authentication
+
+```text
+Client                                         Server
+  |                                               |
+  |--- BeginAuthentication(username) ------------>|
+  |                                               |  Look up user's registered passkeys
+  |                                               |  Generate challenge
+  |                                               |  Build PublicKeyCredentialRequestOptions:
+  |                                               |    allowCredentials: [registered keys]
+  |                                               |    userVerification: "preferred"
+  |<-- { challenge_id, options_json } ------------|
+  |                                               |
+  |  assertion = navigator.credentials.get()      |
+  |  (YubiKey tap / fingerprint / PIN prompt)     |
+  |                                               |
+  |--- FinishAuthentication(challenge_id, cred) ->|
+  |                                               |  Verify challenge match
+  |                                               |  Verify assertion signature
+  |                                               |  Check sign count (cloning detection)
+  |                                               |  Create session
+  |<-- { session_token, user_id } ----------------|
+```
+
+### Supported Authenticators
+
+| Authenticator | Transport | Resident Keys | User Verification |
+| --- | --- | --- | --- |
+| **YubiKey 5 Series** | USB, NFC | Yes (FIDO2) | PIN |
+| **YubiKey 5 Bio** | USB | Yes | Fingerprint |
+| **YubiKey Security Key** | USB, NFC | Limited | PIN |
+| **Apple Touch ID / Face ID** | Platform | Yes | Biometric |
+| **Windows Hello** | Platform | Yes | PIN / Biometric |
+| **Android Biometric** | Platform | Yes | Fingerprint / Face |
+| **Google Titan Key** | USB, NFC, BLE | Yes | Touch |
+
+### Algorithm Support
+
+| Algorithm | COSE ID | Description |
+| --- | --- | --- |
+| **ES256** | -7 | ECDSA with SHA-256 on P-256 (preferred, supported by all modern authenticators) |
+| **RS256** | -257 | RSASSA-PKCS1-v1_5 with SHA-256 (legacy support) |
+
+### Passkey Management
+
+Users can manage their registered passkeys from the desktop app:
+
+- **List** — View all registered authenticators with device name, transport type, last used date.
+- **Rename** — Change the device name label (e.g., "Work YubiKey", "iPhone 15").
+- **Revoke** — Permanently disable a passkey. Revoked keys cannot authenticate.
+
+---
+
+## Multi-Factor Authentication (MFA)
+
+Argon supports TOTP (Time-based One-Time Password) as a second factor alongside password authentication.
+
+### Setup
+
+1. User enables MFA in their profile settings.
+2. Argon generates a random TOTP secret and displays it as a QR code.
+3. User scans the QR code with an authenticator app (Google Authenticator, Authy, 1Password, etc.).
+4. User enters the current 6-digit code to confirm setup.
+5. Argon generates and displays backup codes for account recovery.
+
+### Login with MFA
+
+After successful password authentication, if MFA is enabled, the server requires a TOTP code before issuing a session token. The flow adds one additional round trip:
+
+```text
+Password login succeeds → Server returns "mfa_required" instead of session token
+  → Client prompts for TOTP code
+  → Client sends code to VerifyMFA endpoint
+  → Server validates code → Session token issued
+```
+
+### Backup Codes
+
+On MFA setup, Argon generates one-time backup codes. Each code can be used exactly once in place of a TOTP code (for when the authenticator device is lost). Backup codes are hashed and stored server-side — the plaintext is shown only once during setup.
+
+---
+
+## Session Management
+
+| Property | Description |
+| --- | --- |
+| **Token format** | Cryptographically random 256-bit session ID |
+| **Storage** | Server-side in BoltDB (`sessions` bucket) |
+| **Lifetime** | Configurable via `ARGON_SESSION_EXPIRY` (default 24h) |
+| **Binding** | Session is bound to client certificate fingerprint (mTLS) or IP + User-Agent (gRPC-Web) |
+| **Revocation** | Explicit logout deletes the session record |
+| **Cleanup** | Background job periodically purges expired sessions |
+
+### Certificate-Bound Sessions (Desktop App)
+
+When the desktop app connects via mTLS, the session is bound to the client certificate's fingerprint. If a different certificate presents the same session token, the server rejects the request. This prevents session token theft — the stolen token is useless without the corresponding private key.
+
+---
+
+## Rate Limiting
+
+Authentication endpoints are rate-limited to prevent brute-force attacks:
+
+- **Per-client** rate limiting based on IP address.
+- Configurable via `ARGON_RATE_LIMIT` (default 10 req/s) and `ARGON_RATE_BURST` (default 20).
+- Failed login attempts are logged in the audit trail with the attacker's IP.

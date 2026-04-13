@@ -1,0 +1,90 @@
+---
+title: "Audit & Compliance"
+description: "Tamper-evident audit logging with signed entries and category filtering"
+---
+
+# Audit & Compliance
+
+Every security-relevant action in Argon is recorded in a tamper-evident audit log. Entries are signed, timestamped, and attributed to specific actors — providing a complete forensic trail for compliance and incident response.
+
+---
+
+## Audit Entry Structure
+
+```text
+AuditEntry {
+  id             : ULID (time-sortable unique ID)
+  action         : string      ("item_created", "member_invited", "login_failed", ...)
+  category       : enum        (AUTH, ENTRY, TEAM, SHARE, ADMIN, VAULT)
+  severity       : string      ("info", "warning", "critical")
+  actor_id       : string      (user who performed the action)
+  target_id      : string      (resource affected)
+  resource_name  : string      (human-readable name of affected resource)
+  metadata       : JSON bytes  (action-specific details)
+  ip_address     : string      (source IP of the request)
+  user_agent     : string      (client identifier)
+  timestamp      : int64       (Unix nanoseconds)
+  signature      : bytes       (Ed25519 signature over the entry)
+}
+```
+
+---
+
+## Categories
+
+| Category | Value | Covers |
+| --- | --- | --- |
+| **AUTH** | 1 | Login, logout, failed login, MFA verification, passkey authentication, session creation/expiry |
+| **ENTRY** | 2 | Entry created, updated, deleted, trashed, restored, version created |
+| **TEAM** | 3 | Member invited, joined, removed, role changed, group membership changed |
+| **SHARE** | 4 | Share created (internal/external), accepted, declined, revoked, downloaded, password failed |
+| **ADMIN** | 5 | SMTP configured, server settings changed, emergency access triggered, manual operations |
+| **VAULT** | 6 | Vault created, deleted, ACL changed, folder operations |
+
+---
+
+## Severity Levels
+
+| Level | When Used |
+| --- | --- |
+| **info** | Normal operations — login succeeded, entry created, share accepted |
+| **warning** | Suspicious activity — failed login attempt, share password failed, expired session reuse |
+| **critical** | Security events — emergency access triggered, admin role escalation, passkey revoked |
+
+---
+
+## Tamper Evidence
+
+Each audit entry includes an Ed25519 signature computed over the entry's contents. This provides:
+
+- **Integrity verification** — Any modification to a log entry invalidates its signature.
+- **Non-repudiation** — The signature proves the entry was created by the Argon server, not injected by an attacker with database access.
+- **Chain of trust** — The signing key is derived from the server's CA, tying log integrity to the same root of trust as all other Argon operations.
+
+---
+
+## Querying
+
+Audit logs can be queried with filters:
+
+| Filter | Description |
+| --- | --- |
+| `actor_id` | Actions by a specific user |
+| `target_id` | Actions affecting a specific resource |
+| `actions` | Specific action types (e.g., `["login_failed", "login_success"]`) |
+| `categories` | One or more categories |
+| `start_time` / `end_time` | Time range |
+| `limit` / `offset` | Pagination |
+
+### Example Queries
+
+- "Show all failed login attempts in the last 24 hours" — `categories: [AUTH], actions: ["login_failed"], start_time: now-24h`
+- "Who accessed the AWS vault this week?" — `target_id: <vault_id>, categories: [ENTRY, VAULT], start_time: now-7d`
+- "All admin actions by user X" — `actor_id: <user_id>, categories: [ADMIN]`
+- "External share downloads with failed passwords" — `categories: [SHARE], actions: ["share_password_failed"]`
+
+---
+
+## Retention
+
+Audit log retention is managed by the server. Entries are stored in BoltDB and can be exported for long-term archival. The database file itself can be backed up with standard file copy operations since BoltDB supports consistent snapshots.

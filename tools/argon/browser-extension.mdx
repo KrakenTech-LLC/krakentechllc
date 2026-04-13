@@ -1,0 +1,193 @@
+---
+title: "Browser Extension"
+description: "Argon's Manifest V3 browser extension with inline autofill and credential picker"
+---
+
+# Browser Extension
+
+Argon ships a Manifest V3 browser extension that detects login forms, injects the Argon logo into input fields, and presents an inline credential picker dropdown — all without leaving the page.
+
+---
+
+## How It Works
+
+The extension has three layers:
+
+| Component | File | Purpose |
+| --- | --- | --- |
+| **Content Script** | `content/autofill.js` | Runs on every page. Detects login forms, injects Argon icons, renders the inline dropdown, and fills credentials. |
+| **Service Worker** | `background/service-worker.js` | Manages session state, communicates with the Argon server via gRPC-Web, handles URL matching and credential retrieval. |
+| **Popup** | `popup/popup.html` | Full vault access when the toolbar icon is clicked — login, search, browse credentials, generate passwords. |
+
+---
+
+## Inline Autofill
+
+When the extension detects a login form on a page, it injects the Argon logo at the end of each input field (username and password). Clicking the logo opens an inline dropdown directly below the field — no popup, no redirect.
+
+### Form Detection
+
+The content script identifies login forms through multiple strategies:
+
+1. **Form-based** — Scans all `<form>` elements for `input[type="password"]` fields, then finds the associated username field.
+2. **Standalone** — Detects `input[type="password"]` fields not inside a `<form>` (common in SPAs).
+3. **Autocomplete hints** — Prioritizes fields with `autocomplete="username"`, `autocomplete="email"`, or `autocomplete="new-password"`.
+4. **Heuristic fallback** — Searches by `name`, `id`, and `type` attributes (`email`, `user`, `login`).
+
+### Username Field Priority
+
+When multiple candidate fields exist, the extension picks the best match in order:
+
+```text
+1. input[autocomplete="username"]
+2. input[autocomplete="email"]
+3. input[name="username"]
+4. input[name="email"]
+5. input[name="user"] / input[name="login"]
+6. input[id="username"] / input[id="email"]
+7. input[type="email"]
+8. input[type="text"]  (last resort)
+```
+
+### Icon Injection
+
+Each detected input field gets an Argon logo icon positioned inside the field's right padding:
+
+- The icon uses the `argon.png` logo from the extension's `icons/` directory, loaded via `chrome.runtime.getURL()`.
+- Styled with the Argon purple gradient (`#cb85ff` to `#6c3aff`).
+- Subtle on idle (65% opacity), full brightness on hover.
+- Injected inside a **closed Shadow DOM** to prevent page CSS from interfering and page JS from reading credential data.
+
+### Credential Picker Dropdown
+
+Clicking the icon opens a dropdown below the input field:
+
+```text
+┌──────────────────────────────────┐
+│  🔍 Search Argon...              │
+│──────────────────────────────────│
+│  ┌─┐                             │
+│  │G│  GitHub                     │
+│  └─┘  user@example.com          │
+│  ┌─┐                             │
+│  │G│  GitLab                     │
+│  └─┘  admin@company.com         │
+│──────────────────────────────────│
+│              Argon               │
+└──────────────────────────────────┘
+```
+
+- **URL matching** — Only credentials with a stored URL matching the current page are shown.
+- **Search** — The search input filters by entry name, username, or URL (client-side, no server calls).
+- **Click to fill** — Selecting an item decrypts the credential and fills both username and password fields.
+- **Keyboard navigation** — Arrow keys to move, Enter to select, Escape to close.
+
+### URL Matching
+
+The service worker matches stored credential URLs against the current page:
+
+```text
+Exact match:      github.com == github.com                  ✓
+Subdomain match:  app.github.com matches stored github.com  ✓
+WWW normalization: www.github.com == github.com             ✓
+Different domain:  gitlab.com != github.com                 ✗
+```
+
+Results are sorted with exact hostname matches first, then subdomain matches, then alphabetically by name.
+
+---
+
+## Shadow DOM Isolation
+
+All injected UI (icons and dropdown) lives inside a **closed Shadow DOM**:
+
+- **Page CSS cannot leak in** — The extension's styling is completely isolated from the page.
+- **Extension CSS cannot leak out** — Argon's purple theme doesn't affect the page's appearance.
+- **Page JS cannot read credentials** — Closed shadow roots are inaccessible to `document.querySelector()` or any DOM traversal from the page.
+
+---
+
+## Framework-Aware Filling
+
+Modern web apps use React, Vue, Angular, and other frameworks that don't respond to simple `input.value = "..."` assignments. Argon's fill logic uses the native property setter and dispatches all events frameworks listen for:
+
+```text
+1. Use HTMLInputElement.prototype.value setter (native, bypasses framework getters)
+2. Dispatch: input event (bubbles: true)
+3. Dispatch: change event (bubbles: true)
+4. Dispatch: blur event (bubbles: true)
+```
+
+This triggers React's `onChange`, Vue's `v-model`, Angular's `ngModel`, and any other framework's change detection.
+
+---
+
+## SPA Navigation
+
+Single-page applications change routes without full page reloads. The extension handles this with:
+
+- **MutationObserver** — Watches for DOM changes (new form elements injected) and re-scans with debouncing (200ms).
+- **popstate / hashchange listeners** — Re-scans on SPA route changes.
+- **Dropdown cleanup** — Open dropdowns are closed on navigation to prevent stale UI.
+
+---
+
+## Authentication
+
+The extension authenticates to the Argon server the same way the desktop app does:
+
+### Password Login
+
+1. User enters username and master password in the popup.
+2. Extension sends `GetChallenge(username)` to the server.
+3. Derives `auth_key` from password + salt using Argon2id.
+4. Computes `verifier = SHA-256(auth_key)`, then `proof = HMAC-SHA256(verifier, challenge_nonce)`.
+5. Sends `Login(username, proof, challenge_id)`.
+6. Server verifies proof against stored verifier — returns session token.
+
+### Passkey / YubiKey Login
+
+1. User clicks "Sign in with Passkey" in the popup.
+2. Extension calls `BeginAuthentication(username)` to get WebAuthn options.
+3. Browser prompts for the security key (YubiKey tap, fingerprint, etc.).
+4. Extension sends the signed assertion to `FinishAuthentication`.
+5. Server verifies and returns session token.
+
+### Session Management
+
+- Sessions expire after a configurable timeout (default 15 minutes of inactivity).
+- A `chrome.alarms` timer checks inactivity every minute.
+- On lock, the session token is cleared and the popup shows the login screen.
+
+---
+
+## Popup Features
+
+The toolbar popup provides full vault access when the inline autofill isn't sufficient:
+
+- **Credential search** — Search across all vaults by name or username.
+- **Password generator** — Customizable length, character sets, with copy-to-clipboard.
+- **Settings** — Server URL configuration, options page link.
+- **Lock** — Manual vault lock.
+
+---
+
+## Permissions
+
+| Permission | Purpose |
+| --- | --- |
+| `activeTab` | Access the current tab's URL for credential matching |
+| `storage` | Persist server URL and extension settings |
+| `alarms` | Auto-lock timer |
+| `webRequest` | Detect navigation events for SPA handling |
+| `<all_urls>` (host) | Content script injection on all pages for form detection |
+
+---
+
+## Security Considerations
+
+- **Credentials never stored in extension** — Decrypted usernames and passwords are received from the service worker, passed directly to `fillCredentials()`, and immediately discarded. They are not saved to variables, DOM attributes, local storage, or any persistent state.
+- **Origin-locked fetches** — The dropdown only fetches credentials for `window.location.href`. A malicious page cannot trick the extension into fetching credentials for a different origin.
+- **Closed Shadow DOM** — Page JavaScript cannot access injected elements or read credential data.
+- **textContent only** — All user data (names, usernames, URLs) is rendered via `textContent`, never `innerHTML`. This prevents XSS from malicious entry names.
+- **Content Security Policy** — The extension's CSP restricts script execution to its own bundled files.
