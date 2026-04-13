@@ -182,6 +182,7 @@
               "tools/argon/authentication",
               "tools/argon/emergency-access",
               "tools/argon/audit",
+              "tools/argon/import-export",
               "tools/argon/clients"
             ]
           },

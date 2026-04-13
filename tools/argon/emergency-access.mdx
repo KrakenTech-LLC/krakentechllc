@@ -1,11 +1,11 @@
 ---
-title: "Emergency Access"
-description: "Dead-man switch emergency sharing with escrow key wrapping"
+title: "Emergency Access & Recovery"
+description: "Dead-man switch emergency sharing, recovery keys, and account recovery"
 ---
 
-# Emergency Access
+# Emergency Access & Recovery
 
-Emergency access is a dead-man switch. If a user doesn't log in for a configurable number of days, a designated emergency contact automatically gains access to their vaults.
+Argon provides two distinct safety nets: **emergency access** (a dead-man switch that grants a contact access to your vaults after prolonged inactivity) and **recovery keys** (a personal escape hatch for regaining access when you lose your master password).
 
 ---
 
@@ -96,6 +96,55 @@ The `Confirmed` flag resets whenever any SMTP field is changed, forcing re-verif
 
 ---
 
+## Dormant Escrow Accounts
+
+The escrow account created during emergency setup is a **dormant user** — it has key pairs but no auth verifier, meaning it cannot be logged into directly. Its username follows the pattern `__escrow_{userID}_{random}` and it exists solely to hold the X25519 public key that vault DEKs are wrapped to.
+
+When the emergency triggers, the server updates the escrow account's identity to match the contact's email and issues an invite. The contact registers using the invite, inherits the escrow envelopes, and gains access to the designated vaults.
+
+---
+
+## Recovery Keys
+
+Separate from emergency access, every Argon user has a **recovery key envelope** — a personal backup mechanism for regaining access when the master password is lost.
+
+### How Recovery Keys Work
+
+```text
+Registration:
+  1. Client generates recovery_key (256-bit random)
+  2. Client encrypts user's private keys with recovery_key
+  3. Encrypted blob stored as RecoveryKeyEnvelope on the UserRecord
+  4. Plaintext recovery key shown to the user ONCE (they must write it down)
+
+Recovery:
+  1. User provides recovery_key (the string they wrote down)
+  2. Client decrypts RecoveryKeyEnvelope → recovers private keys
+  3. User sets a new master password
+  4. Client re-encrypts private keys with new password-derived encryption_key
+  5. Client updates auth_verifier on the server
+  6. Recovery key envelope is regenerated (new recovery key issued)
+```
+
+### Key Properties
+
+- The recovery key is shown exactly **once** during registration. Argon does not store it.
+- The recovery key envelope is stored on the server as an opaque encrypted blob — the server cannot decrypt it.
+- Using a recovery key invalidates the old one and generates a new one (preventing reuse after compromise).
+- Recovery keys are independent of emergency access — they let the **same user** recover their own account, not grant access to someone else.
+
+### Recovery Key vs Emergency Access
+
+| | Recovery Key | Emergency Access |
+| --- | --- | --- |
+| **Who uses it** | The account owner | A designated contact |
+| **When** | Master password forgotten | Owner inactive for N days |
+| **Trigger** | Manual (user provides key) | Automatic (dead-man switch) |
+| **Result** | User regains access, sets new password | Contact gains read access to designated vaults |
+| **Key storage** | User's own backup (paper, safe) | Escrow envelopes on server |
+
+---
+
 ## Audit Trail
 
 | Event | Logged |
@@ -106,3 +155,5 @@ The `Confirmed` flag resets whenever any SMTP field is changed, forcing re-verif
 | Emergency triggered (automatic) | User ID, contact email, inactivity duration |
 | Emergency triggered (manual) | Triggering admin, target user |
 | Emergency invite accepted | Contact registration |
+| Recovery key used | User ID, IP address |
+| Password changed via recovery | User ID |

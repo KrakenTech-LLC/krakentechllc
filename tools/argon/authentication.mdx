@@ -137,26 +137,51 @@ Argon supports TOTP (Time-based One-Time Password) as a second factor alongside 
 
 ### Setup
 
-1. User enables MFA in their profile settings.
-2. Argon generates a random TOTP secret and displays it as a QR code.
-3. User scans the QR code with an authenticator app (Google Authenticator, Authy, 1Password, etc.).
-4. User enters the current 6-digit code to confirm setup.
-5. Argon generates and displays backup codes for account recovery.
+1. User enables MFA from their security settings.
+2. Server generates a 160-bit (20-byte) random TOTP secret and stores it as `MFAPendingSecret` (not yet active).
+3. Server returns the base32-encoded secret, the `otpauth://` URI, and a 256x256 QR code PNG.
+4. User scans the QR code with an authenticator app (Google Authenticator, Authy, 1Password, etc.).
+5. User enters the current 6-digit code to confirm setup.
+6. Server verifies the code against `MFAPendingSecret`, then promotes it to `MFASecret` and sets `MFAEnabled = true`.
+7. Server generates 8 one-time backup codes and returns them. Plaintext codes are shown **once** — the server stores only their SHA-256 hashes.
+
+### TOTP Parameters
+
+| Parameter | Value |
+| --- | --- |
+| **Algorithm** | HMAC-SHA1 (RFC 6238) |
+| **Digits** | 6 |
+| **Period** | 30 seconds |
+| **Window** | +/- 1 period (accepts codes from 30s ago through 30s ahead) |
+| **Issuer** | `KrakenTech` |
+| **Label** | `Argon:{username}` |
 
 ### Login with MFA
 
-After successful password authentication, if MFA is enabled, the server requires a TOTP code before issuing a session token. The flow adds one additional round trip:
+After successful password authentication, if MFA is enabled, the server requires a TOTP code before issuing a session token. The `totp_code` field is included in the `LoginRequest`:
 
 ```text
-Password login succeeds → Server returns "mfa_required" instead of session token
+Password login succeeds → Server checks MFAEnabled
+  → If no totp_code provided: return MFARequired = true (no session token)
   → Client prompts for TOTP code
-  → Client sends code to VerifyMFA endpoint
-  → Server validates code → Session token issued
+  → Client resubmits login with totp_code
+  → Server validates TOTP code (or backup code as fallback)
+  → Session token issued
 ```
 
 ### Backup Codes
 
-On MFA setup, Argon generates one-time backup codes. Each code can be used exactly once in place of a TOTP code (for when the authenticator device is lost). Backup codes are hashed and stored server-side — the plaintext is shown only once during setup.
+On MFA setup, Argon generates 8 one-time backup codes:
+
+- Character set: `ABCDEFGHJKLMNPQRSTUVWXYZ23456789` (32 characters, excluding ambiguous `I`, `O`, `1`, `0`)
+- Length: 8 characters each
+- Storage: SHA-256 hashed (server never stores plaintext)
+- Usage: Each code can be used exactly once in place of a TOTP code
+- Consumed codes are removed from the stored hash list via constant-time comparison
+
+### Disabling MFA
+
+Disabling MFA requires a valid TOTP code from the currently active secret. This prevents an attacker with a stolen session from stripping MFA. On disable, `MFASecret`, `MFAPendingSecret`, and `MFABackupCodes` are all cleared.
 
 ---
 

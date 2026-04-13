@@ -1,0 +1,154 @@
+---
+title: "Import & Export"
+description: "Import from 10 password managers with automatic deduplication, export to multiple formats"
+---
+
+# Import & Export
+
+Argon imports credentials from 10 password managers and browsers with automatic format detection and deduplication. Exports are available in Argon's native format and Bitwarden-compatible format.
+
+---
+
+## Supported Import Formats
+
+| Source | File Type | Detected By |
+| --- | --- | --- |
+| **1Password** | `.1pux` or `.zip` (containing `export.data`) | File extension + ZIP contents |
+| **Bitwarden** | `.json` or `.csv` | JSON structure (`items` + `folders` keys) or CSV header (`login_uri`) |
+| **LastPass** | `.csv` | CSV header (`grouping`) |
+| **NordPass** | `.csv` | CSV header (`cardholdername`) |
+| **Dashlane** | `.zip` (containing `credentials.csv`) | ZIP contents |
+| **KeePass** | `.xml` | XML root element (`<KeePassFile>`) |
+| **Chrome** | `.csv` | CSV headers (`name`, `url`, `username`, `password`) |
+| **Firefox** | `.csv` | CSV header (`httprealm`) |
+| **Apple / Safari** | `.csv` | CSV header (`otpauth`) |
+
+### Auto-Detection
+
+Set the format to "Auto" and Argon will examine the file extension, internal structure, and CSV headers to determine the source format automatically. The detection logic:
+
+1. `.1pux` extension → 1Password
+2. `.zip` → inspect contents for `export.data` (1Password) or `credentials.csv` (Dashlane)
+3. `.xml` → check for `<KeePassFile>` root element (KeePass)
+4. `.json` → check for `items` + `folders` keys (Bitwarden)
+5. `.csv` → inspect header row to identify the source by unique column names
+
+---
+
+## Import Flow
+
+1. **Select format** — Choose the source password manager or "Auto" for detection.
+2. **Select file** — File picker filtered to `.csv`, `.json`, `.xml`, `.zip`, `.1pux`.
+3. **Preview** — Argon parses the file and displays a table of entries that will be imported: title, URL, username, type, folder, and whether TOTP is present.
+4. **Select target vault** — Choose which vault to import into.
+5. **Import** — Argon encrypts each entry client-side and creates it in the vault.
+
+---
+
+## Automatic Deduplication
+
+Argon automatically skips entries that already exist in the target vault. Before importing, it loads and decrypts all existing entries in the vault and builds a fingerprint index. Each imported entry is checked against this index — duplicates are skipped silently and counted in the result.
+
+### Fingerprint Matching
+
+Deduplication uses type-specific fingerprints with normalized (lowercased, trimmed) fields:
+
+| Entry Type | Fingerprint Fields | Example |
+| --- | --- | --- |
+| **Login** | Title + URL hostname + Username | `"login\|github.com\|user@example.com"` matches regardless of URL path or protocol differences |
+| **Card** | Title + Card Number | `"card\|visa corporate\|4111111111111111"` |
+| **Note** | Title | `"note\|deployment checklist"` |
+| **Identity** | Title | `"identity\|john doe"` |
+
+### URL Normalization
+
+URLs are normalized before comparison:
+
+- Protocol stripped (`https://` and `http://` are equivalent)
+- `www.` prefix stripped (`www.github.com` equals `github.com`)
+- Hostname extracted (path, query, and fragment are ignored)
+- Case-insensitive
+
+This means `https://www.GitHub.com/login` and `http://github.com/settings` are considered the same URL for dedup purposes.
+
+### Batch Dedup
+
+Deduplication also works within the import batch itself. If the import file contains the same entry twice, only the first occurrence is imported. The fingerprint index is updated after each successful import so subsequent rows in the same file are caught.
+
+### What Dedup Does NOT Do
+
+- **Does not merge** — If an existing entry has the same title/URL/username but a different password, the import is still skipped. Argon does not overwrite existing credentials.
+- **Does not compare passwords** — Only metadata fields are used for matching, never the password itself.
+- **Does not cross vaults** — Dedup only checks the target vault, not other vaults the user has access to.
+
+---
+
+## Imported Data
+
+Each imported entry is mapped to Argon's internal schema:
+
+| Imported Field | Argon Field | Notes |
+| --- | --- | --- |
+| Title / Name | `title` | Falls back to URL hostname if missing |
+| URL | `url` | Preserved as-is |
+| Username | `username` | Trimmed |
+| Password | `password` | Stored encrypted, never logged |
+| Notes | `notes` | Preserved as-is |
+| TOTP / OTP | `totp_secret` | Normalized (`otpauth://` URIs preserved, bare secrets kept) |
+| Folder / Group | Folder hierarchy | Folders are created in the target vault if they don't exist |
+| Tags / Labels | `tags` | Deduplicated |
+| Card fields | `card_number`, `card_expiry`, `card_cvv`, `card_holder` | Mapped from source-specific field names |
+| Custom fields | `custom` | Preserved as key-value pairs |
+
+### Entry Type Mapping
+
+| Source Type | Argon Type |
+| --- | --- |
+| Login, Password, Web Form | `ENTRY_TYPE_LOGIN` |
+| Secure Note, Note | `ENTRY_TYPE_NOTE` |
+| Credit Card, Payment | `ENTRY_TYPE_CARD` |
+| Identity, Personal Info | `ENTRY_TYPE_IDENTITY` |
+| OTP, Authenticator | `ENTRY_TYPE_OTP` |
+
+---
+
+## Folder Preservation
+
+Import preserves the folder hierarchy from the source. Nested folders are created recursively:
+
+```text
+Source: "Work/AWS/Production"
+
+Creates:
+  Work/               (folder in target vault)
+  Work/AWS/           (subfolder)
+  Work/AWS/Production (subfolder)
+
+Entry placed in: Work/AWS/Production
+```
+
+If a folder with the same name already exists at the same level, the import reuses it rather than creating a duplicate.
+
+---
+
+## Export
+
+Argon exports vault contents in four formats:
+
+| Format | File Type | Description |
+| --- | --- | --- |
+| **Argon CSV** | `.csv` | Generic CSV with all fields |
+| **Argon JSON** | `.json` | Full JSON export with all fields and custom data |
+| **Bitwarden CSV** | `.csv` | Compatible with Bitwarden's import format |
+| **Bitwarden JSON** | `.json` | Compatible with Bitwarden's JSON import |
+
+### Export Flow
+
+1. Select the vault to export.
+2. Choose the export format.
+3. Choose the output file location.
+4. Argon decrypts all entries client-side and writes them to the file.
+
+### Security Warning
+
+Exported files contain **unencrypted passwords in plaintext**. The export dialog displays a warning before proceeding. Treat exported files as highly sensitive — delete them after use and never store them in unencrypted locations.
