@@ -5,6 +5,10 @@ description: "Argon — Self-Hosted Zero-Knowledge Team Password Manager"
 
 # Argon — Self-Hosted Zero-Knowledge Team Password Manager
 
+<Frame>
+  ![Rgon](/images/rgon.png)
+</Frame>
+
 Argon is a self-hosted, end-to-end encrypted password manager built for teams that refuse to trust a third party with their secrets. Every credential is encrypted client-side before it ever touches the wire. The server stores ciphertext it cannot decrypt — not during transit, not at rest, not ever.
 
 **Single binary. BoltDB storage. mTLS transport. Zero knowledge.**
@@ -122,7 +126,7 @@ On first launch, Argon initializes its Certificate Authority, generates the serv
                 Desktop App                    Browser Extension
                 (Wails v2)                     (Manifest V3)
                     |                               |
-                    | mTLS (port 50051)              | TLS (port 50052)
+                    | mTLS (port 50051)             | TLS (port 50052)
                     |                               |
                     v                               v
             +----------------------------------------------+
@@ -141,12 +145,12 @@ On first launch, Argon initializes its Certificate Authority, generates the serv
             |  |  Service  |  |  Service |  |  Service |   |
             |  +-----------+  +----------+  +----------+   |
             |                                              |
-            |  +------------------------------------------+|
-            |  |        Built-in Certificate Authority     ||
-            |  +------------------------------------------+|
-            |  +------------------------------------------+|
-            |  |           BoltDB (bbolt)                  ||
-            |  +------------------------------------------+|
+            |  +-----------------------------------------+ |
+            |  |        Built-in Certificate Authority   | |
+            |  +-----------------------------------------+ |
+            |  +-----------------------------------------+ |
+            |  |           BoltDB (bbolt)                | |
+            |  +-----------------------------------------+ |
             +----------------------------------------------+
 ```
 
@@ -155,10 +159,10 @@ On first launch, Argon initializes its Certificate Authority, generates the serv
 | Component | Technology | Purpose |
 | --- | --- | --- |
 | **Server** | Go, gRPC, BoltDB | All business logic, encrypted storage, certificate management |
-| **Desktop App** | Wails v2 (Go + vanilla JS) | Native app, all crypto operations happen here |
+| **Desktop App** | Wails v2 (Go \+ vanilla JS) | Native app, all crypto operations happen here |
 | **Browser Extension** | Manifest V3, vanilla JS | Autofill, inline credential picker, passkey auth |
 | **CLI** | Go | Server administration, user management, backup/restore |
-| **Transport** | mTLS (gRPC) + TLS (gRPC-Web) | Mutual authentication on desktop, TLS on browser |
+| **Transport** | mTLS (gRPC) \+ TLS (gRPC-Web) | Mutual authentication on desktop, TLS on browser |
 
 ### Dependencies
 
