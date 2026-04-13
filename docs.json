@@ -183,6 +183,7 @@
               "tools/argon/emergency-access",
               "tools/argon/audit",
               "tools/argon/import-export",
+              "tools/argon/ssh-agent",
               "tools/argon/clients"
             ]
           },

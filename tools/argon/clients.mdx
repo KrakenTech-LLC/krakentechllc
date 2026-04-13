@@ -22,6 +22,8 @@ The primary Argon client, built with **Wails v2** (Go backend + vanilla JS front
 - Team management — invite members, assign roles, create groups
 - Emergency access configuration
 - File sharing (internal and external magic links)
+- SSH key management — generate Ed25519/RSA keys, store in vault, copy public keys
+- Built-in SSH agent (`~/.argon/agent.sock`) — serves vault keys to `ssh`, `git`, `scp` via the standard agent protocol
 - FIDO2/WebAuthn passkey registration and management
 - MFA setup with QR code and backup codes
 - Real-time sync via server-sent events
@@ -145,6 +147,7 @@ Mobile apps will connect to the Argon server via gRPC-Web (same as the browser e
 | **Passkey auth** | Yes | Yes | No | Yes |
 | **File sharing** | Yes | No | No | Yes |
 | **Admin settings** | Yes | No | Yes | No |
+| **SSH Agent** | Yes | No | No | No |
 | **Audit logs** | Yes | No | Yes (export) | No |
 | **Offline access** | No | No | No | Yes (cached) |
 | **Biometric unlock** | No | No | No | Yes |

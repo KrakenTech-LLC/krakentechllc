@@ -1,0 +1,203 @@
+---
+title: "SSH Agent"
+description: "Store SSH keys in your vault and use them with any SSH client via the built-in SSH agent"
+---
+
+# SSH Agent
+
+Argon includes a built-in SSH agent that serves keys stored in your vault to any SSH client. Private keys are encrypted at rest with envelope encryption — they only exist in memory for the instant a signing operation occurs, then are wiped.
+
+---
+
+## How It Works
+
+Argon implements the [SSH agent protocol](https://datatracker.ietf.org/doc/html/draft-miller-ssh-agent) (the same protocol used by `ssh-agent`) over a Unix domain socket. When you start the Argon desktop app, the agent starts listening automatically.
+
+```text
+ssh / git / scp                      Argon Desktop App
+     |                                      |
+     |--- connect to agent.sock ----------->|
+     |                                      |
+     |--- REQUEST_IDENTITIES (msg 11) ----->|
+     |                                      |  Load SSH key entries from vault
+     |                                      |  Return public keys
+     |<-- public key list ------------------|
+     |                                      |
+     |--- SIGN_REQUEST (msg 13) ----------->|
+     |                                      |  Decrypt private key in memory
+     |                                      |  Sign challenge
+     |                                      |  Wipe private key from memory
+     |<-- signature ------------------------|
+```
+
+The agent implements only the read-only subset of the protocol:
+
+| Message | ID | Supported | Description |
+| --- | --- | --- | --- |
+| `REQUEST_IDENTITIES` | 11 | Yes | Returns public keys from your vault |
+| `SIGN_REQUEST` | 13 | Yes | Signs a challenge with the matching private key |
+| `ADD_IDENTITY` | 17 | No | Rejected — use Argon vault to manage keys |
+| `REMOVE_IDENTITY` | 18 | No | Rejected — use Argon vault to manage keys |
+| `LOCK` / `UNLOCK` | 22/23 | No | Rejected — lock/unlock the Argon vault instead |
+
+---
+
+## Setup
+
+### 1. Set the environment variable
+
+Point your shell's `SSH_AUTH_SOCK` to the Argon agent socket:
+
+```bash
+export SSH_AUTH_SOCK=~/.argon/agent.sock
+```
+
+Add this to your `~/.bashrc`, `~/.zshrc`, or equivalent to make it permanent.
+
+### 2. Verify the agent is running
+
+```bash
+ssh-add -l
+```
+
+This should list the public keys stored in your Argon vault. If Argon is locked or not running, you'll see an error.
+
+### 3. Connect to a server
+
+```bash
+ssh user@server.example.com
+```
+
+The SSH client will request identities from the Argon agent, and Argon will sign the authentication challenge using the matching key from your vault.
+
+---
+
+## Key Management
+
+SSH keys are stored as vault entries with the type **SSH Key**. Each entry contains:
+
+| Field | Description |
+| --- | --- |
+| **Name** | User-friendly label (e.g., "Production Bastion", "GitHub Deploy Key") |
+| **Key Type** | `ed25519` or `rsa` |
+| **Private Key** | PEM-encoded private key (encrypted in vault, never on disk) |
+| **Public Key** | OpenSSH `authorized_keys` format |
+| **Fingerprint** | SHA-256 fingerprint for identification |
+
+### Generate a new key
+
+1. Open the Argon desktop app.
+2. Click the **+** button next to **SSH Keys** in the sidebar (or use the item drawer and select the **SSH Key** tab).
+3. Choose a key type:
+   - **Ed25519** (recommended) — fast, small keys, modern standard.
+   - **RSA (4096-bit)** — broad compatibility with older systems.
+4. Click **Generate Key Pair**.
+5. Copy the public key and add it to your server's `~/.ssh/authorized_keys`.
+6. Give the key a name and click **Create Item**.
+
+### Import an existing key
+
+1. Open the **SSH Key** tab in the item drawer.
+2. Expand **Import existing key**.
+3. Paste the PEM private key and the public key.
+4. Click **Create Item**.
+
+The private key is encrypted client-side before it touches the wire — the server stores only ciphertext.
+
+### View and copy public keys
+
+Select any SSH key entry in the vault to see its public key, fingerprint, and key type. Click **Copy Public Key** to copy the `authorized_keys` line to your clipboard.
+
+---
+
+## Supported Key Types
+
+| Type | Algorithm | Key Size | Description |
+| --- | --- | --- | --- |
+| **Ed25519** | EdDSA (Curve25519) | 256-bit | Recommended. Fast, small, constant-time. Supported by OpenSSH 6.5+ |
+| **RSA** | RSASSA-PKCS1-v1.5 | 4096-bit | Legacy compatibility. Larger keys, slower operations |
+
+### Signature Algorithm Support
+
+The agent supports algorithm negotiation for RSA keys:
+
+| Flag | Algorithm | When Used |
+| --- | --- | --- |
+| (default) | `ssh-rsa` (SHA-1) | Legacy servers |
+| `rsa-sha2-256` | RSA with SHA-256 | Modern servers (OpenSSH 7.2+) |
+| `rsa-sha2-512` | RSA with SHA-512 | Modern servers (OpenSSH 7.2+) |
+
+Ed25519 keys always use their native `ssh-ed25519` algorithm.
+
+---
+
+## Git Commit Signing
+
+You can use Argon SSH keys to sign Git commits:
+
+```bash
+# Tell Git to use SSH for signing
+git config --global gpg.format ssh
+
+# Set your signing key (use the public key from Argon)
+git config --global user.signingkey "ssh-ed25519 AAAA..."
+
+# Enable commit signing
+git config --global commit.gpgsign true
+```
+
+Git will use the Argon agent (via `SSH_AUTH_SOCK`) to sign commits. The private key never leaves the vault.
+
+---
+
+## Security Model
+
+| Property | Description |
+| --- | --- |
+| **Private key storage** | Encrypted in the vault with envelope encryption (X25519 + XChaCha20-Poly1305). Never written to disk in plaintext |
+| **Key in memory** | Decrypted only for the duration of a signing operation, then discarded |
+| **Socket permissions** | `~/.argon/agent.sock` is created with `0600` permissions (owner-only read/write) |
+| **Vault lock** | When the vault is locked, the agent returns an error for all requests — no keys are accessible |
+| **No key extraction** | The agent does not support `ADD_IDENTITY` or key export — private keys can only be managed through the Argon vault UI |
+| **Transport** | Unix domain socket — no network exposure. Only processes running as the same user can connect |
+
+### Comparison with `ssh-agent`
+
+| | `ssh-agent` | Argon SSH Agent |
+| --- | --- | --- |
+| **Key storage** | Plaintext in memory for session lifetime | Encrypted in vault, decrypted per-operation |
+| **Key on disk** | `~/.ssh/id_*` files (often unencrypted) | Never — vault only |
+| **Access control** | Any process as same user | Same, plus vault must be unlocked |
+| **Key management** | Manual file management | GUI with generation, import, organization |
+| **Team sharing** | Copy files around | Share via vault ACLs with envelope encryption |
+| **Audit** | None | Full audit log of key creation and usage |
+
+---
+
+## Socket Path
+
+| Platform | Default Path |
+| --- | --- |
+| **macOS / Linux** | `~/.argon/agent.sock` |
+
+The socket is created when the Argon desktop app starts and removed when it shuts down. If a stale socket exists from a previous crash, Argon removes it automatically on startup.
+
+---
+
+## Troubleshooting
+
+### "agent refused operation" or "no keys"
+
+- Ensure the Argon desktop app is running and unlocked.
+- Verify `SSH_AUTH_SOCK` points to `~/.argon/agent.sock`.
+- Check that you have at least one SSH key entry in your vault.
+
+### "permission denied" on the socket
+
+- The socket is created with `0600` permissions. Ensure you're running SSH as the same user that started Argon.
+
+### Key not offered to server
+
+- Run `ssh-add -l` to list keys the agent is serving.
+- Ensure the public key is in the server's `authorized_keys` file.
+- If using RSA, ensure the server supports the key size (some older servers reject 4096-bit keys).
