@@ -675,6 +675,41 @@ The `jobs`  subcommand encompasses the distributed KCat hash cracking system inc
 
     The `get` subcommand can be used to get the status and configuration of a specific job by its `id` .
 
+    The table always includes the persisted fields:
+
+    | Field         | Source                                                      |
+    | ------------- | ----------------------------------------------------------- |
+    | `ID`          | Job ID                                                      |
+    | `NAME`        | Job name                                                    |
+    | `DESCRIPTION` | Job description                                             |
+    | `STATUS`      | Persisted KCAT status (PENDING / RUNNING / COMPLETED / ...) |
+    | `CREATED`     | Created at                                                  |
+    | `UPDATED`     | Updated at                                                  |
+    | `RESULTS`     | Results summary                                             |
+    | `WORKER`      | Last Tentacle instrument that worked the batch              |
+    | `CRACKED`     | Persisted cracked count                                     |
+    | `REMAINING`   | Persisted remaining count                                   |
+
+    ### Live Hashcat Fields
+
+    When a Tentacle worker is currently running the batch for this job, the table also appends live hashcat snapshot fields forwarded by the worker every 5 seconds (see [krkns → Live Job Status](/tools/Krkn/krkns#live-job-status)). These rows are absent for jobs that haven't started yet or have already finished:
+
+    | Field                 | hashcat source field (`kcat.Status`)             |
+    | --------------------- | ------------------------------------------------ |
+    | `LIVE PROGRESS`       | `Progress` — `X/Y (Z%)`                          |
+    | `LIVE RECOVERED`      | `Recovered` — `X/Y (Z%) Digests, X/Y (Z%) Salts` |
+    | `LIVE RECOVERED #`    | Numeric cracked count parsed from `Recovered`    |
+    | `LIVE TIME STARTED`   | `TimeStarted` (absolute)                         |
+    | `LIVE TIME ESTIMATED` | `TimeEstimated` (absolute)                       |
+    | `LIVE TIME REMAINING` | `TimeEstimatedRelative` (e.g. "3 hours, 12 mins")|
+    | `LIVE SPEED`          | `TotalSpeed` — aggregate H/s across all devices  |
+    | `LIVE SESSION`        | hashcat session name                             |
+    | `LIVE SNAPSHOT AT`    | RFC3339 timestamp the snapshot was captured      |
+
+    <Tip>
+      Because the snapshot is cached in-memory on krkns, the overhead of `get` remains a single RPC — no extra round-trips to the worker. Running `krknc job get <id>` repeatedly against a job in progress will show the progress advance every few seconds.
+    </Tip>
+
     ![Job Get](/job_get.png)
   </Accordion>
   <Accordion title="List">
@@ -682,6 +717,10 @@ The `jobs`  subcommand encompasses the distributed KCat hash cracking system inc
       Required Privileges: **Job Owner, Admin**
     </Note>
     The `list` subcommand can be used to list jobs and their status'.
+
+    <Info>
+      For any job in the list that is currently being cracked by a Tentacle worker, the response includes the same live hashcat snapshot fields as `job get` (progress, recovered count, time started, time remaining, total speed, ...). The snapshot comes from the krkns in-memory cache so listing all jobs still takes one round-trip regardless of how many are running.
+    </Info>
 
     ![Job List](/job_list.png)
   </Accordion>

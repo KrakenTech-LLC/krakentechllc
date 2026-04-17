@@ -83,3 +83,59 @@ When the server is ready and listening on the TSNet you will not see it in ss or
 # Dead Instrument Removal
 
 ![Krkn 6](/images/Krkn-_6.png)
+
+# GPU-Aware Scheduling
+
+When more than one Tentacle worker is polling for work at the same time, the krkns conductor does not simply hand out batches in FIFO order. It looks at each worker's published GPU capability score (see [Tentacle → GPU Capability Scoring](/tools/Krkn/tentacle)) and matches it against the **kind** of hash each queued batch is targeting:
+
+- **Slow hashes** (bcrypt, scrypt, DCC2, Argon2, ...) → prefer the highest-scoring host
+- **Fast hashes** (NTLM, MD5, SHA1, ...) → prefer the lowest-scoring host
+
+The classification is made via `hashkat.Mode.IsFastHash()` against the batch's hash type, so the routing is fully data-driven from the existing Hashkat mode tables — no separate config file to maintain.
+
+## Routing Rules
+
+Selection happens every time a worker polls the conductor for new work. The rules are intentionally a **soft preference**, never a hard lock:
+
+| Polling worker  | Queue contents      | Strong peer state         | Result                                                            |
+| --------------- | ------------------- | ------------------------- | ----------------------------------------------------------------- |
+| weak            | slow only           | n/a                       | weak takes the slow batch (no other choice)                       |
+| weak            | fast only           | n/a                       | weak takes the fast batch (no other choice)                       |
+| weak            | slow + fast         | strong peer **idle**      | weak takes fast, slow waits for the strong peer's next poll       |
+| weak            | slow + fast         | strong peer **busy**      | weak takes the slow batch — don't park work for someone who can't grab it |
+| weak            | slow + fast         | no strong peer registered | weak takes the slow batch                                         |
+| strong          | anything            | n/a                       | strong takes a slow batch first if any exist, else a fast one     |
+| any             | unclassifiable meta | n/a                       | falls back to FIFO                                                |
+| any             | empty               | n/a                       | nothing assigned this poll                                        |
+
+<Note>
+  "Strong peer exists" only counts peers that have **spare capacity right now** (`ActiveLeases < Capacity`). A strong-but-busy worker does NOT cause the conductor to hold slow work back, otherwise the slow batch would sit in the queue waiting for someone who physically can't take it on their next poll.
+</Note>
+
+<Tip>
+  No worker is ever left idle. If the queue has any unleased candidate, the polling worker gets something — the score only affects *which* item it gets, never *whether* it gets one.
+</Tip>
+
+## Single-Worker Behavior
+
+When only one Tentacle worker is registered the score system has nothing to compare against, so every batch goes to that worker in FIFO order. The scoring layer is invisible until you scale out to two or more workers with meaningfully different GPUs.
+
+# Live Job Status
+
+The krkns conductor maintains an in-memory cache of the most recent hashcat status snapshot for every running batch. Snapshots arrive over the Orchestra `ReportUpdate` RPC — every Tentacle worker samples its `kcat.Hashcat.GetStatus()` every 5 seconds and forwards the result.
+
+Cached fields per batch:
+
+- Session, time started, time estimated (absolute + relative)
+- Progress (`X/Y (Z%)`) and recovered (`X/Y (Z%) Digests, X/Y (Z%) Salts`)
+- Numeric recovered count
+- Total hashes/sec
+- Reporting instrument ID and snapshot timestamp
+
+The cache is keyed on `batch_id` (the orchestra `work_id` minus the `batch-` prefix, which matches the `jobs.batch_id` column in the database) and is **purged** the moment a batch completes or fails — successful or otherwise — so it never grows beyond what is currently running.
+
+Live fields are merged into the response of every `kcat.GetJob` and `kcat.ListJobs` call, which means clients see live progress without making extra round-trips. The krknc CLI surfaces these in `krknc job get` and `krknc job list`. See [krknc → Jobs](/tools/Krkn/krknc#jobs) for the table layout.
+
+<Info>
+  Live status is **not** persisted to the SQLite database. Status snapshots arrive every 5 seconds while a job is running and writing them to disk would dominate I/O for no benefit — the historical record on disk only captures what is needed to resume work after a server restart, while the in-memory cache covers the realtime UI.
+</Info>
