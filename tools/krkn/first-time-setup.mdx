@@ -5,11 +5,11 @@ description: "Installing your krkns"
 
 ## Aliasing and configuration setup
 
-To start, use the krkns install command to create global aliases and initialize the directories for the configurations.
+To start, use the krkns install command to create global aliases, enumerate environment variables and initialize the directories for the configurations.
 
 ![Image](/images/image.png)
 
-Optionally, if you would like to install Krkns as a service, you can now run the `service install` command.
+Optionally, if you would like to install Krkns as a service, you can now run the `service install` command. If the environment variables for `KRKN_DATA` or `TS_AUTHKEY` are set, thjis will add them to the service file defined. Otherwise you will need to define them after.
 
 <Frame>
   ![Image](/images/image.png)
