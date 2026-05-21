@@ -34,18 +34,18 @@ Tentacle workers are designed to run on GPU-enabled Linux systems and process pa
 Tentacle supports all standard Hashcat Attack Modes:
 
 - **Dictionary Attack (mode 0)**: Wordlist-based attack
-- **Rule-based Attack (mode 0 + rules)**: Wordlist with transformation rules
+- **Rule-based Attack (mode 0 \+ rules)**: Wordlist with transformation rules
 - **Brute Force (mode 3)**: Mask-based exhaustive attack
-- **Hybrid Wordlist + Mask (mode 6)**: Append mask patterns to wordlist entries
-- **Hybrid Mask + Wordlist (mode 7)**: Prepend mask patterns to wordlist entries
+- **Hybrid Wordlist \+ Mask (mode 6)**: Append mask patterns to wordlist entries
+- **Hybrid Mask \+ Wordlist (mode 7)**: Prepend mask patterns to wordlist entries
 
 # Prerequisites
 
 ## Hardware Requirements
 
 - **GPU**: NVIDIA GPU with CUDA support (tested with all major versions of CUDA 12-13)
-- **RAM**: Minimum 8GB (16GB+ recommended for large wordlists)
-- **Storage**: 500GB+ for hash database, wordlists, rules and temporary files. (TiB+ for large databases)
+- **RAM**: Minimum 8GB (16GB\+ recommended for large wordlists)
+- **Storage**: 500GB\+ for hash database, wordlists, rules and temporary files. (TiB\+ for large databases)
 - **Network**: Stable connection to Krkn server
 
 ## Software Requirements
@@ -91,14 +91,15 @@ Tentacle is distributed as a prebuilt, GPU-enabled container. You do not need to
     <Info>
       Important: Supported Platforms:
 
-      - **OS**: Debian 12/13, Ubuntu 22.04+, or equivalent
+      - **OS**: Debian 12/13, Ubuntu 22.04\+, or equivalent
       - **GPU**: NVIDIA GPU with CUDA support
       - **Driver**: NVIDIA driver installed and working (`nvidia smi` must work)
     </Info>
+
     On the worker host, run:
 
     ```bash
-    curl -fsSL https://hub.krkn.tech/KrknCLI/Tentacle/raw/branch/main/install.sh | sudo bash
+    curl -fsSL https://hub.krkn.tech/KrakenTech/Scripts/raw/branch/main/tentacle.sh | sudo bash
     ```
 
     Or, if you prefer:
@@ -121,14 +122,12 @@ Tentacle is distributed as a prebuilt, GPU-enabled container. You do not need to
     - Registry credentials (required)
       - Used to authenticate to `hub.krkn.tech` and pull the Tentacle image.
     - Orchestrator Address (required)
-
       <Note>
         The port :65535 will be appended if not supplied
-
-        The hostname should be the primary hostname, not the -krkn one. 
+        The hostname should be the primary hostname, not the -krkn one.
       </Note>
       - Tailscale
-        - `ts_hostname` # Note this is _not_ the \``` krkn` ``host
+        - `ts_hostname` # Note this is _not_ the \``krkn``host
       - Else
         - `192.168.56.2:65535` # Default port is 65535
     - Worker ID (optional)
@@ -190,20 +189,20 @@ Files are downloaded on-demand and cached in `/tmp/tentacle`:
 
 ## GPU Capability Scoring
 
-When a Tentacle worker starts, it runs `nvidia-smi --query-gpu=name --format=csv,noheader` to enumerate every visible NVIDIA GPU on the host. Each detected model name is looked up in an embedded GPU database (HashKat `v2/gpuscore`) which carries roughly 80 NVIDIA cards from Kepler through Blackwell along with their CUDA core count, VRAM, memory bandwidth, and a 1‑10 *slow-hash suitability score*:
+When a Tentacle worker starts, it runs `nvidia-smi --query-gpu=name --format=csv,noheader` to enumerate every visible NVIDIA GPU on the host. Each detected model name is looked up in an embedded GPU database (HashKat `v2/gpuscore`) which carries roughly 80 NVIDIA cards from Kepler through Blackwell along with their CUDA core count, VRAM, memory bandwidth, and a 1‑10 _slow-hash suitability score_:
 
 - **10** = excellent at slow / memory-hard hashes (bcrypt, scrypt, DCC2, Argon2). Top-tier datacenter cards (H200, B200, GB200) and top consumer cards (RTX 5090, 4090) live here.
 - **1** = strictly fast-hash material only (NTLM, MD5, SHA1). Older / low-VRAM cards (GTX 1050, 970, K80) live here.
 
-The host's *total score* is the sum of the per-GPU scores (capped at 100), and is published to the krkns conductor as instrument labels on every heartbeat:
+The host's _total score_ is the sum of the per-GPU scores (capped at 100), and is published to the krkns conductor as instrument labels on every heartbeat:
 
-| Label                  | Description                                                      |
-| ---------------------- | ---------------------------------------------------------------- |
-| `kraken_score_total`   | Aggregate slow-hash score for the host                           |
-| `kraken_gpu_count`     | Number of GPUs detected via `nvidia-smi`                         |
-| `kraken_gpu_models`    | Semicolon-separated canonical model names                        |
-| `kraken_gpu_details`   | Compact `model:score,...` breakdown                              |
-| `kraken_gpu_unknown`   | GPU names that didn't match any database entry (still scored as 3) |
+| Label | Description |
+| --- | --- |
+| `kraken_score_total` | Aggregate slow-hash score for the host |
+| `kraken_gpu_count` | Number of GPUs detected via `nvidia-smi` |
+| `kraken_gpu_models` | Semicolon-separated canonical model names |
+| `kraken_gpu_details` | Compact `model:score,...` breakdown |
+| `kraken_gpu_unknown` | GPU names that didn't match any database entry (still scored as 3) |
 
 <Note>
   Hosts without `nvidia-smi` (or with no NVIDIA GPUs) simply publish no score labels and fall back to FIFO scheduling. Unknown GPUs still get a default mid score so unrecognized hardware is not excluded from work.
@@ -216,7 +215,7 @@ The krkns conductor uses these labels to decide which jobs to send where — see
 While a Tentacle worker is executing a batch, it samples `kcat.Hashcat.GetStatus()` every 5 seconds and forwards a snapshot to krkns over the existing Orchestra `ReportUpdate` RPC. Each snapshot contains the live hashcat session fields:
 
 - Session ID
-- Time started (absolute) and time estimated (absolute + relative "3 hours, 12 mins")
+- Time started (absolute) and time estimated (absolute \+ relative "3 hours, 12 mins")
 - Progress (`X/Y (Z%)`)
 - Recovered string (`X/Y (Z%) Digests, X/Y (Z%) Salts`)
 - Parsed numeric recovered count
@@ -232,7 +231,7 @@ This data flows through to clients via `krknc job get` and `krknc job list`. For
 
 ### View Logs
 
-```
+```text
 # Live logs  
 docker logs -f tentacle-worker  
   
@@ -242,7 +241,7 @@ docker logs --tail 100 tentacle-worker
 
 ### Check Status
 
-```
+```text
 # Container status  
 docker ps | grep tentacle-worker  
   
@@ -257,7 +256,7 @@ docker stats tentacle-worker
 
 For debugging:
 
-```
+```text
 cd temp/Tentacle/docker./dev.sh  
 ```
 
@@ -265,10 +264,10 @@ This opens an interactive shell in the container.
 
 # Configuration Reference
 
-| Variable       | Description          | Default  | Required |
-| -------------- | -------------------- | -------- | -------- |
-| CONDUCTOR_ADDR | Address of the krkns | --       | Yes      |
-| WORKER_ID      | Unique worker ID     | hostname | No       |
+| Variable | Description | Default | Required |
+| --- | --- | --- | --- |
+| CONDUCTOR\_ADDR | Address of the krkns | -- | Yes |
+| WORKER\_ID | Unique worker ID | hostname | No |
 
 # Troubleshooting
 
@@ -282,16 +281,18 @@ This opens an interactive shell in the container.
     4. Check firewall allows port 65535
     5.  Ensure your Tailscale host and its -krkn server are accessible by your worker
   </Accordion>
+
   <Accordion title="Error: GPU not Detected">
     The Cuda Drivers may be out of date or an u pdate may have broken the installation.
 
     1. Run `nvidia-smi` on host
-    2. Test Docker GPU: \``` docker run --rm --gpus all nvidia/cuda:13.0.0-base-ubuntu24.04` ``
+    2. Test Docker GPU: \``docker run --rm --gpus all nvidia/cuda:13.0.0-base-ubuntu24.04``
     3. Restart Docker: \`sudo systemctl restart docker\`
-    4. Rerun the prep_host.sh shell file
+    4. Rerun the prep\_host.sh shell file
   </Accordion>
+
   <Accordion title="Error: Out of Memory">
-    The wordlist+permutations may be too large:
+    The wordlist\+permutations may be too large:
 
     1. Use a smaller wordlist
     2. Use a smaller rule file
