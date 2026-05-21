@@ -123,11 +123,11 @@ Tentacle is distributed as a prebuilt, GPU-enabled container. You do not need to
       - Used to authenticate to `hub.krkn.tech` and pull the Tentacle image.
     - Orchestrator Address (required)
       <Note>
-        The port :65535 will be appended if not supplied
-        The hostname should be the primary hostname, not the -krkn one.
+        The port :65535 will be appended if not supplied. 
+        If using Tailscale, the hostname should be the primary hostname, not the -krkn one.
       </Note>
       - Tailscale
-        - `ts_hostname` # Note this is _not_ the \``krkn``host
+        - `ts_hostname` # Note this is _not_ the `krkn` host
       - Else
         - `192.168.56.2:65535` # Default port is 65535
     - Worker ID (optional)
@@ -286,7 +286,7 @@ This opens an interactive shell in the container.
     The Cuda Drivers may be out of date or an u pdate may have broken the installation.
 
     1. Run `nvidia-smi` on host
-    2. Test Docker GPU: \``docker run --rm --gpus all nvidia/cuda:13.0.0-base-ubuntu24.04``
+    2. Test Docker GPU: \`\`docker run --rm --gpus all nvidia/cuda:13.0.0-base-ubuntu24.04\`\`
     3. Restart Docker: \`sudo systemctl restart docker\`
     4. Rerun the prep\_host.sh shell file
   </Accordion>

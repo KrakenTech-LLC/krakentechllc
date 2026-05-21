@@ -7,37 +7,37 @@ The Krkn Client can be used to interface with the Krkn Server
 
 ### Global Flags
 
-| Flags             | Description                  |
-| ----------------- | ---------------------------- |
-| -d --debug        | Enable debug mode            |
-| -n --hostname     | Tailscale hostname           |
-| -k --insecure     | Skip TLS Verification        |
-| -q --quic         | Use QUIC protocol            |
-| -s --server       | Krkn Server Hostname/IP      |
-| -t --tailscale    | Use Tailscale for connection |
-| -w --webhook port | Port to use for webhook int  |
+| Flags | Description |
+| --- | --- |
+| -d --debug | Enable debug mode |
+| -n --hostname | Tailscale hostname |
+| -k --insecure | Skip TLS Verification |
+| -q --quic | Use QUIC protocol |
+| -s --server | Krkn Server Hostname/IP |
+| -t --tailscale | Use Tailscale for connection |
+| -w --webhook port | Port to use for webhook int |
 
 ### Krkn Flags
 
-| Command    | Description                                                 |
-| ---------- | ----------------------------------------------------------- |
+| Command | Description |
+| --- | --- |
 | completion | Generates the autocompletion script for the specified shell |
-| config     | Manage the cache configuration                              |
-| dumps      | Parse, and Analyze Dump Files                               |
-| files      | Manage Rules, Wordlists and Mask FIles                      |
-| hashes     | Manage or query cracked hashes                              |
-| jobs       | Manage jobs                                                 |
-| listen     | Start webhook listener                                      |
-| logs       | View local or server (remote) logs                          |
-| server     | Manage the Krkn Server                                      |
-| service    | Manage the webhook listener service                         |
-| toast      | Manage toast notifications                                  |
-| users      | Manage users                                                |
-| webhooks   | Manage webhooks                                             |
+| config | Manage the cache configuration |
+| dumps | Parse, and Analyze Dump Files |
+| files | Manage Rules, Wordlists and Mask FIles |
+| hashes | Manage or query cracked hashes |
+| jobs | Manage jobs |
+| listen | Start webhook listener |
+| logs | View local or server (remote) logs |
+| server | Manage the Krkn Server |
+| service | Manage the webhook listener service |
+| toast | Manage toast notifications |
+| users | Manage users |
+| webhooks | Manage webhooks |
 
 ## First Time Setup
 
-To utilize the Krkn Client (krknc) you will need to store the token received in your email in the environment variables.
+To utilize the Krkn Client (krknc) you will need to store the token received in your email in the environment variables. This can optionally be set by using the `krknc install` command.
 
 <AccordionGroup>
   <Accordion title="Windows" icon="windows">
@@ -45,6 +45,7 @@ To utilize the Krkn Client (krknc) you will need to store the token received in 
 
     `set KRKN_API_TOKEN=<token>`
   </Accordion>
+
   <Accordion title="Linux/Darwin" icon="linux">
     Dynamically determine the shell in use and append token entry
 
@@ -81,7 +82,7 @@ Set the Server, Tailscale (optional), hostname (tailscale hostname if on tailsca
 ## Configuration
 
 - **username**: Your username for authentication
-- **server**: Server address (e.g., localhost:8443 or tailscale_hostname-krkn:8443)
+- **server**: Server address (e.g., localhost:8443 or tailscale\_hostname-krkn:8443)
 - **tailscale**: Use Tailscale (true/false)
 - **quic**: Use QUIC protocol (true/false)
 - **insecure**: Skip TLS verification (true/false)
@@ -93,42 +94,49 @@ Configs are used to set and persist settings across executions. The username is 
 
 ### Config
 
-| Sub-Command | Description                 |
-| ----------- | --------------------------- |
-| clear       | Clear all configurations    |
-| get         | Get configuration value(s)  |
-| set         | Set configuration value     |
-| unset       | Unset a configuration value |
+| Sub-Command | Description |
+| --- | --- |
+| clear | Clear all configurations |
+| get | Get configuration value(s) |
+| set | Set configuration value |
+| unset | Unset a configuration value |
 
 <AccordionGroup>
   <Accordion title="Get">
     <Note>
       Required Permissions: **N/A**
     </Note>
+
     The `get` command can be used to view your current settings.
 
     ![Config Get C](/config_get_c.png)
   </Accordion>
+
   <Accordion title="Set">
     <Note>
       Required Permissions: **N/A**
     </Note>
+
     The `set` command can be used to set a configuration value
 
     ![Krkn 34](/images/Krkn-_34.png)
   </Accordion>
+
   <Accordion title="Unset">
     <Note>
       Required Permissions: **N/A**
     </Note>
+
     The `unset` command can be used to remove a value from a single key
 
     ![Krkn 33](/images/Krkn-_33.png)
   </Accordion>
+
   <Accordion title="Clear">
     <Note>
       Required Permissions: **N/A**
     </Note>
+
     The `clear` command can be used to clear all entries in the configuration.
   </Accordion>
 </AccordionGroup>
@@ -141,69 +149,74 @@ Dump can be used to facilitate the parsing and analyzing of dump files. This inc
 - Parsing hash information from an LSASS Minidump
 - Parsing hash information from a previous SecretsDump (Supports History and Status)
 
-| Sub-Command | Description                                                                   |
-| ----------- | ----------------------------------------------------------------------------- |
-| analyze     | Perform an analysis of a companies password policy and current hash landscape |
-| parse       | Parse hash information from given input(s)                                    |
+| Sub-Command | Description |
+| --- | --- |
+| analyze | Perform an analysis of a companies password policy and current hash landscape |
+| parse | Parse hash information from given input(s) |
 
 <AccordionGroup>
   <Accordion title="Analyze">
     <Note>
       Required Privileges: **N/A**
     </Note>
-    | Flag              | Description                                  | Default                      |
-    | ----------------- | -------------------------------------------- | ---------------------------- |
-    | --dedupe          | Deduplicate credentiasl across all sources   | True                         |
-    | -f --format       | Output Format (xlsx, csv, json, yaml, xml)   | Auto-Detect from output file |
-    | -g --groups       | Group membership file                        | Nil                          |
-    | --include-history | Include password history entries in analysis | False                        |
-    | --kerberoast      | Kerberoast hash file                         | Nil                          |
-    | -l --lsass        | LSASS Parsed output file                     | Nil                          |
-    | --ntds            | NTDS parsed output file                      | Nil                          |
-    | -o --output       | Output file path (required)                  | Nil                          |
-    | -p --policy       | Password Policy File                         | Nil                          |
-    | --potfile         | Potfile in hash:password format              | Nil                          |
-    | --secretsdump     | Secrets dump output file(s)                  | Nil                          |
-    | --strict          | Fail on parse errors instead of skipping     | False                        |
-    | --timeout         | Analysis timeout duration                    | 30m0s                        |
-    | --workers         | Number of parallel workers for parsing       | 4                            |
+
+    | Flag | Description | Default |
+    | --- | --- | --- |
+    | --dedupe | Deduplicate credentiasl across all sources | True |
+    | -f --format | Output Format (xlsx, csv, json, yaml, xml) | Auto-Detect from output file |
+    | -g --groups | Group membership file | Nil |
+    | --include-history | Include password history entries in analysis | False |
+    | --kerberoast | Kerberoast hash file | Nil |
+    | -l --lsass | LSASS Parsed output file | Nil |
+    | --ntds | NTDS parsed output file | Nil |
+    | -o --output | Output file path (required) | Nil |
+    | -p --policy | Password Policy File | Nil |
+    | --potfile | Potfile in hash:password format | Nil |
+    | --secretsdump | Secrets dump output file(s) | Nil |
+    | --strict | Fail on parse errors instead of skipping | False |
+    | --timeout | Analysis timeout duration | 30m0s |
+    | --workers | Number of parallel workers for parsing | 4 |
 
     ![Image](/images/image-27.png)
   </Accordion>
+
   <Accordion title="Parse">
     <Note>
       Required Privileges: **N/A**
     </Note>
+
     A
 
-    | Args     | Description                               |
-    | -------- | ----------------------------------------- |
-    | impacket | Parse an Impacket SecretsDump file        |
-    | minidump | Parse a minidump file                     |
-    | ntds     | Parse an NTDS.dit file with a SYSTEM file |
+    | Args | Description |
+    | --- | --- |
+    | impacket | Parse an Impacket SecretsDump file |
+    | minidump | Parse a minidump file |
+    | ntds | Parse an NTDS.dit file with a SYSTEM file |
 
     <AccordionGroup>
       <Accordion title="impacket">
-        | Flags            | Description               |
-        | ---------------- | ------------------------- |
+        | Flags | Description |
+        | --- | --- |
         | -p --file-prefix | Prefix for output file(s) |
 
         The `impacket` subcommand can be used to parse a _SecretsDump_ file
 
         ![Image](/images/image-28.png)
       </Accordion>
+
       <Accordion title="minidump">
-        | Flags            | Description               |
-        | ---------------- | ------------------------- |
+        | Flags | Description |
+        | --- | --- |
         | -p --file-prefix | Prefix for output file(s) |
 
         The `minidump` subcommand can be used to parse hashes from an **lsass** minidump file.
 
         ![Image](/images/image-29.png)
       </Accordion>
+
       <Accordion title="NTDS">
-        | Flags            | Description               |
-        | ---------------- | ------------------------- |
+        | Flags | Description |
+        | --- | --- |
         | -p --file-prefix | Prefix for output file(s) |
 
         The `ntds` subcommand can be used to parse hashes from an **NTDS.dit**  file and its corresponding **SYSTEM** file.
@@ -218,37 +231,40 @@ Dump can be used to facilitate the parsing and analyzing of dump files. This inc
 
 Logs can be queried to facilitate troubleshooting and debugging both remotely on the Krkn Server and locally.
 
-| Sub-Command | Description            |
-| ----------- | ---------------------- |
-| local       | View local client logs |
-| remote      | View Krkn Server logs  |
+| Sub-Command | Description |
+| --- | --- |
+| local | View local client logs |
+| remote | View Krkn Server logs |
 
 <AccordionGroup>
   <Accordion title="Remote">
     <Note>
       Required Privileges: **Admin**
     </Note>
-    | Flag             | Description                                                               | Type   |
-    | ---------------- | ------------------------------------------------------------------------- | ------ |
-    | -E --end         | End date for logs (defaults to 'now')                                     | string |
-    | -L --last        | Number of logs to show (default: 50)                                      | int    |
-    | -T --no-truncate | Do not truncate log details                                               | bool   |
-    | -V --severity    | Comma-delimited log severity to show (debug, info, warning, error, fatal) | string |
-    | -S --start       | Start date for logs (e.g., '8 minutes ago', 'Jan 01, 2026')               | string |
-    | -Q               | Query using a keyword value                                               | string |
+
+    | Flag | Description | Type |
+    | --- | --- | --- |
+    | -E --end | End date for logs (defaults to 'now') | string |
+    | -L --last | Number of logs to show (default: 50) | int |
+    | -T --no-truncate | Do not truncate log details | bool |
+    | -V --severity | Comma-delimited log severity to show (debug, info, warning, error, fatal) | string |
+    | -S --start | Start date for logs (e.g., '8 minutes ago', 'Jan 01, 2026') | string |
+    | -Q | Query using a keyword value | string |
   </Accordion>
+
   <Accordion title="Local">
     <Note>
       Required Privileges: **N/A**
     </Note>
-    | Flag             | Description                                                               | Type   |
-    | ---------------- | ------------------------------------------------------------------------- | ------ |
-    | -E --end         | End date for logs (defaults to 'now')                                     | string |
-    | -L --last        | Number of logs to show (default: 50)                                      | int    |
-    | -T --no-truncate | Do not truncate log details                                               | bool   |
-    | -V --severity    | Comma-delimited log severity to show (debug, info, warning, error, fatal) | string |
-    | -S --start       | Start date for logs (e.g., '8 minutes ago', 'Jan 01, 2026')               | string |
-    | -Q               | Query using a keyword value                                               | string |
+
+    | Flag | Description | Type |
+    | --- | --- | --- |
+    | -E --end | End date for logs (defaults to 'now') | string |
+    | -L --last | Number of logs to show (default: 50) | int |
+    | -T --no-truncate | Do not truncate log details | bool |
+    | -V --severity | Comma-delimited log severity to show (debug, info, warning, error, fatal) | string |
+    | -S --start | Start date for logs (e.g., '8 minutes ago', 'Jan 01, 2026') | string |
+    | -Q | Query using a keyword value | string |
   </Accordion>
 </AccordionGroup>
 
@@ -256,12 +272,12 @@ Logs can be queried to facilitate troubleshooting and debugging both remotely on
 
 ## Users
 
-| Sub-Command | Description                                            |
-| ----------- | ------------------------------------------------------ |
-| list        | List all users                                         |
-| create      | Create a new user                                      |
-| delete      | Delete a user                                          |
-| set-role    | Set a users role                                       |
+| Sub-Command | Description |
+| --- | --- |
+| list | List all users |
+| create | Create a new user |
+| delete | Delete a user |
+| set-role | Set a users role |
 | reset-token | Reset the users token and send the ma new one in email |
 
 Users are the primary driver behind the Krkn Server. To access the Krkn Server a user needs to have their Username saved to their config and their token saved as an environment variable.
@@ -277,20 +293,23 @@ Users fall into three different roles:
     <Note>
       Required Privileges: **Admin**
     </Note>
+
     Users can be listed by using the `list` command
 
     ![User List](/user_list.png)
 
     ![User List 2](/user_list_2.png)
   </Accordion>
+
   <Accordion title="Create">
     <Note>
       Required Privileges: **Admin**
     </Note>
-    | Args | Description   |
-    | ---- | ------------- |
-    | 1    | username      |
-    | 2    | email address |
+
+    | Args | Description |
+    | --- | --- |
+    | 1 | username |
+    | 2 | email address |
 
     A new user can be created by an **admin** user using the `user create` command. A token will be sent to their email address.
 
@@ -298,44 +317,50 @@ Users fall into three different roles:
 
     ![Validate Token](/validate_token.png)
   </Accordion>
+
   <Accordion title="Delete">
     <Note>
       Required Privileges: **Admin**
     </Note>
+
     | Args | Description |
-    | ---- | ----------- |
-    | 1    | username    |
+    | --- | --- |
+    | 1 | username |
 
     The `delete` subcommand can be used to delete a user from the Krkn Server.
 
     ![User Delete](/user_delete.png)
   </Accordion>
+
   <Accordion title="Set-Role">
     <Note>
       Required Privileges: **Admin**
     </Note>
-    | Args | Description                |
-    | ---- | -------------------------- |
-    | 1    | Username                   |
-    | 2    | Role (admin, user, reader) |
+
+    | Args | Description |
+    | --- | --- |
+    | 1 | Username |
+    | 2 | Role (admin, user, reader) |
   </Accordion>
+
   <Accordion title="Reset-Token">
     <Note>
       Required Privileges: **Admin**
     </Note>
+
     | Args | Decription |
-    | ---- | ---------- |
-    | 1    | Username   |
+    | --- | --- |
+    | 1 | Username |
   </Accordion>
 </AccordionGroup>
 
 ## Files
 
-| Sub-Command | Description           |
-| ----------- | --------------------- |
-| masks       | Manage mask files     |
-| rules       | Manage rule files     |
-| wordlists   | manage wordlist files |
+| Sub-Command | Description |
+| --- | --- |
+| masks | Manage mask files |
+| rules | Manage rule files |
+| wordlists | manage wordlist files |
 
 The files subcommand can be used to upload, download, delete, head, tail and perform checksums for Rules, Wordlists and Mask files.
 
@@ -347,27 +372,28 @@ The files subcommand can be used to upload, download, delete, head, tail and per
 
     ### Mask Tokens
 
-    | Token | Meaning                |
-    | ----- | ---------------------- |
-    | `?l`  | lowercase letter (a-z) |
-    | `?u`  | uppercase letter (A-Z) |
-    | `?d`  | digit (0-9)            |
-    | `?s`  | symbol                 |
-    | `?a`  | all of the above       |
+    | Token | Meaning |
+    | --- | --- |
+    | `?l` | lowercase letter (a-z) |
+    | `?u` | uppercase letter (A-Z) |
+    | `?d` | digit (0-9) |
+    | `?s` | symbol |
+    | `?a` | all of the above |
 
     ### Sample Masks
 
-    | Pattern            | Meaning                          |
-    | ------------------ | -------------------------------- |
-    | `?u?l?l?l?l?d?d`   | Capital + 4 lowercase + 2 digits |
-    | `?l?l?l?l?l?l?d?d` | 6 letters + 2 digits             |
-    | `Summer?d?d?d!`    | “Summer###!”                     |
-    | `?u?l?l?l?l?l?d!`  | Capitalized word + digit + !     |
+    | Pattern | Meaning |
+    | --- | --- |
+    | `?u?l?l?l?l?d?d` | Capital \+ 4 lowercase \+ 2 digits |
+    | `?l?l?l?l?l?l?d?d` | 6 letters \+ 2 digits |
+    | `Summer?d?d?d!` | “Summer###!” |
+    | `?u?l?l?l?l?l?d!` | Capitalized word \+ digit \+ ! |
 
     ## Example Command
 
     `krknc job create hashes.txt -T 1000 -A 3 -M `?u?l?l?l?l?l?d?d\`
   </Accordion>
+
   <Accordion title="Rules">
     The rules are standard rule files supported by hashcat Rules are transformations typically applied to wordlists
 
@@ -384,6 +410,7 @@ The files subcommand can be used to upload, download, delete, head, tail and per
 
     `krknc job create hashes.txt -T 1000 -A 0 -W wordlist.txt -R best64.rule`
   </Accordion>
+
   <Accordion title="Wordlists">
     The wordlists are wordlist files for use by hashcat
   </Accordion>
@@ -396,80 +423,93 @@ The files subcommand can be used to upload, download, delete, head, tail and per
     <Note>
       Required Privileges: **Admin**
     </Note>
-    | Args | Description                                 |
-    | ---- | ------------------------------------------- |
-    | 1    | the local file to upload to the Krkn Server |
+
+    | Args | Description |
+    | --- | --- |
+    | 1 | the local file to upload to the Krkn Server |
 
     The `upload` subcommand can be used to upload a file from your host to the Krkn Server.
 
     ![Krkn 44](/images/Krkn-_44.png)
   </Accordion>
+
   <Accordion title="Download">
     <Note>
       Required Privileges: **Admin**
     </Note>
-    | Args | Description                                                                              |
-    | ---- | ---------------------------------------------------------------------------------------- |
-    | 1    | The url of the downloadable file. For github, ensure you are using the github _raw_ file |
-    | 2    | The name to save the file as on the Krkn Server                                          |
+
+    | Args | Description |
+    | --- | --- |
+    | 1 | The url of the downloadable file. For github, ensure you are using the github _raw_ file |
+    | 2 | The name to save the file as on the Krkn Server |
 
     The `download` subcommand can be used to prompt the Krkn Server to download a file from a given url.
 
     ![Krkn 53](/images/Krkn-_53.png)
   </Accordion>
+
   <Accordion title="List">
     <Note>
       Required Privileges: **Admin, User**
     </Note>
+
     The `list` subcommand can be used to list files of the specified type on the Krkn Server.
 
     ![Krkn 52](/images/Krkn-_52.png)
   </Accordion>
+
   <Accordion title="Head">
     <Note>
       Required Privileges: **Admin**
     </Note>
-    | Args | Description                       |
-    | ---- | --------------------------------- |
-    | 1    | The name of the file to read from |
-    | 2    | The number of lines to read       |
+
+    | Args | Description |
+    | --- | --- |
+    | 1 | The name of the file to read from |
+    | 2 | The number of lines to read |
 
     The `head` subcommand can be used to read the first N lines in the specified file.
 
     ![Krkn 49](/images/Krkn-_49.png)
   </Accordion>
+
   <Accordion title="Tail">
     <Note>
       Required Privileges: **Admin**
     </Note>
-    | Args | Description                       |
-    | ---- | --------------------------------- |
-    | 1    | The name of the file to read from |
-    | 2    | The number of lines to read       |
+
+    | Args | Description |
+    | --- | --- |
+    | 1 | The name of the file to read from |
+    | 2 | The number of lines to read |
 
     The `tail` subcommand can be used to read the last N lines in the specified file.
 
     ![Krkn 49](/images/Krkn-_47.png)
   </Accordion>
+
   <Accordion title="Sum">
     <Note>
       Required Privileges: **Admin**
     </Note>
-    | Args | Description                      |
-    | ---- | -------------------------------- |
-    | 1    | The name of the file to checksum |
+
+    | Args | Description |
+    | --- | --- |
+    | 1 | The name of the file to checksum |
 
     The `sum` subcommand can be used to determine if the Sha256 sum of the downloaded or uploaded file matches what is expected.
 
     ![Krkn 8](/images/Krkn-_8.png)
   </Accordion>
+
   <Accordion title="Delete">
     <Note>
       Required Privileges: **Admin**
     </Note>
-    | Args | Description                    |
-    | ---- | ------------------------------ |
-    | 1    | The name of the file to delete |
+
+    | Args | Description |
+    | --- | --- |
+    | 1 | The name of the file to delete |
 
     ![Krkn 50](/images/Krkn-_43.png)
 
@@ -481,14 +521,14 @@ The files subcommand can be used to upload, download, delete, head, tail and per
 
 The `hashes` subcommand can be used to query or upload hashes to the Krkn Server.
 
-| Sub-Commands | Description                                           |
-| ------------ | ----------------------------------------------------- |
-| query        | Query the provided hashes                             |
-| recount      | Perform a recount of all hash statistics              |
-| stats        | Show hash statistics                                  |
-| upload       | Upload cracked hashes from file or stdin              |
-| id           | Attempt to identify the hashcat mode for a given hash |
-| defang       | Remove client PII from a given hash                   |
+| Sub-Commands | Description |
+| --- | --- |
+| query | Query the provided hashes |
+| recount | Perform a recount of all hash statistics |
+| stats | Show hash statistics |
+| upload | Upload cracked hashes from file or stdin |
+| id | Attempt to identify the hashcat mode for a given hash |
+| defang | Remove client PII from a given hash |
 
 ### Sub-Commands
 
@@ -497,32 +537,37 @@ The `hashes` subcommand can be used to query or upload hashes to the Krkn Server
     <Note>
       Required Privileges: **Admin, User, Reader**
     </Note>
-    | Flags | Description                              |
-    | ----- | ---------------------------------------- |
-    | -T    | The hashcat mode of the provided hashes  |
-    | -H    | Provide a comma delimited list of hashes |
-    | -F    | Provide a file of hashes                 |
-    | -O    | Output file for results                  |
-    | -D    | Dispaly results to stdout                |
+
+    | Flags | Description |
+    | --- | --- |
+    | -T | The hashcat mode of the provided hashes |
+    | -H | Provide a comma delimited list of hashes |
+    | -F | Provide a file of hashes |
+    | -O | Output file for results |
+    | -D | Dispaly results to stdout |
 
     The `query` subcommand can be used to query the Krkn Server for previously cracked hashes
 
     ![Krkn 71](/images/Krkn-_71.png)
   </Accordion>
+
   <Accordion title="Recount">
     <Note>
       Required Privileges: **_Admin_**
     </Note>
+
     The `recount` subcommand can be used to order the Krkn Server to perform a hash recount. This will force the Krkn Database to perform a recount of all cracked hashes and adjust its counters.
 
     ![Image](/images/image-25.png)
   </Accordion>
+
   <Accordion title="Stats">
     <Note>
       Required Privileges: \*\*Admin\*\*
     </Note>
-    | Args | Description                         |
-    | ---- | ----------------------------------- |
+
+    | Args | Description |
+    | --- | --- |
     | mode | The hashcat mode to query stats for |
 
     The `stats` subcommand can be used to query the hash stats from the Krkn Server. The hashcat mode is optional. If not supplied the entire hash count will be returned.
@@ -531,38 +576,44 @@ The `hashes` subcommand can be used to query or upload hashes to the Krkn Server
 
     ![Image](/images/image-24.png)
   </Accordion>
+
   <Accordion title="Upload">
     <Note>
       Required Privileges: **Admin**
     </Note>
-    | Args | Description                                    |
-    | ---- | ---------------------------------------------- |
-    | 1    | Hashcat mode                                   |
-    | 2    | The local file to upload containing the hashes |
+
+    | Args | Description |
+    | --- | --- |
+    | 1 | Hashcat mode |
+    | 2 | The local file to upload containing the hashes |
 
     The `upload` subcommand can be used to upload previously cracked hashes to the Krkn Server. These hashes are then added to the database.
 
     ![Krkn 72](/images/Krkn-_72.png)
   </Accordion>
+
   <Accordion title="Id">
     <Note>
       Required Privileges: **N/A**
     </Note>
-    | Args | Description          |
-    | ---- | -------------------- |
+
+    | Args | Description |
+    | --- | --- |
     | hash | The hash to identify |
 
     The `id` subcommand to identify potential hashcat types for a given hash.
 
     ![Image](/images/image-22.png)
   </Accordion>
+
   <Accordion title="Defang">
     <Note>
       Required Privileges: **N/A**
     </Note>
-    | Args | Description                  |
-    | ---- | ---------------------------- |
-    | hash | The hash to defang           |
+
+    | Args | Description |
+    | --- | --- |
+    | hash | The hash to defang |
     | mode | The hashcat mode of the hash |
 
     The `defang` subcommand can be used to remove client data from a given hash including:
@@ -576,14 +627,14 @@ The `hashes` subcommand can be used to query or upload hashes to the Krkn Server
 
 ## Jobs
 
-| Sub-Command | Description          |
-| ----------- | -------------------- |
-| create      | Create a new job     |
-| delete      | Delete a job         |
-| download    | Download job results |
-| get         | Get a jobs details   |
-| list        | List all jobs        |
-| cancel      | Cancel a running job |
+| Sub-Command | Description |
+| --- | --- |
+| create | Create a new job |
+| delete | Delete a job |
+| download | Download job results |
+| get | Get a jobs details |
+| list | List all jobs |
+| cancel | Cancel a running job |
 
 The `jobs`  subcommand encompasses the distributed KCat hash cracking system incorporated into the Krkn Service.
 
@@ -592,38 +643,39 @@ The `jobs`  subcommand encompasses the distributed KCat hash cracking system inc
     <Note>
       Required Privileges: **User, Admin**
     </Note>
+
     ### Args
 
-    | Args | Description                       |
-    | ---- | --------------------------------- |
-    | 1    | The local hashes file for the job |
-    |      |                                   |
+    | Args | Description |
+    | --- | --- |
+    | 1 | The local hashes file for the job |
+    |  |  |
 
     ### Flags
 
-    | Flag             | Description                                                                      |
-    | ---------------- | -------------------------------------------------------------------------------- |
-    | -T --hashtype    | The hashcat mode to use for the job                                              |
-    | -W --wordlist    | The wordlist to use for the job                                                  |
-    | -M --masks       | Name of masks file on server (required for modes 3, 6, 7)                        |
-    | -R --rules       | Name of rules file on server                                                     |
-    | -A --attack-mode | The attack mode to use for the job                                               |
-    | -D --description | Description of the job                                                           |
-    | --full-suite     | Run full attack suite (ignores attack-mode, runs multiple strategies)            |
-    | --increment      | Enable mask increment mode (modes 3, 6, 7 only)                                  |
-    | --increment-min  | Stop mask incrementing at this length                                            |
-    | --increment-max  | Start mask incrementing at this length                                           |
-    | --append         | Mask to append to each candidate                                                 |
-    | --prepend        | Mask to prepend to each candidate                                                |
-    | -L               | Listen after creation using the host, port and webhook type stored in the config |
+    | Flag | Description |
+    | --- | --- |
+    | -T --hashtype | The hashcat mode to use for the job |
+    | -W --wordlist | The wordlist to use for the job |
+    | -M --masks | Name of masks file on server (required for modes 3, 6, 7) |
+    | -R --rules | Name of rules file on server |
+    | -A --attack-mode | The attack mode to use for the job |
+    | -D --description | Description of the job |
+    | --full-suite | Run full attack suite (ignores attack-mode, runs multiple strategies) |
+    | --increment | Enable mask increment mode (modes 3, 6, 7 only) |
+    | --increment-min | Stop mask incrementing at this length |
+    | --increment-max | Start mask incrementing at this length |
+    | --append | Mask to append to each candidate |
+    | --prepend | Mask to prepend to each candidate |
+    | -L | Listen after creation using the host, port and webhook type stored in the config |
 
     ### Attack Modes
 
     -   0 - Straight/Dictionary: Uses wordlist (-w required)
     -   1 - Combination: Combines words from wordlist (-w required)
     -   3 - Brute-force/Mask: Uses mask patterns (-m required)
-    -   6 - Hybrid Wordlist+Mask: Appends mask to wordlist words (-w and -m required)
-    -   7 - Hybrid Mask+Wordlist: Prepends mask to wordlist words (-w and -m required)
+    -   6 - Hybrid Wordlist\+Mask: Appends mask to wordlist words (-w and -m required)
+    -   7 - Hybrid Mask\+Wordlist: Prepends mask to wordlist words (-w and -m required)
 
     ### Examples
 
@@ -640,71 +692,77 @@ The `jobs`  subcommand encompasses the distributed KCat hash cracking system inc
 
     ![Krkn 16](/images/Krkn-_16.png)
   </Accordion>
+
   <Accordion title="Delete">
     <Note>
       Required Privileges: **Job Owner, Admin**
     </Note>
-    | Args | Description                 |
-    | ---- | --------------------------- |
-    | 1    | The id of the job to delete |
+
+    | Args | Description |
+    | --- | --- |
+    | 1 | The id of the job to delete |
 
     The `delete` subcommand can be used to delete an enqueued job.
 
     ![Krkn 20](/images/Krkn-_20.png)
   </Accordion>
+
   <Accordion title="Download">
     <Note>
       Required Privileges: **Job Owner, Admin**
     </Note>
-    | Args | Description                   |
-    | ---- | ----------------------------- |
-    | 1    | The ID of the job to download |
-    | 2    | The name of the output file   |
+
+    | Args | Description |
+    | --- | --- |
+    | 1 | The ID of the job to download |
+    | 2 | The name of the output file |
 
     The `download` subcommand can be used to retrieve all cracked hashes from a completed job.
 
     ![Krkn 18](/images/Krkn-_18.png)
   </Accordion>
+
   <Accordion title="Get">
     <Note>
       Required Privileges: **Job Owner, Admin**
     </Note>
-    | Args | Description                   |
-    | ---- | ----------------------------- |
-    | 1    | The id of the job to retrieve |
+
+    | Args | Description |
+    | --- | --- |
+    | 1 | The id of the job to retrieve |
 
     The `get` subcommand can be used to get the status and configuration of a specific job by its `id` .
 
     The table always includes the persisted fields:
 
-    | Field         | Source                                                      |
-    | ------------- | ----------------------------------------------------------- |
-    | `ID`          | Job ID                                                      |
-    | `NAME`        | Job name                                                    |
-    | `DESCRIPTION` | Job description                                             |
-    | `STATUS`      | Persisted KCAT status (PENDING / RUNNING / COMPLETED / ...) |
-    | `CREATED`     | Created at                                                  |
-    | `UPDATED`     | Updated at                                                  |
-    | `RESULTS`     | Results summary                                             |
-    | `WORKER`      | Last Tentacle instrument that worked the batch              |
-    | `CRACKED`     | Persisted cracked count                                     |
-    | `REMAINING`   | Persisted remaining count                                   |
+    | Field | Source |
+    | --- | --- |
+    | `ID` | Job ID |
+    | `NAME` | Job name |
+    | `DESCRIPTION` | Job description |
+    | `STATUS` | Persisted KCAT status (PENDING / RUNNING / COMPLETED / ...) |
+    | `CREATED` | Created at |
+    | `UPDATED` | Updated at |
+    | `RESULTS` | Results summary |
+    | `WORKER` | Last Tentacle instrument that worked the batch |
+    | `CRACKED` | Persisted cracked count |
+    | `REMAINING` | Persisted remaining count |
 
     ### Live Hashcat Fields
 
     When a Tentacle worker is currently running the batch for this job, the table also appends live hashcat snapshot fields forwarded by the worker every 5 seconds (see [krkns → Live Job Status](/tools/Krkn/krkns#live-job-status)). These rows are absent for jobs that haven't started yet or have already finished:
 
-    | Field                 | hashcat source field (`kcat.Status`)             |
-    | --------------------- | ------------------------------------------------ |
-    | `LIVE PROGRESS`       | `Progress` — `X/Y (Z%)`                          |
-    | `LIVE RECOVERED`      | `Recovered` — `X/Y (Z%) Digests, X/Y (Z%) Salts` |
-    | `LIVE RECOVERED #`    | Numeric cracked count parsed from `Recovered`    |
-    | `LIVE TIME STARTED`   | `TimeStarted` (absolute)                         |
-    | `LIVE TIME ESTIMATED` | `TimeEstimated` (absolute)                       |
-    | `LIVE TIME REMAINING` | `TimeEstimatedRelative` (e.g. "3 hours, 12 mins")|
-    | `LIVE SPEED`          | `TotalSpeed` — aggregate H/s across all devices  |
-    | `LIVE SESSION`        | hashcat session name                             |
-    | `LIVE SNAPSHOT AT`    | RFC3339 timestamp the snapshot was captured      |
+    | Field | hashcat source field (`kcat.Status`) |
+    | --- | --- |
+    | `LIVE PROGRESS` | `Progress` — `X/Y (Z%)` |
+    | `LIVE RECOVERED` | `Recovered` — `X/Y (Z%) Digests, X/Y (Z%) Salts` |
+    | `LIVE RECOVERED #` | Numeric cracked count parsed from `Recovered` |
+    | `LIVE TIME STARTED` | `TimeStarted` (absolute) |
+    | `LIVE TIME ESTIMATED` | `TimeEstimated` (absolute) |
+    | `LIVE TIME REMAINING` | `TimeEstimatedRelative` (e.g. "3 hours, 12 mins") |
+    | `LIVE SPEED` | `TotalSpeed` — aggregate H/s across all devices |
+    | `LIVE SESSION` | hashcat session name |
+    | `LIVE SNAPSHOT AT` | RFC3339 timestamp the snapshot was captured |
 
     <Tip>
       Because the snapshot is cached in-memory on krkns, the overhead of `get` remains a single RPC — no extra round-trips to the worker. Running `krknc job get <id>` repeatedly against a job in progress will show the progress advance every few seconds.
@@ -712,10 +770,12 @@ The `jobs`  subcommand encompasses the distributed KCat hash cracking system inc
 
     ![Job Get](/job_get.png)
   </Accordion>
+
   <Accordion title="List">
     <Note>
       Required Privileges: **Job Owner, Admin**
     </Note>
+
     The `list` subcommand can be used to list jobs and their status'.
 
     <Info>
@@ -724,9 +784,10 @@ The `jobs`  subcommand encompasses the distributed KCat hash cracking system inc
 
     ![Job List](/job_list.png)
   </Accordion>
+
   <Accordion title="Cancel">
-    | Args   | Description               |
-    | ------ | ------------------------- |
+    | Args | Description |
+    | --- | --- |
     | job-id | The id of the running job |
 
     The `cancel` subcommand can be used to cancel a running job.
@@ -749,9 +810,11 @@ Krkn Clients can create webhooks to manage jobs and updates. For the client to r
   <Accordion title="Real-Time">
     All cracked passwords will be sent back to your host
   </Accordion>
+
   <Accordion title="Completion">
     When the job is completed, a notification will be sent back to your host
   </Accordion>
+
   <Accordion title="All">
     Both real-time and completion updates will be sent back to your host
   </Accordion>
@@ -761,35 +824,38 @@ Krkn Clients can create webhooks to manage jobs and updates. For the client to r
 
 <AccordionGroup>
   <Accordion title="Listen">
-    | -N, --notifications | enable OS notifications                    |
-    | ------------------- | ------------------------------------------ |
-    | -p, --port          | port to listen on (default 9090)           |
-    | -S, --save-toasts   | save toast messages to file (default true) |
-    | --system            | run in system service mode                 |
+    | -N, --notifications | enable OS notifications |
+    | --- | --- |
+    | -p, --port | port to listen on (default 9090) |
+    | -S, --save-toasts | save toast messages to file (default true) |
+    | --system | run in system service mode |
 
     The `listen` subcommand can be used to register and listen in realtime for job updates.
   </Accordion>
+
   <Accordion title="Service">
-    | Sub-Command | Description                                    |
-    | ----------- | ---------------------------------------------- |
-    | install     | Install the webhook listener service           |
-    | uninstall   | Uninstall the webhook listener service         |
-    | status      | Get the status of the webhook listener service |
+    | Sub-Command | Description |
+    | --- | --- |
+    | install | Install the webhook listener service |
+    | uninstall | Uninstall the webhook listener service |
+    | status | Get the status of the webhook listener service |
 
     The `service` subcommand can be used to register/deregister a webhook service for listening on the host system.
 
     <AccordionGroup>
       <Accordion title="Install">
-        | Flag                | Description                            |
-        | :------------------ | :------------------------------------- |
+        | Flag | Description |
+        | :-- | :-- |
         | -N, --notifications | Enable OS notifications (default true) |
-        | -p, --port          | Port to listen on (default 9090)       |
+        | -p, --port | Port to listen on (default 9090) |
 
         The `install` subcommand can be used to install the webhook service on the host system.
       </Accordion>
+
       <Accordion title="Uninstall">
         The `uninstall` subcommand can be used to uninstall the webhook service on the host system.
       </Accordion>
+
       <Accordion title="Status">
         The `status` subcommand can be used to query the webhook service on the host system.
       </Accordion>
@@ -799,11 +865,11 @@ Krkn Clients can create webhooks to manage jobs and updates. For the client to r
 
 ## Toast
 
-| Sub-Command | Description                     |
-| ----------- | ------------------------------- |
-| list        | Show toast messages             |
-| read        | Mark all toast messages as read |
-| clear       | Remove all toast messages       |
+| Sub-Command | Description |
+| --- | --- |
+| list | Show toast messages |
+| read | Mark all toast messages as read |
+| clear | Remove all toast messages |
 
 Webhooks can be configured to use OS Specific Toast messages, which appear on a graphical desktop interface for user alerts. Toasts can also be queried using the toast subcommand if they are missed.
 
@@ -817,20 +883,22 @@ Webhooks can be configured to use OS Specific Toast messages, which appear on a 
   <Accordion title="List">
     The `list` subcommand can be used to display all toast messages received via webhooks.
 
-    | Flag        | Description                     |
-    | ----------- | ------------------------------- |
+    | Flag | Description |
+    | --- | --- |
     | -u --unread | Only list unread toast messages |
 
     ![Toast List](/toast_list.png)
   </Accordion>
+
   <Accordion title="Read">
     The `read` subcommand can be used to mark all toast messages as read.
 
     ![Toast Read](/toast_read.png)
   </Accordion>
+
   <Accordion title="Clear">
-    | Flag      | Description                    |
-    | --------- | ------------------------------ |
+    | Flag | Description |
+    | --- | --- |
     | -r --read | Only clear read toast messages |
 
     The `clear` subcommand can be used to clear all toast messages from the cache.
@@ -851,8 +919,8 @@ The `server` subcommand can be used to query active workers for the conductor
 
     <AccordionGroup>
       <Accordion title="List">
-        | Flag     | Description      |
-        | -------- | ---------------- |
+        | Flag | Description |
+        | --- | --- |
         | -a --all | Show all columns |
 
         The `list` subcommand can be used to query tentacle workers and their status.
@@ -861,6 +929,7 @@ The `server` subcommand can be used to query active workers for the conductor
       </Accordion>
     </AccordionGroup>
   </Accordion>
+
   <Accordion title="Sender">
     The `sender` subcommand can be used to query the Krkn Server to manage the email sender.
 
@@ -875,29 +944,33 @@ The `server` subcommand can be used to query active workers for the conductor
 
         ![Image](/images/image-10.png)
       </Accordion>
+
       <Accordion title="List">
         The `list` subcommand lists all available email senders.
 
         ![Image](/images/image-15.png)
       </Accordion>
+
       <Accordion title="Activate">
-        | Args       | Description                   |
-        | ---------- | ----------------------------- |
+        | Args | Description |
+        | --- | --- |
         | identifier | The ID or Email of the sender |
 
         The `activate` subcommand activates an available email sender.
 
         ![Image](/images/image-17.png)
       </Accordion>
+
       <Accordion title="Test">
-        | Args  | Description                     |
-        | ----- | ------------------------------- |
+        | Args | Description |
+        | --- | --- |
         | email | The recipient of the test email |
 
         The `test` subcommand can be used to send a test email from the active email sender.
 
         ![Image](/images/image-9.png)
       </Accordion>
+
       <Accordion title="Set">
         The `set` subcommand can be used to set a new email sender.
 
@@ -909,107 +982,113 @@ The `server` subcommand can be used to query active workers for the conductor
           <Accordion title="Microsoft Outlook / Office 365">
             #### Args
 
-            | Args  | Description                     |
-            | ----- | ------------------------------- |
+            | Args | Description |
+            | --- | --- |
             | email | The recipient of the test email |
 
             #### Flags
 
-            | Flags          | Description                        |
-            | -------------- | ---------------------------------- |
+            | Flags | Description |
+            | --- | --- |
             | -p --password. | App password for the email account |
-            | -r --recipient | The recipient of the test email    |
+            | -r --recipient | The recipient of the test email |
 
             The `outlook` subcommand can be used to create a new Outlook email sender.
 
             To obtain an app password, you can use the following [link](https://mysignins.microsoft.com/security-info).
           </Accordion>
+
           <Accordion title="Gmail/Google Workspace">
             #### Args
 
-            | Args  | Description                     |
-            | ----- | ------------------------------- |
+            | Args | Description |
+            | --- | --- |
             | email | The recipient of the test email |
 
             #### Flags
 
-            | Flags          | Description                        |
-            | -------------- | ---------------------------------- |
-            | -p --password  | App password for the email account |
-            | -r --recipient | The recipient of the test email    |
+            | Flags | Description |
+            | --- | --- |
+            | -p --password | App password for the email account |
+            | -r --recipient | The recipient of the test email |
 
             The `gmail` subcommand can be used to create a new Outlook email sender.
 
             To obtain an app password, you can use the following [link](https://myaccount.google.com/apppasswords).
           </Accordion>
+
           <Accordion title="Mailgun">
             #### Args
 
-            | Args       | Description              |
-            | ---------- | ------------------------ |
+            | Args | Description |
+            | --- | --- |
             | from-email | The email to send _from_ |
 
             #### Flags
 
-            | Flags          | Description                         |
-            | -------------- | ----------------------------------- |
-            | -r --recipient | The recipient of the test email     |
-            | --base-url     | Mailgun base URL (for EU customers) |
-            | --domain       | The Mailgun domain                  |
-            | --api-private  | The Mailgun private API Key         |
+            | Flags | Description |
+            | --- | --- |
+            | -r --recipient | The recipient of the test email |
+            | --base-url | Mailgun base URL (for EU customers) |
+            | --domain | The Mailgun domain |
+            | --api-private | The Mailgun private API Key |
 
             The `mailgun` subcommand can be used to create a new Mailgun email sender.
           </Accordion>
+
           <Accordion title="Sendgrid">
             #### Args
 
-            | Args       | Description              |
-            | ---------- | ------------------------ |
+            | Args | Description |
+            | --- | --- |
             | from-email | The email to send _from_ |
 
             #### Flags
 
-            | Flags          | Description                     |
-            | -------------- | ------------------------------- |
+            | Flags | Description |
+            | --- | --- |
             | -r --recipient | The recipient of the test email |
-            | --api-key      | The Sendgrid API Key            |
+            | --api-key | The Sendgrid API Key |
 
             The `mailgun` subcommand can be used to create a new Mailgun email sender.
           </Accordion>
+
           <Accordion title="Standard SMTP">
             #### Args
 
-            | Args       | Description              |
-            | ---------- | ------------------------ |
+            | Args | Description |
+            | --- | --- |
             | from-email | The email to send _from_ |
 
             #### Flags
 
-            | Flags          | Description                     |
-            | -------------- | ------------------------------- |
+            | Flags | Description |
+            | --- | --- |
             | -r --recipient | The recipient of the test email |
-            | --bounce       | Bounce email address            |
-            | --hostname     | The SMTP Server hostname        |
-            | --password     | The SMTP Server password        |
-            | --port         | The SMTP Server port            |
-            | --tls          | Use TLS                         |
+            | --bounce | Bounce email address |
+            | --hostname | The SMTP Server hostname |
+            | --password | The SMTP Server password |
+            | --port | The SMTP Server port |
+            | --tls | Use TLS |
 
             The `smtp` subcommand can be used to create a new standard SMTP email sender.
           </Accordion>
         </AccordionGroup>
       </Accordion>
+
       <Accordion title="Confirm">
-        | Args  | Description                                               |
-        | ----- | --------------------------------------------------------- |
+        | Args | Description |
+        | --- | --- |
         | token | The token received in the email sent from the set command |
 
         The `confirm`subcommand can be used to confirm the new email sender.
 
         ![Image](/images/image-14.png)
       </Accordion>
+
       <Accordion title="Delete">
-        | Args       | Description                   |
-        | ---------- | ----------------------------- |
+        | Args | Description |
+        | --- | --- |
         | identifier | The ID or Email of the sender |
 
         The `delete` subcommand deletes an email sender by id
@@ -1019,6 +1098,7 @@ The `server` subcommand can be used to query active workers for the conductor
         <Note>
           You cannot delete an active sender, you must first activate an inactive one
         </Note>
+
         ![Image](/images/image-19.png)
       </Accordion>
     </AccordionGroup>
@@ -1033,12 +1113,12 @@ The client will also have to be registered separately on Tailscale as its own no
 
 # Auto-Completion
 
-| Sub-Command | Description                                       |
-| ----------- | ------------------------------------------------- |
-| bash        | Generate the autocompletion script for bash       |
-| fish        | Generate the autocompletion script for fish       |
-| powershell  | Generate the autocompletion script for powershell |
-| zsh         | Generate the autcompletion script for zsh         |
+| Sub-Command | Description |
+| --- | --- |
+| bash | Generate the autocompletion script for bash |
+| fish | Generate the autocompletion script for fish |
+| powershell | Generate the autocompletion script for powershell |
+| zsh | Generate the autcompletion script for zsh |
 
 Autocompletion scripts can be added to your profile to allow tab completion and other features of the Krkn Client application.
 
