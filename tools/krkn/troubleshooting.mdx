@@ -87,6 +87,7 @@ This is the root cause of most confusion.
 
     Never on service mesh rules.
   </Accordion>
+
   <Accordion title="Peer Suppression">
     Tailscale does not show peers that **can never be reached** according to policy.
 
@@ -111,6 +112,7 @@ This is the root cause of most confusion.
     - Group mismatch
     - ACL/grant shadowing
   </Accordion>
+
   <Accordion title="Tags: Rules and Traps">
     **Important Facts**
 
@@ -126,6 +128,7 @@ This is the root cause of most confusion.
     - Node has multiple tags and only some rules match
     - tsnet node was created under `tagged-devices` user and rules are user-scoped
   </Accordion>
+
   <Accordion title="Grants vs ACLs">
     If you still have an `"acls"` section:
 
@@ -138,6 +141,7 @@ This is the root cause of most confusion.
     - Use grants only
     - Remove ACLs entirely unless you fully understand both systems
   </Accordion>
+
   <Accordion title="Groups">
     Groups only affect:
 
@@ -157,6 +161,7 @@ This is the root cause of most confusion.
 
     They never will.
   </Accordion>
+
   <Accordion title="Debug Checklist">
     On the broken node:
 
@@ -174,6 +179,7 @@ This is the root cause of most confusion.
     - Does posture apply?
     - Does any rule match at all?
   </Accordion>
+
   <Accordion title="Nuclear Debug Rule">
     Temporarily add:
 
@@ -244,6 +250,7 @@ If you enabled Tailscale support in the client and something appears “stuck”
     - If the machine can’t reach something, krknc can’t either
     - There is no separate node, no separate identity, no separate auth
   </Accordion>
+
   <Accordion title="Krknc cannot reach krkns">
     - The krkns tsnet node:
       - Is not tagged
@@ -251,12 +258,14 @@ If you enabled Tailscale support in the client and something appears “stuck”
       - Is policy-suppressed
       - Or has no policy path from the client machine
   </Accordion>
+
   <Accordion title="Krkns cannot reach krknc">
     - The client machine:
       - Is missing the required tag
       - Is blocked by posture
       - Is blocked by policy
   </Accordion>
+
   <Accordion title="Krknc appears connected but nothing works">
     - The machine itself does not have a valid policy path
     - Test from the machine directly
@@ -267,6 +276,7 @@ If you enabled Tailscale support in the client and something appears “stuck”
 
     If that fails, krknc cannot work either.
   </Accordion>
+
   <Accordion title="Debug Checklist">
     On the client machine:
 
@@ -277,6 +287,7 @@ If you enabled Tailscale support in the client and something appears “stuck”
       - Does policy allow it to talk to krkns?
       - Is posture blocking it?
   </Accordion>
+
   <Accordion title="Tentacle cannot reach krkns">
     - The krkns primary host (not the tsnet node)
       - Is not tagged
@@ -289,8 +300,8 @@ If you enabled Tailscale support in the client and something appears “stuck”
 
 - krknc uses its own embedded Tailscale node
 - It must authenticate once
-- Auth can be interactive or via TS_AUTHKEY
-- TS_FORCE_LOGIN=1 forces fresh registration
+- Auth can be interactive or via TS\_AUTHKEY
+- TS\_FORCE\_LOGIN=1 forces fresh registration
 - After first auth, env vars are no longer needed
 - If a node is invisible, it is being hidden by policy, not broken networking
 
@@ -319,6 +330,7 @@ If you enabled Tailscale support in the client and something appears “stuck”
 
     They are two different nodes.
   </Accordion>
+
   <Accordion title="First-Run Authentication">
     On first startup with Tailscale enabled, krkns **must authenticate** its embedded tsnet node.
 
@@ -370,8 +382,8 @@ If you enabled Tailscale support in the client and something appears “stuck”
       - Reuse the same IP
       - Reuse the same registration
     - You do NOT need:
-      - TS_AUTHKEY
-      - TS_FORCE_LOGIN
+      - TS\_AUTHKEY
+      - TS\_FORCE\_LOGIN
       - Or interactive login again
 
     Unless:
@@ -402,6 +414,7 @@ If you enabled Tailscale support in the client and something appears “stuck”
     - Open it in your browser
     - Approve the node
   </Accordion>
+
   <Accordion title="Verifying the Client Node Exists">
     After successful auth, check in the Tailscale admin console:
 
@@ -452,6 +465,7 @@ If you enabled Tailscale support in the client and something appears “stuck”
     - Only apply posture to human devices
     - See the main Krkn Tailscale Troubleshooting Guide
   </Accordion>
+
   <Accordion title="Common Failure Modes">
     <AccordionGroup>
       <Accordion title="A) Client never connects">
@@ -462,8 +476,9 @@ If you enabled Tailscale support in the client and something appears “stuck”
         Fix:
 
         - Enable debug
-        - Or use TS_AUTHKEY + TS_FORCE_LOGIN=1
+        - Or use TS\_AUTHKEY \+ TS\_FORCE\_LOGIN=1
       </Accordion>
+
       <Accordion title="B) Client authenticated but server can’t see it">
         - Tag missing
         - Policy path does not exist
@@ -477,6 +492,7 @@ If you enabled Tailscale support in the client and something appears “stuck”
         - Check grants
         - Check posture rules
       </Accordion>
+
       <Accordion title="C) I reinstalled and now it wants login again">
         - State directory was deleted
         - New identity is being created
@@ -484,6 +500,7 @@ If you enabled Tailscale support in the client and something appears “stuck”
       </Accordion>
     </AccordionGroup>
   </Accordion>
+
   <Accordion title="Forcing a Re-Registration">
     If you want to force krknc to register as a new node:
 
@@ -494,6 +511,7 @@ If you enabled Tailscale support in the client and something appears “stuck”
 
     Or delete the client’s tsnet state directory.
   </Accordion>
+
   <Accordion title="Debug Checklist">
     On the client machine:
 
@@ -521,7 +539,15 @@ If you enabled Tailscale support in the client and something appears “stuck”
 
 - krkns uses its own embedded Tailscale node
 - It must authenticate once
-- Auth can be interactive or via TS_AUTHKEY
-- TS_FORCE_LOGIN=1 forces fresh registration
+- Auth can be interactive or via TS\_AUTHKEY
+- TS\_FORCE\_LOGIN=1 forces fresh registration
 - After first auth, env vars are no longer needed
 - If a node is invisible, it is being hidden by policy, not broken networking
+
+# Krknc MacOS Isssues
+
+<Frame>
+  ![Image](/images/image.png)
+</Frame>
+
+On first run, MacOS may indicate that the binary is dangerous. To resolve this, after you have chmod and executed the file you can use `cmd + space` to go to Privacy and Security, scroll down to the _Security_ section and click `Allow Anyway` next to the name of the bin. On the subsequent execution you will be asked to Open the file in a prompt. Click `Open Anyway, ` type in your password on the next screen, and you should be free to operate the binary.
