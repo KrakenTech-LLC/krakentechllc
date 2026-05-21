@@ -5,11 +5,17 @@ description: "Installing your krkns"
 
 ## Aliasing and configuration setup
 
-To start, use the krkns install command to create global aliases and initialize the directories for the configurations
+To start, use the krkns install command to create global aliases and initialize the directories for the configurations.
 
 ![Image](/images/image.png)
 
-Optionally, if you would like to install Krkns as a service, you can now run the service install command
+Optionally, if you would like to install Krkns as a service, you can now run the `service install` command.
+
+<Frame>
+  ![Image](/images/image.png)
+</Frame>
+
+Next, you can configure settings using the `config get` and `config set` commands before starting the service. If you chose to run as a service you will first need to perform first time setup using the `krkns serve` command before enabling the service `systemctl --user enable --now krkn-server.service`)
 
 Upon launching the Krkn Se~~r~~ver if a database does not yet exist, the user will be prompted to begin the first time setup process.
 
@@ -24,7 +30,7 @@ Currently only the following SMTP Senders are implemented:
 - Outlook
   - The app password can be generated at the [Microsoft Security Info](https://mysignins.microsoft.com/security-info) page.
 - Google
-  - The app password can be generated at the \<\> page.
+  - The app password can be generated at the [App Passwords](https://myaccount.google.com/apppasswords) page.
 - Mailgun
 - Sengrid
 - Standard SMTP
