@@ -9,7 +9,7 @@ Introducing Spray 'n Pray
 
 # Spray 'n Pray - Autonomous Password Spraying Tool
 
-Spray 'n Pray is an automated password spraying tool. With its roots originally in Active Directory, Spray 'n Pray is a **Go Native SPA** application that utilizes the **go-fiber framework**, **Vanilla JS**, **sqlc \+ SQLite3** and **Web Sockets** to create an easy to use interface that can be left unattended to perform a scheduled set of password sprays in an environment, externally, or via **SOCKS5 Proxy** using logically separated infrastructure. 
+Spray 'n Pray is an automated password spraying tool. With its roots originally in Active Directory, Spray 'n Pray is a **Go Native SPA** application that utilizes the **go-fiber framework**, **Vanilla JS**, **sqlc \+ SQLite3** and **Web Sockets** to create an easy to use interface that can be left unattended to perform a scheduled set of password sprays in an environment, externally, or via **SOCKS5 Proxy** using logically isolated infrastructure.
 
 ![Spray N Pray Nobg](/images/spray-n-pray-nobg.png)
 
@@ -42,12 +42,7 @@ Spray 'n Pray is capable of notifying a set of recipients for a series of event 
 
 # Compatible Operating Systems
 
-- <Icon icon="linux" />
-- <Icon icon="apple" />
-
 ## Coming Soon
-
-- <Icon icon="windows" />
 
 # Getting Started
 
@@ -75,9 +70,9 @@ To use Spray 'n Pray the user needs to retrieve a copy of the latest binary from
 
 # First Time Startup
 
-On initial start up it will generate a SQLite3 database at `$HOME/.local/share/spraynpray` 
+On initial start up it will generate a SQLite3 database at `$HOME/.local/share/spraynpray`
 
-It will then attempt to enumerate the domain and any domain controllers in the environment as target hosts. 
+It will then attempt to enumerate the domain and any domain controllers in the environment as target hosts.
 
 ## Domains
 
@@ -176,8 +171,6 @@ Passwords can be added similarly to users in that they can be added adhoc, comma
   ![Image](/images/image-58.png)
 </Frame>
 
-###  
-
 <AccordionGroup>
   <Accordion title="Adhoc">
     ```text
@@ -247,7 +240,7 @@ Spray once every 2 hours on Monday, Wednesday and Friday using 10 threads
 
 Safe mode utilizes the responses from the protocol to determine whether or not the sprayed user's account is locked out. This is only applicable to some protocols, most of which utilize Active Directory. You can set a maximum threshold of locked out users before the spray is terminated and the run results are converted into an execution.
 
-The spray will still track cracked accounts for a prematurely stopped spray. It will indicate the number of users that were successfully sprayed as the total instead of the full count. 
+The spray will still track cracked accounts for a prematurely stopped spray. It will indicate the number of users that were successfully sprayed as the total instead of the full count.
 
 Any locked out accounts will appear in the activity pane along with a message indicating that the spray was stopped due to the safety threshold.
 
@@ -283,7 +276,7 @@ Once notifications have been configured, the notifications button will appear as
 
 # Socks5 Proxies
 
-Spray 'n Pray is capable of proxying password spray attempts through a series of ssh accessible hosts using a socks5 proxy. To do this, simply supply the credentials to the host and its address in the Socks Pane. 
+Spray 'n Pray is capable of proxying password spray attempts through a series of ssh accessible hosts using a socks5 proxy. To do this, simply supply the credentials to the host and its address in the Socks Pane.
 
 <Note>
   Not all services can be proxied, currently Kerberos is not yet proxy compatible.
