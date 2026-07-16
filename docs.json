@@ -192,6 +192,12 @@
             "pages": [
               "tools/golay/introduction"
             ]
+          },
+          {
+            "tab": "SpraynPray",
+            "pages": [
+              "spray-n-pray"
+            ]
           }
         ]
       }
