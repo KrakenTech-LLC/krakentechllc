@@ -43,6 +43,12 @@
         "anchor": "tools",
         "tabs": [
           {
+            "tab": "SpraynPray",
+            "pages": [
+              "spray-n-pray"
+            ]
+          },
+          {
             "tab": "Hashcrack.ing",
             "pages": [
               "tools/hashcrack-ing/introduction",
@@ -191,12 +197,6 @@
             "tab": "Golay",
             "pages": [
               "tools/golay/introduction"
-            ]
-          },
-          {
-            "tab": "SpraynPray",
-            "pages": [
-              "spray-n-pray"
             ]
           }
         ]
