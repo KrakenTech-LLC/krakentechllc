@@ -342,3 +342,27 @@ Once proxies have been configured and the proxy is enabled, the proxy button wil
 
   ![Image](/images/image-77.png)
 </Frame>
+
+## Webhooks
+
+Spray 'n Pray is capable of sending webhooks as an alternative alert mechanism. To create a webhook, simply click the webhook button and input the URL, secret (optional) and the number of retries. Then select the alert types.
+
+More than one endpoint can be registered to receieve webhooks.
+
+Webhooks are a best effort send and are asynchronous. If they are vital to your operation it is a good idea to increate the number of retries.
+
+<Frame>
+  ![Image](/images/image-82.png)
+</Frame>
+
+After a webhook is enabled, the button will appear green.
+
+<Frame>
+  ![Image](/images/image-81.png)
+</Frame>
+
+Sample Execution
+
+<Frame>
+  ![Image](/images/image-80.png)
+</Frame>
