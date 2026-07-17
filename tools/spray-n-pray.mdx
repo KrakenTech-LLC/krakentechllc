@@ -175,6 +175,10 @@ Users can be in one of three different statuses. A grey indicator means that the
 
 <Tip>
   Clicking on a users name will copy the credential to your clipboard
+
+  <Frame>
+    ![Image](/images/image-83.png)
+  </Frame>
 </Tip>
 
 ## Passwords
@@ -370,3 +374,111 @@ Sample Execution
 <Frame>
   ![Image](/images/image-80.png)
 </Frame>
+
+## Downlaods
+
+It is possible to download both the activity pane logs and the credentials from the Spray 'n Pray Application. 
+
+### Credentials
+
+When clicking the credential download you will be offered four different formats:
+
+<AccordionGroup>
+  <Accordion title="Greppable">
+    ```text
+    username=cersei.lannister&password=il0vejaime
+    username=lord.varys&password=_W1sper_$
+    ```
+  </Accordion>
+
+  <Accordion title="Json">
+    ```json
+    {
+        "credentials":
+        [
+            {
+                "username": "cersei.lannister",
+                "password": "il0vejaime"
+            },
+            {
+                "username": "lord.varys",
+                "password": "_W1sper_$"
+            }
+        ]
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Yaml">
+    ```yaml
+    credentials:
+    - username: cersei.lannister
+      password: il0vejaime
+    - username: lord.varys
+      password: _W1sper_$
+    ```
+  </Accordion>
+
+  <Accordion title="Text">
+    ```text
+    cersei.lannister:il0vejaime
+    lord.varys:_W1sper_$
+    ```
+  </Accordion>
+</AccordionGroup>
+
+<Frame>
+  ![Image](/images/image-85.png)
+</Frame>
+
+### Activity Logs
+
+The activity logs can also be downloaded as an artifact
+
+<Frame>
+  ![Image](/images/image-87.png)
+</Frame>
+
+```log
+[20:53:59] Queued 3 password(s)
+[20:53:59] Console ready. Load users, queue passwords, and spray.
+[20:26:07] Updated domain to sevenkingdoms.local
+[20:26:10] Added 2 hosts
+[20:26:17] Added 7 users (0 duplicates skipped)
+[20:26:21] Parsed 5 candidates
+[20:26:23] Removed password from queue: Welcome1
+[20:26:23] Removed password from queue: Password1
+[20:26:24] Removed password from queue: P@ssw0rd
+[20:26:30] Spraying "il0vejaime" against 7 user(s) across 2 host(s) via kerberos
+[20:26:30] Host did not respond: 10
+[20:26:30] Host did not respond: 3
+[20:26:30] 2 host(s) went unresponsive during the run
+[20:26:30] Next spray scheduled for Fri, Jul 17 9:00AM
+[20:26:30] Spray complete: 0 valid of 0 attempted for "il0vejaime"
+[20:26:38] Added 1 hosts
+[20:26:38] Reset spray candidates
+[20:26:39] Spraying "il0vejaime" against 7 user(s) across 1 host(s) via kerberos
+[20:26:44] Host did not respond: 10.30.10.10
+[20:26:44] 1 host(s) went unresponsive during the run
+[20:26:44] Next spray scheduled for Fri, Jul 17 9:00AM
+[20:26:44] Spray complete: 0 valid of 0 attempted for "il0vejaime"
+[20:26:48] Added 1 hosts
+[20:26:50] Reset spray candidates
+[20:26:50] Spraying "il0vejaime" against 7 user(s) across 1 host(s) via kerberos
+[20:26:50] VALID cersei.lannister : il0vejaime (via kerberos @ 10.3.10.10)
+[20:26:50] Next spray scheduled for Fri, Jul 17 9:00AM
+[20:26:50] Spray complete: 1 valid of 7 attempted for "il0vejaime"
+[20:28:23] Spraying "_W1sper_$" against 6 user(s) across 1 host(s) via kerberos
+[20:28:23] VALID lord.varys : _W1sper_$ (via kerberos @ 10.3.10.10)
+[20:28:23] Next spray scheduled for Fri, Jul 17 9:00AM
+[20:28:23] Spray complete: 1 valid of 6 attempted for "_W1sper_$"
+[20:28:29] Downloaded credentials (grep)
+[20:49:27] Downloaded credentials (txt)
+[20:53:25] Downloaded credentials (yaml)
+[20:54:02] Exported results as YAML.
+[20:54:02] Downloaded credentials (yaml)
+[20:54:32] Exported results as JSON.
+[20:54:32] Downloaded credentials (json)
+[20:56:02] Exported results as GREP.
+[20:56:02] Downloaded credentials (grep)
+```
