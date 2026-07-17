@@ -52,7 +52,27 @@ Spray 'n Pray only has two optional arguments
 
 # Compatible Operating Systems
 
-## Coming Soon
+<AccordionGroup>
+  <Accordion title="Linux">
+    <Icon icon="linux" /> arm64
+
+    <Icon icon="linux" /> amd64
+  </Accordion>
+
+  <Accordion title="Darwin">
+    <Icon icon="apple" /> arm64
+
+    <Icon icon="apple" /> amd64
+  </Accordion>
+
+  <Accordion title="Windows">
+    <Icon icon="windows" /> amd64
+
+    <Note>
+      arm64 is not yet supported
+    </Note>
+  </Accordion>
+</AccordionGroup>
 
 # Getting Started
 
@@ -60,7 +80,7 @@ To use Spray 'n Pray the user needs to retrieve a copy of the latest binary from
 
 <AccordionGroup>
   <Accordion title="Run the software">
-    On the attacker host, simply ensure the binary is executable and run the file. 
+    On the attacker host, simply ensure the binary is executable and run the file.
 
     It is recommended to do so in a screen session. Interruptions will not disrupt the application but will prevent future sprays from occurring until the app is started again.
 
